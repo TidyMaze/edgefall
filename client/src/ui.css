@@ -1639,6 +1639,13 @@ body[data-place-transition] #screen-exit { display: none; }
 #support #board-zoom[hidden], body:has(#dock-wrap :is(#lore, #goal-sheet, #trainer-card):not([hidden]), #settings-menu:not([hidden])) #board-zoom { display: none; } /* a sheet over the dock, or the open settings menu, covers its place */
 #support #board-zoom[aria-pressed='true'] { background: var(--active-fill); color: var(--active-ink); }
 #support #board-zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* The floating Reset view (#1681): beside the board zoom, shown once the camera moved. */
+#support #view-reset {
+  box-sizing: border-box; min-width: 44px; height: 44px; padding: 0 12px; color: var(--text); background: var(--panel);
+  border: 1px solid var(--edge); border-radius: var(--r-button); font: 500 0.75rem/1 var(--ui); cursor: pointer;
+}
+#support #view-reset[hidden], body:has(#dock-wrap :is(#lore, #goal-sheet, #trainer-card):not([hidden]), #settings-menu:not([hidden])) #view-reset { display: none; }
+#support #view-reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The question of a wild marble in the way (#1662): top centre, so it covers neither the plate and chip at the bottom nor the hero; the world waits for the answer. */
 #openworld-ask { display: none; position: fixed; z-index: 3; top: 4.5rem; left: 50%; transform: translateX(-50%); box-sizing: border-box; width: min(22rem, calc(100vw - 2rem)); padding: 0.75rem 1rem; color: var(--text); background: var(--panel); border: 1px solid var(--plate-accent); border-radius: var(--r-card); font: 0.875rem/1.4 var(--ui); zoom: var(--ui-scale); }
 body[data-openworld] #openworld-ask:not([hidden]) { display: block; }

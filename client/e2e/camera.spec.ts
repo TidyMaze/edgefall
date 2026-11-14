@@ -92,3 +92,25 @@ test('Reset view is disabled until its listener is attached, bug #146', async ({
   // Under software WebGL on a loaded runner the top-level awaits can take longer than the 5 s default (#336).
   await expect(page.locator('#reset-view')).toBeEnabled({ timeout: 30_000 });
 });
+
+// #1681: once the camera moved, a Reset view button floats over the board (no menu), and a press brings the default view back.
+test('a floating Reset view appears after a drag and brings the default view back', async ({ page }, testInfo) => {
+  await page.goto('./?bot=off');
+  await page.locator('canvas').waitFor();
+  await expect(page.locator('#hud')).toContainText('Black to move');
+  const chip = page.locator('#view-reset');
+  await expect(chip).toBeHidden();
+  const start = await cellToScreen(page, 4, 0);
+  await page.mouse.move(300, 200);
+  await page.mouse.down();
+  await page.mouse.move(360, 200, { steps: 5 });
+  await page.mouse.move(400, 230, { steps: 5 });
+  await page.mouse.up();
+  await expect(chip).toBeVisible();
+  await shot(page, { path: testInfo.outputPath('view-reset-shown.jpg'), type: 'jpeg', quality: 70 });
+  await chip.click();
+  await expect(chip).toBeHidden();
+  const reset = await cellToScreen(page, 4, 0);
+  expect(reset.x).toBeCloseTo(start.x, 1);
+  expect(reset.y).toBeCloseTo(start.y, 1);
+});

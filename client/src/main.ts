@@ -812,6 +812,7 @@ function updateFog(): void {
 // boards of 61 cells only. The hub, the royale, the Open world, the reader and the fights with props off the board keep their views.
 let boardZoom = readBoardZoom(store);
 const boardZoomButton = document.getElementById('board-zoom') as HTMLButtonElement;
+const viewResetButton = document.getElementById('view-reset') as HTMLButtonElement;
 const boardZoomHere = (): boolean => booted && !hub && !royale && !openWorld.active && !reading && !['pulsar', 'dual', 'ballast'].includes(fight?.id ?? '') && boardZoomOn(true, innerWidth, innerHeight);
 const boardZoomShown = (): boolean => boardZoom && boardZoomHere();
 /** The beat of boss `id` starts now, for a fight that begins (a fight that comes back from a reload has none); the caller draws the view. */
@@ -848,6 +849,7 @@ function applyView(): void {
   sceneRenderer.applyView(boardZoomShown() ? zoomView(innerWidth, innerHeight) : (entrance.frame(view, performance.now()) ?? view), sceneRenderer.terraceOn ? null : reading, { tier, clear, deck, consoleDef }); // the room's screen is not framed on the terrace (#1369)
   placeHubLabels();
   boardZoomButton.hidden = !boardZoomHere();
+  viewResetButton.hidden = !(booted && !hub && !royale && !openWorld.active && !reading && !boardZoomShown()) || (!freeCam.active && (view === fitted || isDefaultView(view, resetView(4)) || isDefaultView(view, TERRACE_VIEW) || isDefaultView(view, fightView()))); // only once the player moved the camera (#1681)
 }
 // The hub's deck plan (#1249): the label plates over the rooms, the lift-shaft rail and the boss pips, shown in the hub only.
 const hubPlan = document.getElementById('hub-plan')!;
@@ -5502,6 +5504,7 @@ document.getElementById('reset-view')!.addEventListener('click', () => {
   applyView();
 });
 (document.getElementById('reset-view') as HTMLButtonElement).disabled = false; // listener ready (#146)
+viewResetButton.addEventListener('click', () => (document.getElementById('reset-view') as HTMLButtonElement).click()); // the same Reset view, one press away (#1681)
 // The left HUD panel folds to a tab with its button alone (#957), saved. Folded, it stays in the page for screen readers.
 const hudFold = document.getElementById('hud-fold') as HTMLButtonElement;
 function foldHud(folded: boolean): void {
