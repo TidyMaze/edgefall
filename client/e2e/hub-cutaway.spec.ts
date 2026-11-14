@@ -64,3 +64,78 @@ test('the flag off asks for no cutaway file and keeps the deck', async ({ page }
   await expect(page.locator('body')).not.toHaveAttribute('data-hub-cutaway', /.*/);
   await expect(page.locator('#hub-labels')).toBeVisible();
 });
+
+// The bays as tap targets (#1691): a tap rolls the marble there and the room opens, a shut deck bumps, the arrow keys move it, a tap during a roll ends it, and the signs fit.
+const bay = (page: Page, key: string) => page.locator(`#ship-bays [data-bay="${key}"]`);
+const hubNow = (page: Page) => page.evaluate(() => document.body.dataset.hub ?? null);
+
+test('a tap on the House table rolls the marble there and starts the game', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHub(page, '?hub=cutaway&bot=off', ['echo']);
+  await expect(bay(page, 'mess:bot')).toBeVisible();
+  await bay(page, 'mess:bot').click();
+  await expect.poll(() => hubNow(page)).toBeNull(); // the Hub is left: a game is on
+});
+
+test('a tap on a bay of a shut deck bumps at its hatch and Tally says her line', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await openHub(page, '?hub=cutaway&bot=off');
+  await bay(page, 'bridge:pulsar').click();
+  await expect(page.locator('#hud')).toContainText('locked');
+  expect(await hubNow(page)).toMatch(/^mess /);
+});
+
+test('the arrow keys move the marble along a floor, and bump the shut hatch', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); // the tall shell: the Mess has two floors, the lift is 0.58 left of the House table
+  await openHub(page, '?hub=cutaway&bot=off');
+  await expect(bay(page, 'mess:bot')).toBeVisible(); // the ship is drawn: before it, the keys roll the old deck's marble
+  await page.keyboard.press('ArrowRight');
+  await expect(bay(page, 'mess:bot')).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp'); // a roll in progress ends first: the next key goes on from where it was going
+  await page.keyboard.press('ArrowUp');
+  await expect(page.locator('#hud')).toContainText('locked');
+  expect(await hubNow(page)).toMatch(/^mess /);
+});
+
+test('a tap during a roll ends it: the first room does not open', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await openHub(page, '?hub=cutaway&bot=off', ['echo']);
+  await bay(page, 'mess:daily').click();
+  await bay(page, 'mess:logs').click({ force: true });
+  await expect(page.locator('#reader')).toBeVisible(); // the logs, not the daily
+});
+
+for (const [w, h] of [[390, 844], [375, 667], [360, 640], [1000, 700]] as const) {
+  test(`every bay is whole, under no panel, with a one line sign on ${w}x${h}`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await openHub(page, '?hub=cutaway&bot=off', ALL);
+    await expect(bay(page, 'mess:echo')).toBeVisible();
+    const r = await page.evaluate(() => {
+      const panels = ['hud', 'hub-pips', 'hub-rail', 'hub-board', 'dock', 'settings'].map((id) => document.getElementById(id)!).filter((e) => getComputedStyle(e).display !== 'none');
+      const bays = [...document.querySelectorAll<HTMLElement>('#ship-bays .cut-bay')];
+      const bad: string[] = [];
+      let minW = 999, minH = 999, minFont = 99;
+      for (const b of bays) {
+        const q = b.getBoundingClientRect();
+        minW = Math.min(minW, q.width); minH = Math.min(minH, q.height);
+        const sign = [...b.querySelectorAll<HTMLElement>('.short, b')].find((e) => getComputedStyle(e).display !== 'none')!;
+        const fs = parseFloat(getComputedStyle(sign).fontSize);
+        const sr = sign.getBoundingClientRect();
+        if (innerWidth < 600) minFont = Math.min(minFont, fs);
+        if (sign.scrollWidth > sign.clientWidth + 1 || sr.right > q.right + 1 || sr.left < q.left - 1 || (innerWidth < 600 && sr.height > fs * 1.6)) bad.push(`${b.dataset.bay}: sign`);
+        const hit = panels.find((p) => { const o = p.getBoundingClientRect(); return o.left < q.right && o.right > q.left && o.top < q.bottom && o.bottom > q.top; });
+        if (hit) bad.push(`${b.dataset.bay}: under ${hit.id}`);
+        const top = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+        if (top !== b && !b.contains(top)) bad.push(`${b.dataset.bay}: covered by ${(top as HTMLElement | null)?.id}`);
+        if (q.left < 0 || q.right > innerWidth || q.top < 0 || q.bottom > innerHeight) bad.push(`${b.dataset.bay}: off the window`);
+      }
+      return { n: bays.length, bad, minW, minH, minFont };
+    });
+    console.log(`${w}x${h}: ${r.n} bays, smallest ${r.minW.toFixed(0)} x ${r.minH.toFixed(0)} px, phone sign ${r.minFont}px`);
+    expect(r.n).toBe(31);
+    expect(r.bad).toEqual([]);
+    if (w < 600) expect(r.minFont).toBeGreaterThanOrEqual(10);
+  });
+}

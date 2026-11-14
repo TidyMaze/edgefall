@@ -305,6 +305,15 @@ export async function boot(url = '/', options: BootOptions = {}): Promise<Game> 
           if (url.endsWith('slab-dual.glb')) scene.add(piece('scene_dual_slab_n'), piece('scene_dual_cell_000'));
           if (url.endsWith('kit-arena.glb')) scene.add(...['kit_pedestal_flat', 'kit_ring_target', 'kit_arrow_target', 'kit_ring_select', 'kit_ring_lastmove'].map(piece));
           if (url.endsWith('kit-ring-hint.glb')) scene.add(piece('kit_ring_hint'));
+          const cutaway = /hub-cutaway-(tall|wide)\.glb$/.exec(url); // the Hub Cutaway (#1691): a hull, a few bays on five floors of four decks, the marble and the lift's car
+          if (cutaway) {
+            const nodes: [string, number, number][] = [['hull', 0, 0], ['bay_mess_world', -2, 0.24], ['bay_mess_bot', 0.58, 0.24], ['bay_mess_logs', -1, 1.4], ['bay_mess_echo', 0.58, 1.4], ['bay_mess_daily', 2.58, 1.4], ['bay_cargo_run', 2.58, 2.78], ['bay_cargo_crates', -1, 2.78], ['bay_cargo_hull', 0.58, 3.94], ['bay_furnace_choir', 0.58, 5.32], ['marble', 0.29, 3], ['car', 0, 2.78]];
+            for (const [name, x, y] of nodes) {
+              const part = piece(`hub_${cutaway[1]}_${name}`);
+              part.position.set(x, y, 0);
+              scene.add(part);
+            }
+          }
           return { scene };
         };
       },

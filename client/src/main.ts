@@ -334,7 +334,7 @@ import { runScoreHtml } from './runhud';
 import { cardText, Legend, legendHtml, marksOn } from './specialhelp';
 import { bestTurns, loadMedals, medalLabel, medalLine, medalRoom, playerTurns, recordMedal, tallyAttempt, tallyWin, type MedalResult } from './medals';
 import { loadProgress, recordWin, saveProgress } from './progress';
-import { HUB_CELLS, hubPath, roomAt, step, type Door, type Spot as HubSpot } from './hub';
+import { HUB_CELLS, hubPath, neighbours, roomAt, step, type Door, type Spot as HubSpot } from './hub';
 import { entryConfirmDue, entryName, HUB_COACH, hubCoachDue, hubHelpOn, markEntered, markHubCoachDone, needsConfirm } from './hubcoach';
 import { createKitGlyph, type GlyphOptions } from './hubart';
 import { HubController } from './controller';
@@ -344,6 +344,8 @@ import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hul
 import { workshopHtml } from './workshopview';
 import { bossLockLine, labelsHtml, nextGoal, pipsHtml, railHtml } from './hubview';
 import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, shipState } from './hubcutaway';
+import { bayButtons, focusBay, paintBays, placeBays } from './hubbays';
+import { ShipWalk } from './hubship';
 import { clearStray } from './modeswitch';
 import { indexedDbStore } from './idb';
 import { LocalSaves, type LocalGame } from './savegame';
@@ -866,6 +868,7 @@ let workshopStock: Stock | null = null; // the stock of the world on show, read 
 /** Puts the plates back on their cells: the camera moved, or they were drawn again. */
 function placeHubLabels(): void {
   hub?.placeLabels(hubLabels, (q, r) => sceneRenderer.cellToScreen(q, r, innerWidth, innerHeight));
+  if (cutawayShown) placeBays(shipBays, cutaway!.bayBoxes(), shipProject); // the bays' buttons follow the ship (#1691)
 }
 
 const freeCam = new FreeCameraController();
@@ -4331,13 +4334,59 @@ const cutawaySpace = new THREE.Color(NEON.sky);
 const cutaway = cutawayOn(location.search) ? new Cutaway(terraceFile, () => refresh()) : null;
 if (cutaway) sceneRenderer.terrace.add(cutaway.group);
 /** Draws the ship in the Hub of the terrace, and the deck again anywhere else; the camera follows when the ship comes or goes. */
+const shipNow = (beaten: readonly string[]) => shipState(beaten, locked, locked ? null : goalRoom(nextGoal(beaten, ranRun(store))));
+// The bays are the tap targets (#1691): a tap rolls the marble there, and the room opens as the old deck's plate did (first-entry confirm kept). The deck's invisible discs take no click then.
+const shipBays = document.getElementById('ship-bays')!;
+const ship = cutaway
+  ? new ShipWalk({
+      bays: () => cutaway.bays,
+      lift: () => cutaway.lift,
+      open: () => shipNow(loadProgress(store).beaten).open,
+      place: (pos, scale) => {
+        cutaway.place(pos, scale);
+        dirty = CHANGE_DRAWS;
+      },
+      arrive: shipArrive,
+      reduced: reducedMotion,
+      now: () => performance.now(),
+      frame: (cb) => requestAnimationFrame(cb),
+      unframe: (id) => cancelAnimationFrame(id),
+      settle: (bay) => focusBay(shipBays, bay),
+    })
+  : null;
+/** The roll ended on a room of the old Hub (or its shut hatch): the marble of the old model is put beside it and rolls on, so the confirm, the save, the lift's bump and the room's start are the plate's own. */
+function shipArrive({ deck, cell }: HubSpot): void {
+  shipFrom = hub!.at;
+  hub!.at = { deck, cell: neighbours(cell)[0]! };
+  if (deck !== shipFrom.deck) applyDeck(deck);
+  walk(cell);
+  if (hubConfirm.hidden) shipFrom = null; // no confirm asked: the arrival stands; else Stay (cancelHubWalk) puts the marble of the old model back
+}
+shipBays.addEventListener('click', (e) => {
+  cancelHubWalk();
+  ship!.tap((e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!);
+});
+/** The room the ship leaves to the title plate over it and the dock under it, so that no bay sits under either (#1691). */
+// The hull's dome and mast may stand behind the plate and the gear, a bay never.
+const shipInset = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) - 40), bottom: Math.max(0, innerHeight - document.getElementById('dock')!.getBoundingClientRect().top + 6) });
+const shipPoint = new THREE.Vector3();
+/** The window point of a point of the scene, for the bays' buttons. */
+const shipProject = (x: number, y: number, z: number): { x: number; y: number } => {
+  sceneRenderer.camera.updateMatrixWorld();
+  shipPoint.set(x, y, z).project(sceneRenderer.camera);
+  return { x: ((shipPoint.x + 1) / 2) * innerWidth, y: ((1 - shipPoint.y) / 2) * innerHeight };
+};
 function syncCutaway(): void {
   if (!cutaway) return;
   const { beaten } = loadProgress(store);
-  const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipState(beaten, locked, locked ? null : goalRoom(nextGoal(beaten, ranRun(store)))));
-  if (shown) sceneRenderer.scene.background = cutawaySpace; // the ship floats in the dark, not in the deck's sky
+  const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipNow(beaten), shipInset());
+  if (shown) {
+    sceneRenderer.scene.background = cutawaySpace; // the ship floats in the dark, not in the deck's sky
+    ship!.sync(hub!.at); // the marble on the spot the Hub saved, once per ship
+  }
   if (shown === cutawayShown) return;
   cutawayShown = shown;
+  shipBays.hidden = !shown;
   document.body.dataset.hubCutaway = String(shown); // read by the e2e tests, and by the CSS that hides the plates
   showBoard();
   view = fitted = fightView();
@@ -4478,6 +4527,7 @@ function refresh(): void {
     syncDishes();
     const goal = locked ? { text: LOCK_BANNER, deck: null, room: null } : nextGoal(beaten, ranRun(store)); // the next thing to do (#1524); the first win while the lock is on
     hubLabels.innerHTML = labelsHtml(hub.at, beaten, loadMedals(store), goal, locked); // a beaten boss's door shows its medal (#1249)
+    paintBays(shipBays, cutawayShown ? bayButtons(cutaway!.bays, shipNow(beaten), beaten, loadMedals(store), locked) : '');
     document.getElementById('hub-rail')!.innerHTML = railHtml(hub.at.deck, beaten, goal, locked);
     document.getElementById('hub-pips')!.innerHTML = pipsHtml(beaten, loadMedals(store));
     const day = utcDay(Date.now());
@@ -5149,6 +5199,7 @@ function legalMoves(): Move[] {
 
 function click(q: number, r: number): void {
   if (hub) {
+    if (cutawayShown) return; // the ship's bays take the taps, not the deck's invisible discs (#1691)
     cancelHubWalk();
     walk([q, r]);
     return;
@@ -6208,6 +6259,7 @@ function enterHub(at: HubSpot): void {
   roomOf = null;
   hub = new HubController(at);
   hub.enter(at);
+  ship?.reset(); // the ship's marble on the spot entered (#1691)
   hubPlan.hidden = false;
   hubCoach.hidden = !(helpOn && hubCoachDue(store, loadProgress(store).beaten));
   view = fitted = fightView(); // the deck plan, framed closer (#1249)
@@ -6230,11 +6282,18 @@ const hubConfirmYes = document.getElementById('hub-confirm-yes')!;
 const helpOn = hubHelpOn(location.search, navigator.webdriver);
 const HUB_STEP_MS = 160; // between the rolls of a walk to a plate
 let hubWalking: ReturnType<typeof setTimeout> | null = null;
+let shipFrom: HubSpot | null = null; // the spot of the old model before the ship's roll asked a confirm (#1691)
 let askedFor: Axial | null = null; // the cell whose room the confirm asks about
 /** Stops the walk to a plate and closes the confirm: the player took over, or the hub is left. */
 function cancelHubWalk(): void {
   if (hubWalking !== null) clearTimeout(hubWalking);
   hubWalking = null;
+  ship?.cancel(); // the roll of the ship's marble too (#1691)
+  if (shipFrom) {
+    applyDeck(shipFrom.deck); // Stay on the confirm: the spot and the deck the roll started from, as the old plate left them
+    hub!.at = shipFrom;
+    shipFrom = null;
+  }
   askedFor = null;
   hubConfirm.hidden = true;
 }
@@ -6281,6 +6340,7 @@ document.getElementById('hub-confirm-no')!.addEventListener('click', cancelHubWa
 hubConfirmYes.addEventListener('click', () => {
   const to = askedFor!;
   markEntered(store);
+  shipFrom = null; // Enter: the roll stands
   cancelHubWalk();
   walk(to);
 });
@@ -6427,6 +6487,7 @@ addEventListener('keydown', (e) => {
   if (!to) return;
   e.preventDefault(); // no page scroll
   cancelHubWalk();
+  if (cutawayShown) return ship!.key(e.key); // along a floor, up and down the lift (#1691)
   walk(to);
 });
 addEventListener('keydown', (e) => {

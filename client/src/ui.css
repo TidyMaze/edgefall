@@ -1693,7 +1693,31 @@ body[data-openworld] #openworld-ask:not([hidden]) { display: block; }
 #settings-menu button.danger { color: var(--danger); border-color: var(--danger); }
 #settings-menu button.danger:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
 /* The Hub Cutaway (#1689, ?hub=cutaway): the ship stands in place of the deck, so the plates over the deck's cells have nothing to label. */
-body[data-hub-cutaway='true'] #hub-labels { display: none; }
+body[data-hub-cutaway='true'] :is(#hub-labels, #hub-rail, #hub-board) { display: none; } /* the ship names its rooms and shows its decks locked or lit; the lift panel and the notice board stood over its bays (#1691) */
+/* The bays of the Cutaway (#1691): one button per bay over the ship, the rect of its bay, wall to wall. A phone shows the short name on a dark sign, a window the name and its line; a deck not open is dark and unnamed. */
+body[data-hub-cutaway='true'] #ship-bays { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+body[data-hub-cutaway='true'] .cut-bay {
+  --k: #7fd6e8;
+  position: absolute; box-sizing: border-box; margin: 0; padding: 0 1px 3px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1px;
+  overflow: hidden; pointer-events: auto; cursor: pointer; background: transparent; border: 0; color: #c9d1d6; text-align: center; font: 600 0.5625rem/1.1 var(--ui);
+}
+.cut-bay .short, .cut-bay b, .cut-bay small { max-width: 100%; padding: 1px 3px; border-radius: 2px; background: rgba(14, 18, 20, 0.86); overflow-wrap: anywhere; }
+.cut-bay .short { color: var(--k); font-size: 0.625rem; white-space: nowrap; padding-inline: 2px; } /* a phone: one line of 10 px on a dark pill */
+.cut-bay[data-state='dark'] { background: rgba(2, 4, 6, 0.55); } /* a deck not open: dimmed, with a padlock on its beam */
+.cut-lock { position: absolute; top: 3px; left: 50%; width: 14px; height: 16px; transform: translateX(-50%); fill: #9aa3a8; stroke: #9aa3a8; stroke-width: 1.4; filter: drop-shadow(0 0 2px #000); }
+.cut-bay b, .cut-bay small { display: none; color: var(--k); font-weight: 600; }
+.cut-bay:focus-visible { outline: 2px solid #ffb000; outline-offset: -2px; }
+.cut-bay[data-state='locked'] { --k: #9aa3a8; }
+.cut-bay[data-state='goal'] .short, .cut-bay[data-state='goal'] b { background: #ffb000; color: #1a1300; }
+.cut-bay[data-state='beaten'] { --k: #ffd43b; }
+.cut-bay[data-state='dark'] { cursor: not-allowed; }
+@media (max-width: 599px), (max-height: 499px) { body[data-hub-cutaway='true'] #hub-pips { display: none; } } /* a phone: the medal count would stand over the top bays */
+@media (min-width: 600px) and (min-height: 500px) {
+  body[data-hub-cutaway='true'] .cut-bay { font-size: 0.625rem; }
+  .cut-bay .short { display: none; }
+  .cut-bay b { display: block; }
+  .cut-bay small { display: block; font-size: 0.5625rem; font-weight: 400; color: #c9d1d6; }
+}
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

@@ -1,12 +1,13 @@
 // The Hub Cutaway (#1689): the ship as a diorama of decks and bays, behind `?hub=cutaway` (off by default). Two shells of one kit (art/blender/hub-cutaway.blend,
 // exported by art/blender/export_cutaway.py): tall under 600 px wide or 500 px high, wide above. The file holds every state of every part, one node per part named
 // hub_<layout>_<part>_<deck>_<room>; the game picks the nodes of the state and bakes the whole ship into ONE mesh, the colour of a deck and a state a per-vertex
-// glow (no material per state). The bays are inert here: the Hub map takes the scene in a next issue.
+// glow (no material per state). The marble and the lift's car are two more meshes (they move, hubship.ts, #1691); the bays are the tap targets (hubbays.ts).
 import * as THREE from 'three/webgpu';
 import { attribute } from 'three/tsl';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { framing, type View } from './camera';
 import { DECK_NAMES, type Deck } from './deck';
+import type { Bay, Pos } from './hubroll';
 import { NEON } from './neonlook';
 
 export type Layout = 'tall' | 'wide';
@@ -140,11 +141,18 @@ export function glowOf(part: Part, st: ShipState): THREE.Color | null {
   return part.room === 'medals' ? hex('gold') : boss ? hex('violet') : hex('cyan');
 }
 
+/** A part that moves (the marble, the lift's car): its baked geometry and where its node stood, the origin it moves from. */
+export interface Mover {
+  geometry: THREE.BufferGeometry;
+  origin: THREE.Vector3;
+}
+
 /** The ship and its marble as one geometry: the nodes of the state baked into world space, `color` the base and `emit` the glow (the glow mask of the file times the
  * colour of the state, times GLOW). `hull` is the bounding box of the hull alone, the frame of the camera. */
-export function bakeShip(root: THREE.Object3D, st: ShipState): { geometry: THREE.BufferGeometry; hull: THREE.Box3 } | null {
+export function bakeShip(root: THREE.Object3D, st: ShipState, apart = false): { geometry: THREE.BufferGeometry; hull: THREE.Box3; marble: Mover | null; car: Mover | null } | null {
   root.updateMatrixWorld(true);
   const parts: THREE.BufferGeometry[] = [];
+  const movers: { marble: Mover | null; car: Mover | null } = { marble: null, car: null };
   const hull = new THREE.Box3();
   root.traverse((node) => {
     const mesh = node as THREE.Mesh;
@@ -171,11 +179,12 @@ export function bakeShip(root: THREE.Object3D, st: ShipState): { geometry: THREE
     geometry.setAttribute('emit', new THREE.BufferAttribute(emit, 3));
     geometry.setIndex(source.index);
     geometry.applyMatrix4(mesh.matrixWorld);
-    parts.push(geometry);
+    if (apart && (part.kind === 'marble' || part.kind === 'car')) movers[part.kind] = { geometry, origin: new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld) }; // apart: they move
+    else parts.push(geometry);
     if (part.kind === 'hull') hull.expandByObject(mesh);
   });
   if (!parts.length) return null;
-  return { geometry: mergeGeometries(parts, false), hull };
+  return { geometry: mergeGeometries(parts, false), hull, ...movers };
 }
 
 let material: THREE.MeshStandardNodeMaterial | null = null;
@@ -191,16 +200,52 @@ export function shipMaterial(): THREE.MeshStandardNodeMaterial {
 /** The camera of the ship: straight at the cut, a little above it, drawn back so that the ship, scaled, fills `FILL` of the window. */
 export const CUTAWAY_VIEW: View = { azimuth: 0, polar: 1.36, distance: 12 };
 export const FILL: Record<Layout, number> = { tall: 0.9, wide: 0.85 }; // of the width on a phone, of the height in a window
+/** The pixels of the window the ship leaves to what stands over it at the top and the bottom (#1691). */
+export interface Inset {
+  top: number;
+  bottom: number;
+}
+export const NO_INSET: Inset = { top: 0, bottom: 0 };
 /** The scale and the position that put the cut face of the hull of `box` at the middle of a `width` x `height` window seen from `CUTAWAY_VIEW`. */
-export function cutawayFrame(box: THREE.Box3, layout: Layout, width: number, height: number): { scale: number; position: THREE.Vector3 } {
+export function cutawayFrame(box: THREE.Box3, layout: Layout, width: number, height: number, inset: Inset = NO_INSET): { scale: number; position: THREE.Vector3 } {
   const tanV = Math.tan((framing(width, height) * Math.PI) / 360);
   const seenH = 2 * CUTAWAY_VIEW.distance * tanV;
   const seenW = seenH * (width / height);
   const size = box.getSize(new THREE.Vector3());
-  const scale = FILL[layout] * Math.min(seenW / size.x, seenH / size.y);
+  const room = Math.max(0.3, (height - inset.top - inset.bottom) / height); // the share of the height the ship may take: the plate on top and the dock below keep their own
+  const scale = FILL[layout] * Math.min(seenW / size.x, (seenH * room) / size.y);
   const middle = box.getCenter(new THREE.Vector3());
-  return { scale, position: new THREE.Vector3(-middle.x, -middle.y, -box.max.z).multiplyScalar(scale) }; // the cut, not the middle of the hull's depth, at the target of the camera
+  const position = new THREE.Vector3(-middle.x, -middle.y, -box.max.z).multiplyScalar(scale); // the cut, not the middle of the hull's depth, at the target of the camera
+  position.y -= ((inset.top - inset.bottom) / 2) * (seenH / height); // and the middle of the room left, not of the window
+  return { scale, position };
 }
+
+/** The bays of a shell as the file places them: each with the floor point the marble stands on and its box (in the file's units), the tap target. */
+export interface BayBox extends Bay {
+  box: THREE.Box3;
+}
+export function baysOf(root: THREE.Object3D): BayBox[] {
+  root.updateMatrixWorld(true);
+  const bays: BayBox[] = [];
+  root.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    const part = mesh.isMesh ? partOf(mesh.name) : null;
+    if (part?.kind !== 'bay') return;
+    const at = new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld);
+    bays.push({ deck: part.deck!, room: part.room, x: at.x, y: at.y, box: new THREE.Box3().setFromObject(mesh) });
+  });
+  return bays;
+}
+/** The x of the lift shaft: where the car's node stands, 0 for a file with none. */
+export function liftOf(root: THREE.Object3D): number {
+  root.updateMatrixWorld(true);
+  let x = 0;
+  root.traverse((node) => {
+    if ((node as THREE.Mesh).isMesh && partOf(node.name)?.kind === 'car') x = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).x;
+  });
+  return x;
+}
+export const MARBLE_RISE = 0.22; // the marble's centre above the floor it stands on (the file: 3.0 on a floor at 2.78)
 
 /** The ship on the terrace: one shell loaded at a time, the one of the window; its state baked into one mesh, again when the state changes. */
 export class Cutaway {
@@ -211,6 +256,15 @@ export class Cutaway {
   private mesh: THREE.Mesh | null = null;
   private hull = new THREE.Box3();
   private asked = 0;
+  private marble: THREE.Mesh | null = null;
+  private car: THREE.Mesh | null = null;
+  private movers: { marble: Mover | null; car: Mover | null } = { marble: null, car: null };
+  private at: { pos: Pos; scale: number } | null = null;
+  private carY: number | null = null;
+  /** The bays of the shell loaded, a new array for each shell (the marble's host tells a new ship by it); empty before the file is loaded. */
+  bays: readonly BayBox[] = [];
+  /** The column of the lift shaft (the x of the car's node), the file puts it in the middle of the ship. */
+  lift = 0;
 
   constructor(
     private readonly load: (file: string) => Promise<{ scene: THREE.Object3D }>,
@@ -221,7 +275,7 @@ export class Cutaway {
   }
 
   /** Shows the ship of the window's shell in `state`, or hides it (`on` false); true when the ship is drawn. A file that does not load leaves the ship off. */
-  sync(on: boolean, width: number, height: number, state: ShipState): boolean {
+  sync(on: boolean, width: number, height: number, state: ShipState, inset: Inset = NO_INSET): boolean {
     if (!on) return (this.group.visible = false);
     const layout = shellFor(width, height);
     if (layout !== this.layout) {
@@ -232,6 +286,8 @@ export class Cutaway {
         ({ scene }) => {
           if (asked !== this.asked) return;
           this.source = scene;
+          this.bays = baysOf(scene);
+          this.lift = liftOf(scene);
           this.loaded();
         },
         () => undefined,
@@ -241,20 +297,57 @@ export class Cutaway {
     const key = JSON.stringify([this.layout, [...state.open].sort(), [...state.beaten].sort(), state.goal, state.waiting]);
     if (key !== this.key) {
       this.key = key;
-      this.mesh?.geometry.dispose();
-      const baked = bakeShip(this.source, state);
-      if (this.mesh) this.group.remove(this.mesh);
-      this.mesh = null;
+      this.clear();
+      const baked = bakeShip(this.source, state, true);
       if (baked) {
-        this.mesh = Object.assign(new THREE.Mesh(baked.geometry, shipMaterial()), { frustumCulled: false, name: 'hub-cutaway-ship' });
+        this.mesh = this.add(baked.geometry, 'hub-cutaway-ship');
+        this.movers = baked;
+        this.marble = baked.marble && this.add(baked.marble.geometry, 'hub-cutaway-marble');
+        this.car = baked.car && this.add(baked.car.geometry, 'hub-cutaway-car');
         this.hull = baked.hull;
-        this.group.add(this.mesh);
+        this.put();
       }
     }
-    const frame = cutawayFrame(this.hull, layout, width, height);
+    const frame = cutawayFrame(this.hull, layout, width, height, inset);
     this.group.scale.setScalar(frame.scale);
     this.group.position.copy(frame.position);
     return (this.group.visible = this.mesh !== null);
+  }
+
+  private add(geometry: THREE.BufferGeometry, name: string): THREE.Mesh {
+    const mesh = Object.assign(new THREE.Mesh(geometry, shipMaterial()), { frustumCulled: false, name });
+    this.group.add(mesh);
+    return mesh;
+  }
+
+  private clear(): void {
+    for (const mesh of [this.mesh, this.marble, this.car]) {
+      mesh?.geometry.dispose();
+      if (mesh) this.group.remove(mesh);
+    }
+    this.mesh = this.marble = this.car = null;
+  }
+
+  /** Puts the marble at `pos` (the floor point of a bay or of the lift, in the file's units), at `scale` 0 to 1; the lift's car goes with it while it is in the shaft. */
+  place(pos: Pos, scale: number): void {
+    this.at = { pos, scale };
+    if (pos.x === this.lift) this.carY = pos.y;
+    this.put();
+  }
+
+  private put(): void {
+    const { marble, car } = this.movers;
+    if (this.at && this.marble) {
+      this.marble.position.set(this.at.pos.x - marble!.origin.x, this.at.pos.y + MARBLE_RISE - marble!.origin.y, 0);
+      this.marble.scale.setScalar(Math.max(this.at.scale, 0.001));
+    }
+    if (this.car && this.carY !== null) this.car.position.set(0, this.carY - car!.origin.y, 0);
+  }
+
+  /** The boxes of the bays as the window sees them (the scene's units, the ship's scale and place applied), for the tap targets. */
+  bayBoxes(): { deck: Deck; room: string; box: THREE.Box3 }[] {
+    this.group.updateWorldMatrix(true, false);
+    return this.bays.map(({ deck, room, box }) => ({ deck, room, box: box.clone().applyMatrix4(this.group.matrixWorld) }));
   }
 
   /** The shell on show, null before its file is loaded. */
@@ -263,9 +356,9 @@ export class Cutaway {
   }
 
   private drop(): void {
-    this.mesh?.geometry.dispose();
-    if (this.mesh) this.group.remove(this.mesh);
-    this.mesh = null;
+    this.clear();
+    this.bays = [];
+    this.at = this.carY = null; // the places belong to the shell: the next one is given its own
     this.source = null;
     this.key = '';
   }
