@@ -9,11 +9,12 @@ import { generateKeys, type Keys } from '../../client/src/moverecord';
 import { SIGNALING_TIMEOUT_MS } from '../../client/src/netcounters';
 import type { Judge } from '../../client/src/session';
 import type { Transport } from '../../client/src/transport';
-import { ascii, boardText } from './board';
+import { ascii, asciiKey, boardText, marbles } from './board';
 import { bossState, type BossLike, type BossState } from './boss';
 import type { Outcome } from './world';
 import { formatMove, fromRecord, fromRecords, parseMove, toRecord } from './notation';
 import { Room, type RoomEvent } from './online';
+import { explain } from './refusal';
 
 /** What the session uses of both `Engine` and `Encounter` in edgefall-wasm. */
 interface Playable {
@@ -120,6 +121,9 @@ export interface State {
   ejected: Record<Side, number>;
   win_ejections: Record<Side, number>;
   ascii: string;
+  /** How to read a cell of `ascii` as the `(q,r)` of `play_move`, and the marbles of each side in that notation. */
+  ascii_key: string;
+  marbles: { black: string[]; white: string[] };
   board: string;
   last_moves: string[];
   boss: BossState | null;
@@ -336,10 +340,18 @@ export class Session {
     if (game.room && !game.room.session.canPlay()) {
       return fail('not_your_turn', 'the opponent is to move, or not seated: call wait_for_opponent_move');
     }
+    const before = game.engine.board();
+    const mover = game.engine.to_move() === BLACK ? 'Black' : 'White';
     try {
       game.engine.play(mine);
     } catch (reason) {
-      return fail('illegal_move', String(reason));
+      let why = '';
+      try {
+        why = explain(String(reason), fromRecord(mine), before, mover);
+      } catch {
+        // The explanation is a courtesy: the engine's code alone is the answer.
+      }
+      return fail('illegal_move', why ? `${String(reason)}: ${why}` : String(reason));
     }
     game.plies.push(played);
     const echoed = game.boss ? fromRecords(game.boss.encounter.last_bonuses()).map(formatMove) : [];
@@ -459,6 +471,8 @@ function state(game: Game): State {
     ejected: { black: engine.ejected(BLACK), white: engine.ejected(WHITE) },
     win_ejections: { black: engine.win_ejections(BLACK), white: engine.win_ejections(WHITE) },
     ascii: ascii(board),
+    ascii_key: asciiKey(board),
+    marbles: marbles(board),
     board: boardText(board),
     last_moves: game.plies.slice(-LAST_MOVES),
     boss,

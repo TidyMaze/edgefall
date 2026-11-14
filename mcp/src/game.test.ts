@@ -120,6 +120,8 @@ describe('new_game', () => {
       ejected: { black: 0, white: 0 },
       win_ejections: { black: 6, white: 6 },
       ascii: START_ASCII,
+      ascii_key: expect.stringContaining('q = its column header - 5'),
+      marbles: { black: expect.any(Array), white: expect.any(Array) },
       board: START_BOARD,
       last_moves: [],
       boss: null,
@@ -254,8 +256,18 @@ describe('play_move', () => {
   test('illegal_move carries the engine reason, the state is unchanged', () => {
     const game = session();
     const before = value(game.newGame({}));
-    expect(failure(game.playMove({ move: '(0,0)>E' }))).toEqual({ code: 'illegal_move', message: 'Move(NotOwnMarble)' });
-    expect(failure(game.playMove({ move: '(0,-4)>SE' }))).toEqual({ code: 'illegal_move', message: 'Move(NotOwnMarble)' });
+    expect(failure(game.playMove({ move: '(0,0)>E' }))).toEqual({
+      code: 'illegal_move',
+      message: 'Move(NotOwnMarble): you play Black: (0,0) is empty',
+    });
+    expect(failure(game.playMove({ move: '(0,-4)>SE' }))).toEqual({
+      code: 'illegal_move',
+      message: 'Move(NotOwnMarble): you play Black: (0,-4) is a White marble',
+    });
+    const start = value(game.getState()).marbles;
+    expect(start.black).toHaveLength(14);
+    expect(start.black).toContain('(0,4)');
+    expect(start.white).toContain('(0,-4)');
     expect(failure(game.playMove({ move: '(0,4)(0,3)(0,2)(0,1)>NW' }))).toEqual({
       code: 'illegal_move',
       message: 'marble count must be 1 to 3',
@@ -551,5 +563,23 @@ describe('a fight of a rogue-lite run (docs/specs/mcp.md section 5, Rogue-lite t
     game.runFight(runRules().fight(12, 10, [], 0), 30);
     value(game.resign());
     expect(failure(game.playTactic(Int32Array.of(0, 2, 0, 0, 0, 0, 0, 0), 'Freeze')).code).toBe('game_over');
+  });
+});
+
+describe('a refusal that cannot be explained (#1676)', () => {
+  test('explain failing leaves the engine code alone', () => {
+    let armed = false;
+    const make = (): EngineLike =>
+      new Proxy(newEngine(), {
+        get(target, key) {
+          if (key === 'board' && armed) return () => ({ get length(): number { throw new Error('boom'); } });
+          const member = Reflect.get(target, key);
+          return typeof member === 'function' ? member.bind(target) : member;
+        },
+      });
+    const game = new Session(engines([], make).factory, newEncounter, noNetwork);
+    value(game.newGame({}));
+    armed = true;
+    expect(failure(game.playMove({ move: '(0,0)>E' }))).toEqual({ code: 'illegal_move', message: 'Move(NotOwnMarble)' });
   });
 });

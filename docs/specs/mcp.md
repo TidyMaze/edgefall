@@ -80,6 +80,8 @@ A draw against a boss is a loss (rules.md section 10.3).
   "ejected": { "black": 0, "white": 0 },
   "win_ejections": { "black": 6, "white": 6 },
   "ascii": "string",
+  "ascii_key": "string",
+  "marbles": { "black": ["(0,4)"], "white": ["(0,-4)"] },
   "board": "string",
   "last_moves": ["(0,0)>SE"],
   "boss": null
@@ -88,6 +90,7 @@ A draw against a boss is a loss (rules.md section 10.3).
 
 - `ejected` is `Engine.ejected(side)`: marbles that side has pushed out. `win_ejections` is `Engine.win_ejections(side)`.
 - `ascii` is the board as printed by `render` in `edgefall-cli`: header `  1 2 3 4 5 6 7 8 9`, rows `a` to `i`, `B`, `W`, `.`. On a radius 5 board (The Ballast Mind), `ascii` has header `  0 1 2 3 4 5 6 7 8 9 A` and 11 rows `a` to `k` (`r = -5` to `5`).
+- `marbles` lists the cells of each side in the notation of `play_move`, `(q,r)`, in `board` order (#1676); `ascii_key` says how to read a cell of `ascii` as `(q,r)` (row letter gives `r`, column header gives `q`).
 - `board` is the cells in `Engine.board()` order, one character per cell: row by row from `r = -4` to `r = 4`, `q` ascending inside a row (61 cells). On a radius 5 board (The Ballast Mind), `board` has 91 characters: the 61 of the standard board first, then ring 5 in board order (rows from `r = -5` to `5`, `q` ascending). The Dual Room's board has 169: the same 91, then rings 6 and 7 in turn, each row by row; every cell off its two rooms is `x` (the void's row `r = 0` too, until the bridge's 5 cells turn `.` in P3), and `ascii` shows it with columns `0` to `E` and rows `a` to `o`. `.` empty, `B` Black, `W` White, `x` vanished (`3` in the engine), `c` a core and `O` the Overseer (The Overseer).
 - `last_moves` is the last 6 plies in the notation of section 3.1, oldest first, boss and bot moves included.
 - `resigned` is `true` after `resign`. It is the only field the engine does not own.
@@ -350,7 +353,7 @@ An error is `{ "code": "...", "message": "..." }`. `message` is the engine's rea
 | `no_game` | No game started (`new_game` or a room first) |
 | `unknown_boss` | `boss` is not in `boss_ids()` |
 | `bad_move` | The string does not parse. `message` is the `ParseError` text |
-| `illegal_move` | The engine refused the move. `message` is the engine error (`Game::play` error, Debug format) |
+| `illegal_move` | The engine refused the move. `message` starts with the engine error (`Game::play` error, Debug format) then, for `NotOwnMarble`, `NotALine`, `OffBoard`, `Blocked`, `NotStrongEnough` and `PushBlocked`, names the cells and marbles involved, e.g. `Move(NotStrongEnough): (0,0) (1) push (1,0) (1): you need more marbles than the ones pushed` (#1676) |
 | `game_over` | The game has ended |
 | `not_your_turn` | Online, it is the opponent's turn |
 | `no_room`, `already_in_room`, `room_full`, `room_not_found` | Room state |

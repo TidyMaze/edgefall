@@ -52,3 +52,17 @@ export function ascii(board: ArrayLike<number>): string {
   const rows = grid.map((slots, row) => `${rowLabels[row]} ${slots.join(' ')}`.trimEnd());
   return [header, ...rows].join('\n');
 }
+
+/** The marbles of each side as cells in the notation `play_move` takes, `(q,r)`, in board order (#1676). */
+export function marbles(board: ArrayLike<number>): { black: string[]; white: string[] } {
+  const cells = BOARD_CELLS.slice(0, board.length);
+  const of = (value: number): string[] => cells.filter((_, i) => board[i] === value).map(([q, r]) => `(${q},${r})`);
+  return { black: of(1), white: of(2) };
+}
+
+/** How to turn a row letter and a column of `ascii` into the `(q,r)` of a move: `r` from the row, `q` from the column. */
+export function asciiKey(board: ArrayLike<number>): string {
+  const radius = ({ 91: 5, 169: 7 } as Record<number, number>)[board.length] ?? RADIUS;
+  const first = radius === RADIUS ? 1 : 0;
+  return `a cell is (q,r): r from its row letter (a is ${-radius}, then +1 per letter), q = its column header - ${radius + first} (digits then letters, A is 10)`;
+}

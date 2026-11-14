@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { ascii, BOARD_CELLS, boardText, CELLS } from './board';
+import { ascii, asciiKey, BOARD_CELLS, boardText, CELLS, marbles } from './board';
 import { newEncounter, newEngine } from './engine';
 
 /** Board bytes with the given cells set, everything else empty. */
@@ -141,5 +141,21 @@ describe('the 169 cells of the radius 7 scan of The Dual Room (#947, #955)', () 
     expect(lines[8]).toBe('h'); // the void, r = 0
     expect(lines[9]).toBe(`i ${'  '.repeat(5)}. W W .`); // the south room's facing edge, r = 1
     expect(lines[15]).toBe(`o ${'  '.repeat(2)}B B B B`); // its far side, r = 7
+  });
+});
+
+describe('marbles and asciiKey (#1676)', () => {
+  test('marbles lists each side in the (q,r) notation of the move tool, in board order', () => {
+    expect(marbles(bytes({ '0,-4': 2, '0,0': 1, '1,0': 1, '0,4': 3 }))).toEqual({ black: ['(0,0)', '(1,0)'], white: ['(0,-4)'] });
+    expect(marbles(bytes91({ '5,0': 1, '0,0': 2 }))).toEqual({ black: ['(5,0)'], white: ['(0,0)'] });
+  });
+
+  test('asciiKey: q is the column header less the radius (plus 1 when the header starts at 1)', () => {
+    expect(asciiKey(bytes({}))).toContain('a is -4');
+    expect(asciiKey(bytes({}))).toContain('q = its column header - 5');
+    expect(asciiKey(bytes91({}))).toContain('a is -5');
+    expect(asciiKey(bytes91({}))).toContain('column header - 5');
+    expect(asciiKey(new Uint8Array(169))).toContain('a is -7');
+    expect(asciiKey(new Uint8Array(169))).toContain('column header - 7');
   });
 });
