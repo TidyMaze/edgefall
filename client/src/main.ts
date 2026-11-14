@@ -4141,7 +4141,7 @@ function drawHud(extra = ''): void {
         chaplainText(exposed, boss.converted().length / 2),
         martyrText(parseMartyr(boss.martyr())),
         choirText(boss.next_army(), armiesLeft(parseArmies(boss.armies()))),
-        freeText(parseMoves(boss.free_moves()).length, freeTargets.length > 0, fight?.id === 'echo' && !showGoal), // the rule stays once the goal card is gone (#1674)
+        freeText(parseMoves(boss.free_moves()).length, freeTargets.length > 0, fight?.id === 'echo' && !showGoal && status === 0), // the rule stays once the goal card is gone (#1674), not once the fight is over: the plate has no room for it (#271, #1686)
       ]
         .filter((t) => t !== '')
         .join(' · ')

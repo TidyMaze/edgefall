@@ -94,6 +94,8 @@ for (const { name, width, height } of sizes) {
         await page.goto(url);
         await page.locator('canvas').first().waitFor();
         await expect(page.locator('#settings')).toBeEnabled();
+        // The world is entered after the boot: until then the plate is still up and the cog sits under it (#1686).
+        if (state === 'the Open world') await expect(page.locator('body')).toHaveAttribute('data-openworld');
         const cog = (await boxOf(page, '#settings'))!;
         expect(cog.right, 'the cog sits at the right edge').toBeCloseTo(width - 16, 0);
         for (const other of ['#hud', '#openworld-minimap', '#openworld-map-button']) {

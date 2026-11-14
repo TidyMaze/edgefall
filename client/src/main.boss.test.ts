@@ -875,6 +875,21 @@ describe('main.ts boss tells', () => {
     expect(tell()).toBe('Echo rule: when one of your marbles is ringed, it moves for free; any other move declines it'); // the rule stays on the plate (#1674)
   });
 
+  it('the Echo rule line is gone once the fight is over: the result plate has no room for it (#1686)', async () => {
+    const game = await boot('?bot=off', { reducedMotion: true });
+    const { Encounter } = await import('edgefall-wasm');
+    fightBoss(game, 'The Echo');
+    game.click(0, 2);
+    game.click(0, 1);
+    game.click(0, -1);
+    game.click(1, -1);
+    game.click(0, 1);
+    vi.spyOn(Encounter.prototype, 'status').mockImplementation(() => 1); // over after the free move is taken
+    game.click(-1, 1);
+    const tell = (): string => byId('hud').querySelector('.boss .tell')?.textContent ?? '';
+    expect(tell()).not.toContain('Echo rule');
+  });
+
   it('a normal move declines the free move: the boss replies to it (#958)', async () => {
     const game = await boot('?bot=off', { reducedMotion: true });
     fightBoss(game, 'The Echo');
