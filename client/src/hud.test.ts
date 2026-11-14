@@ -323,3 +323,10 @@ describe('the special marbles legend (#1541)', () => {
     expect(css).toContain('#chrome:has(.special-card) { z-index: 2; }');
   });
 });
+
+describe('the support stack (#1700)', () => {
+  it('lets the pointer through its box and takes it only on its buttons and the diagnostics box', () => {
+    expect(css).toContain('#support { pointer-events: none; }');
+    expect(css).toContain('#support :is(button, textarea) { pointer-events: auto; }');
+  });
+});

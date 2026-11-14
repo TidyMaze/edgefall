@@ -300,6 +300,9 @@ body[data-openworld] #settings-menu { --settings-clear: 68px; } /* the exit is a
 /* Copy diagnostics, bottom right: a support tool, kept away from the play buttons and the board. Above it, the text
    selected in a box when the clipboard is refused. */
 #support { position: fixed; bottom: 16px; right: 16px; z-index: 1; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end; }
+/* Only its buttons and the diagnostics box catch the pointer: the box itself grows over the low-tier offer (#1700) and the board. */
+#support { pointer-events: none; }
+#support :is(button, textarea) { pointer-events: auto; }
 #diagnostics {
   box-sizing: border-box; width: min(22rem, calc(100vw - 32px)); height: 8rem; padding: 0.5rem 0.75rem; resize: vertical;
   color: var(--text); background: var(--panel); border: 1px solid var(--accent); border-radius: 2px; font: 0.8125rem/1.3 var(--ui);
