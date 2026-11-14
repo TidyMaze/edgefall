@@ -7,7 +7,7 @@ import type { Biome } from './openworld';
 
 /** The world's own tones under the look (#1656): the beach and the rock of every biome; the water in three, the shallows on the cells
  * next to land, darker than any ground, the deep open water darker still, and the foam line on the coast's edge; the troop's marble, light enough to read 4.5:1 on the brightest lit ground. */
-export const WORLD = { sand: 0x4a4232, rock: 0x2e333c, shallow: 0x0e2a40, deep: 0x06142a, foam: 0x5f87a3, wall: 0x171c2b, boulder: 0x14161a, mountain: 0x2a3347, troop: 0xeef4fa } as const;
+export const WORLD = { sand: 0x4a4232, rock: 0x35312b, shallow: 0x0e2a40, deep: 0x06142a, foam: 0x5f87a3, wall: 0x171c2b, boulder: 0x14161a, mountain: 0x2a3347, troop: 0xeef4fa } as const;
 /** Each biome's ground (its grass at every height) and the accent its trees and boulders take (#1656): six dark grounds told apart by
  * luminance or by a hue a colour-blind player keeps (the art director's pair rule, neonworld.palette.test.ts). */
 export const NEON_BIOME: Record<Biome, { ground: number; prop: number }> = {
@@ -56,8 +56,8 @@ export function neonTraces(size = 512): THREE.DataTexture {
   return tile;
 }
 
-/** The soft shadows of the Open world under the look: about 55 % dark, so the darkest floor stays above #0f1424. */
-export const WORLD_SHADOW = 0.55;
+/** The soft shadows of the Open world under the look: about 30 % dark (#1687: 55 % made the trees' shadows read as bands), so the darkest floor stays above #0f1424. */
+export const WORLD_SHADOW = 0.3;
 
 type Colours = Record<string, number>;
 /** The palette objects the view and the minimap hold (openworldview.ts), handed in so this file needs no import of the view. */
@@ -142,8 +142,8 @@ const between = (dark: number, light: number, t: number): THREE.Color => linear(
 export function neonProp(prop: string, geometry: THREE.BufferGeometry): THREE.BufferGeometry {
   if (!geometry.hasAttribute('color')) return geometry;
   if (prop === 'mountain') return repaint(geometry, (_, t) => (t > 0.5 ? between(0x39466a, NEON.pedestalRing, t * 2 - 1) : between(0x1b2233, 0x39466a, t * 2))); // a cyan line on the ridges (#1557)
-  if (prop === 'tree') return repaint(geometry, (_, t) => between(0x2b2650, NEON.crystal, t));
+  if (prop === 'tree') return repaint(geometry, (_, t) => between(0x5c6048, 0xd2dca8, t));
   if (prop === 'wall') return repaint(geometry, (c, t) => (t > 0.5 ? c : between(0x0f1320, 0x2a3347, t * 2)));
   const gem = prop === 'lair_beaten' ? NEON.cyan : NEON.violet; // the lair's lamp: lit more than the slate it stands on
-  return repaint(geometry, (_, t) => (t > 0.55 ? linear(gem).multiplyScalar(1.6) : between(0x0f1320, 0x2a3347, t / 0.55)));
+  return repaint(geometry, (_, t) => (t > 0.55 ? linear(gem).multiplyScalar(1.6) : between(0x1f2840, 0x4a5a80, t / 0.55)));
 }

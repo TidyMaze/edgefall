@@ -88,8 +88,12 @@ export const NEON_GLOW = 2.2;
  * hero reads at #e0ded8 or above under the cyan moon (#1536 art, measured #e4f2f3 at 390). */
 export const NEON_WHITE_GLOW = 0.8;
 
+/** The Open world's day light (#1687), one place to tune: a warm sun high enough (52 degrees, the arena's is 24) that the shadows of the trees and rocks are short
+ * blobs and never long diagonal bands across the ground, and a warm earth-tinted ambient in place of the cold violet-grey one. */
+export const WORLD_DAY = { sun: 0xffe3bf, sunIntensity: 3.4, elevation: 52, azimuth: 50, hemiSky: 0xfff1de, hemiGround: 0x5a4d3c, hemiIntensity: 3.3 } as const;
+
 export const NEON_WORLD_LOOKS: Readonly<Record<Phase, WorldLook>> = {
-  day: { sky: NEON.sky, sun: NEON_LIGHT.sun, sunIntensity: NEON_LIGHT.sunIntensity, elevation: NEON_LIGHT.elevation, azimuth: NEON_LIGHT.azimuth, hemiSky: NEON_LIGHT.skyMix, hemiGround: NEON_LIGHT.ground, hemiIntensity: NEON_LIGHT.hemisphere, water: 0xffffff, glow: 0, stars: 1, horizon: 1 },
+  day: { sky: NEON.sky, ...WORLD_DAY, water: 0xffffff, glow: 0, stars: 1, horizon: 1 },
   dusk: { sky: mixHex(NEON.sky, NEON.violet, 0.35), sun: mixHex(NEON_LIGHT.sun, NEON.violet, 0.45), sunIntensity: 2.4, elevation: 14, azimuth: 62, hemiSky: mixHex(NEON_LIGHT.skyMix, NEON.violet, 0.4), hemiGround: NEON.ground, hemiIntensity: 2.2, water: mixHex(0xffffff, NEON.violet, 0.35), glow: 0.4, stars: 0.5, horizon: 2 },
   night: { sky: NEON.sky, sun: NEON.pedestalRing, sunIntensity: 1.7, elevation: 38, azimuth: -30, hemiSky: NEON.rimLight, hemiGround: NEON.groundFar, hemiIntensity: 2.2, water: mixHex(mixHex(0xffffff, NEON.cyan, 0.3), NEON.sky, 0.5), glow: 1, stars: 1.8, horizon: 0.6 }, // the land 1.4:1 over the lakes (#1656)
 };
@@ -132,6 +136,15 @@ export function lightNeon(sun: THREE.DirectionalLight, hemisphere: THREE.Hemisph
   if (space) hemisphere.color.lerp(linear(space.surround), space.sky * 0.2);
   hemisphere.groundColor.copy(linear(NEON_LIGHT.ground));
   hemisphere.intensity = NEON_LIGHT.hemisphere;
+}
+
+/** The sun and the hemisphere of the Open world's neon day (`WORLD_DAY`, #1687): the place of the sun is the view's own, set each frame from the sky. */
+export function lightWorldDay(sun: THREE.DirectionalLight, hemisphere: THREE.HemisphereLight): void {
+  sun.color.set(WORLD_DAY.sun);
+  sun.intensity = WORLD_DAY.sunIntensity;
+  hemisphere.color.set(WORLD_DAY.hemiSky);
+  hemisphere.groundColor.set(WORLD_DAY.hemiGround);
+  hemisphere.intensity = WORLD_DAY.hemiIntensity;
 }
 
 /** Fine stars on a black sky: one draw call, a tiny triangle each facing the board, no haze (a Points sprite is not drawn by this renderer). */

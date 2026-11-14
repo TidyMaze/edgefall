@@ -1,7 +1,7 @@
 import './test/openworldwasm';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three/webgpu';
-import { NEON, neonSunPosition, neonWorldOn } from './neonlook';
+import { NEON, WORLD_DAY, neonSunPosition, neonWorldOn } from './neonlook';
 import { NEON_BIOME, WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, applyNeonWorld, mapColour, neonProp, neonTraces } from './neonworld';
 import { AMBIENT } from './openworldparticles';
 import { BIOMES, CHUNK, neighbours, World } from './openworld';
@@ -91,7 +91,7 @@ describe('the neon palette of the Open world (#1424)', () => {
     const mountain = neonProp('mountain', painted(0x4d5566, 0xe6f0ff));
     expect(colourAt(mountain, 0).getHex()).toBe(0x1b2233);
     expect(colourAt(mountain, 1).getHex()).toBe(NEON.pedestalRing); // the cyan ridge line (#1557)
-    expect(colourAt(neonProp('tree', painted(0x1c2a1c, 0x70e0c8)), 1).getHex()).toBe(NEON.crystal);
+    expect(colourAt(neonProp('tree', painted(0x1c2a1c, 0x70e0c8)), 1).getHex()).toBe(0xd2dca8); // #1687: a yellow-green pine that separates from the green ground at 390 px, not the violet crystal
     const wall = neonProp('wall', painted(0x16160d, 0xd9803b));
     expect(colourAt(wall, 1).getHex()).toBe(0xd9803b);
     expect(colourAt(wall, 0).getHex()).toBe(0x0f1320);
@@ -106,7 +106,7 @@ describe('the neon palette of the Open world (#1424)', () => {
 });
 
 describe('the Open world view with the look (#1424)', () => {
-  it('has a black sky with stars that follow the camera, the cold sun, 55 % shadows and its models painted', () => {
+  it('has a black sky with stars that follow the camera, the warm high sun (#1687), 30 % shadows and its models painted', () => {
     applyNeonWorld(true, palette);
     const view = new OpenWorldView(new World(bytes));
     view.show([0, 0]);
@@ -117,7 +117,7 @@ describe('the Open world view with the look (#1424)', () => {
     expect(stars.position.length()).toBeGreaterThan(0);
     let sun!: THREE.DirectionalLight;
     view.scene.traverse((o) => void ((o as THREE.DirectionalLight).isDirectionalLight && (sun = o as THREE.DirectionalLight)));
-    expect(sun.position.clone().sub(view.focusPoint).toArray().map((v) => +v.toFixed(3))).toEqual(neonSunPosition().map((v) => +v.toFixed(3)));
+    expect(sun.position.clone().sub(view.focusPoint).toArray().map((v) => +v.toFixed(3))).toEqual(neonSunPosition(30, WORLD_DAY.elevation, WORLD_DAY.azimuth).map((v) => +v.toFixed(3)));
     view.setShadows(true);
     expect(sun.shadow.intensity).toBe(WORLD_SHADOW);
     view.setShadows(false);
@@ -131,7 +131,7 @@ describe('the Open world view with the look (#1424)', () => {
     expect(((view.scene.getObjectByName('troop') as THREE.Mesh).material as THREE.Material).userData.heroRim).toBeUndefined();
   });
 
-  it('stands its cold sun back with the zoom, so the shadow keeps covering what the camera sees (#1478)', () => {
+  it('stands its warm sun back with the zoom, so the shadow keeps covering what the camera sees (#1478)', () => {
     applyNeonWorld(true, palette);
     const view = new OpenWorldView(new World(bytes));
     view.show([0, 0]);
@@ -142,7 +142,7 @@ describe('the Open world view with the look (#1424)', () => {
     view.follow(0, true);
     const k = view.drawnZoom;
     expect(k).toBeGreaterThan(5);
-    expect(sun.position.clone().sub(view.focusPoint).toArray().map((v) => +v.toFixed(3))).toEqual(neonSunPosition(30 * k).map((v) => +v.toFixed(3)));
+    expect(sun.position.clone().sub(view.focusPoint).toArray().map((v) => +v.toFixed(3))).toEqual(neonSunPosition(30 * k, WORLD_DAY.elevation, WORLD_DAY.azimuth).map((v) => +v.toFixed(3)));
     expect(sun.shadow.camera.right).toBeCloseTo(14 * k);
   });
 

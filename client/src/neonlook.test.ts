@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { color as tslColor } from 'three/tsl';
 import type { Node } from 'three/webgpu';
-import { neonShellFor, NEON, NEON_CELL_SCALE, NEON_HIDDEN, NEON_LIGHT, lightNeon, targetArrowMaterial, neonEdgeGeometry, neonGlow, neonEdgeMaterial, neonLookOn, neonMaterial, neonPaint, neonPedestal, neonStars, NEON_TELL, nextToSight, neonBreachGeometry, neonEggGeometry, neonVoidGeometry, neonVoidMaterial, neonCrackMap, neonFogGeometry, neonTells, neonVeil, tellLook, NEON_RIM, NEON_GLOSS, NEON_WHITE_RIM, NEON_WHITE_SHADE, NEON_SHEEN, neonMarbleRim, marbleSheen, NEON_HERO_RIM, neonHeroRim } from './neonlook';
+import { neonShellFor, NEON, NEON_CELL_SCALE, NEON_HIDDEN, NEON_LIGHT, WORLD_DAY, lightNeon, targetArrowMaterial, neonEdgeGeometry, neonGlow, neonEdgeMaterial, neonLookOn, neonMaterial, neonPaint, neonPedestal, neonStars, NEON_TELL, nextToSight, neonBreachGeometry, neonEggGeometry, neonVoidGeometry, neonVoidMaterial, neonCrackMap, neonFogGeometry, neonTells, neonVeil, tellLook, NEON_RIM, NEON_GLOSS, NEON_WHITE_RIM, NEON_WHITE_SHADE, NEON_SHEEN, neonMarbleRim, marbleSheen, NEON_HERO_RIM, neonHeroRim } from './neonlook';
 import { mixHex } from './daynight';
 import { mergeByMaterial } from './tablezero';
 import { scalePower } from './lightpanel';
@@ -425,8 +425,10 @@ describe('the tells of the neon look (#1424)', () => {
 describe('the Open world under the neon look: day, dusk and night (#1536)', () => {
   it('its day is the look the neon look ships: the black sky, the cold sun, the violet-white hemisphere, no glow', () => {
     const day = NEON_WORLD_LOOKS.day;
-    expect([day.sky, day.sun, day.sunIntensity, day.elevation, day.azimuth]).toEqual([NEON.sky, NEON_LIGHT.sun, NEON_LIGHT.sunIntensity, NEON_LIGHT.elevation, NEON_LIGHT.azimuth]);
-    expect([day.hemiSky, day.hemiGround, day.hemiIntensity, day.glow]).toEqual([NEON_LIGHT.skyMix, NEON_LIGHT.ground, NEON_LIGHT.hemisphere, 0]);
+    // #1687: the world's day is warm and high (52 degrees: short shadows, no long diagonal bands), not the arena's cold low sun
+    expect([day.sky, day.sun, day.sunIntensity, day.elevation, day.azimuth]).toEqual([NEON.sky, WORLD_DAY.sun, WORLD_DAY.sunIntensity, WORLD_DAY.elevation, WORLD_DAY.azimuth]);
+    expect([day.hemiSky, day.hemiGround, day.hemiIntensity, day.glow]).toEqual([WORLD_DAY.hemiSky, WORLD_DAY.hemiGround, WORLD_DAY.hemiIntensity, 0]);
+    expect(WORLD_DAY.elevation).toBeGreaterThan(NEON_LIGHT.elevation * 2);
   });
 
   it('dusk takes the violet sky and violet light, and night the pedestal ring moon, in readable light', () => {

@@ -20,7 +20,7 @@ import { contactOf, heldClock } from './openworldhit';
 import { SUN, SUN_SHADOW, aimSunShadow, sunDirection } from './tablezero';
 import { Sky, WORLD_LOOKS } from './daynight';
 import { ICON } from './openworldlairicon';
-import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightNeon, neonHeroRim, neonMarbleRim, neonStars, neonWorldOn } from './neonlook';
+import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightWorldDay, neonHeroRim, neonMarbleRim, neonStars, neonWorldOn } from './neonlook';
 import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './neonworld';
 import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength } from './openworldstripe';
 import { wrapPi } from './openworldtwist';
@@ -835,7 +835,7 @@ export class OpenWorldView {
     this.sun = new THREE.DirectionalLight(SUN.colour, 3.2);
     this.scene.add(this.sun, this.sun.target);
     if (this.neon) {
-      lightNeon(this.sun, hemisphere);
+      lightWorldDay(this.sun, hemisphere);
       this.stars = Object.assign(neonStars(1400, 20), { renderOrder: -1000 }); // a sky box that follows the camera, inside its far plane
       Object.assign(this.stars.material, { depthTest: false });
       this.scene.add(this.stars);
