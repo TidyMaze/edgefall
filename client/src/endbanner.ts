@@ -27,7 +27,7 @@ export function endBanner({ status, reason, mode, side, glass }: EndInput): EndB
     // The plate may not grow over the board (phone-layout e2e): the boss line fits one line of the plate.
     const [lost, what] =
       reason === 2
-        ? ['100 plies idle: a defeat.', '100 plies, nothing ejected. Tally calls it even.']
+        ? ['100 plies idle: a defeat.', '100 plies without an ejection. Tally calls it even.']
         : reason === 3
           ? ['No move left: a defeat.', 'Neither side can move. Tally calls it even.']
           : ['Repeated 3 times: a defeat.', 'Same position three times. Tally closes the page.'];

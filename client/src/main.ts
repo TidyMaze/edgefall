@@ -3033,7 +3033,7 @@ function stopAuto(): void {
 }
 function syncAuto(): void {
   const boss = engine instanceof Encounter ? engine.name() : null;
-  const state = autoPlayState({ online: Boolean(hub) || online !== null || botWorker === null, boss, trainer: trainer !== null }, fight !== null && hasMedal(store, fight.id));
+  const state = autoPlayState({ online: Boolean(hub) || online !== null || botWorker === null, boss, trainer: trainer !== null, run: run !== null }, fight !== null && hasMedal(store, fight.id));
   const over = royale ? royale.placement().length > 0 : engine.status() !== 0;
   const reason = state.shown ? state.reason : null;
   const usable = state.shown && reason === null && !over;
@@ -3041,8 +3041,9 @@ function syncAuto(): void {
   autoButton.hidden = !state.shown;
   autoButton.disabled = !usable;
   autoButton.setAttribute('aria-pressed', String(autoPlay));
-  autoReason.hidden = reason === null;
-  autoReason.textContent = reason;
+  const note = reason ?? (usable ? (state.shown && state.warn) || null : null); // a run's warning shows while Auto-play is usable (#1675)
+  autoReason.hidden = note === null;
+  autoReason.textContent = note;
 }
 function autoRoyale(): void {
   autoTimer = setTimeout(() => {

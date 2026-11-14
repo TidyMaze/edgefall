@@ -55,7 +55,7 @@ describe('endBanner', () => {
     expect(endBanner(input('boss', 1, 2, 0, 6))!.line).toBe('The seat holds.');
     expect(endBanner(input('local', 0, 2, 0, 6))!.line).toBe('The books balance.');
     expect(endBanner(input('bot', 1, 3, REPEAT))!.line).toBe('Same position three times. Tally closes the page.');
-    expect(endBanner(input('bot', 1, 3, STALL))!.line).toBe('100 plies, nothing ejected. Tally calls it even.');
+    expect(endBanner(input('bot', 1, 3, STALL))!.line).toBe('100 plies without an ejection. Tally calls it even.');
     expect(endBanner(input('boss', 1, 3, REPEAT))!.line).toBe('Repeated 3 times: a defeat.');
     expect(endBanner(input('boss', 1, 3, STALL))!.line).toBe('100 plies idle: a defeat.');
   });

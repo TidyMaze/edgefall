@@ -48,6 +48,7 @@ test("Auto-play plays the army's side of a rogue-lite run fight, loaded through 
   await page.evaluate((s) => (window as any).__run(s), { seed: 3, army: 14, path: [0], fighting: true, moves: [], end: '', specials: [0, 0, 0], placed: [], reward: false, event: false });
   await expect(page.locator('body')).toHaveAttribute('data-run', 'fight');
   await expect(toggle(page)).toBeEnabled();
+  await expect(page.locator('#auto-reason')).toContainText('Daily does not rank'); // the cost is said before Auto-play is used (#1675)
   await shot(page, { path: 'test-results/autoplay-run-off.png' });
   await toggle(page).click();
   await expect.poll(() => plies(page)).toBeGreaterThanOrEqual(2);

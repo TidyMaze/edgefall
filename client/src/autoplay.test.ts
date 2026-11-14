@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AUTO_DELAY_MS, autoPlayState } from './autoplay';
+import { AUTO_DELAY_MS, RUN_AUTO_WARNING, autoPlayState } from './autoplay';
 
 describe('autoPlayState, #792', () => {
   it('is on offer in a local game, a battle royale or hot-seat: online is not a mode of its own', () => {
@@ -24,6 +24,12 @@ describe('autoPlayState, #792', () => {
 
   it('is greyed in the Trainer: the score is the player\'s own, #1159', () => {
     expect(autoPlayState({ online: false, boss: null, trainer: true }, false)).toEqual({ shown: true, reason: 'Not in the Trainer' });
+  });
+
+  it('warns in a run what Auto-play and leaving cost, #1675', () => {
+    expect(autoPlayState({ online: false, boss: null, run: true }, false)).toEqual({ shown: true, reason: null, warn: RUN_AUTO_WARNING });
+    expect(RUN_AUTO_WARNING).toMatch(/Daily.*draw.*Hub/);
+    expect(autoPlayState({ online: false, boss: 'The Echo', run: true }, false)).toMatchObject({ reason: expect.stringContaining('Beat') });
   });
 
   it('plays one move per short delay', () => {

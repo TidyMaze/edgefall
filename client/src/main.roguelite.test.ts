@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import { cellIndex, type Axial, type Move } from './board';
 import { ACT_ONE_LEAVES, actBoss, BIOMES, ELITES, FORMATIONS, BONUS_SCRAP, MAP_VERSION, MOVE_BUDGET, newRun, parseMap, pick, Relic, RELICS, relicText, visit, type MapNode, type Run } from './roguelite';
-import { AUTO_DELAY_MS } from './autoplay';
+import { AUTO_DELAY_MS, RUN_AUTO_WARNING } from './autoplay';
 import { LEGACY_UNLOCKED } from './collector';
 import type { View } from './camera';
 import { cardText, GIST } from './specialhelp';
@@ -130,7 +130,8 @@ describe('main.ts, the rogue-lite run (#798)', () => {
     await game.hook('__run', pick({ ...plainRun(3, 3), tactics: [2, 3, 4] }, 0));
     expect(byId<HTMLButtonElement>('auto-play').hidden).toBe(false);
     expect(byId<HTMLButtonElement>('auto-play').disabled).toBe(false);
-    expect(byId('auto-reason').hidden).toBe(true);
+    expect(byId('auto-reason').hidden).toBe(false); // what Auto-play and leaving cost, before they happen (#1675)
+    expect(byId('auto-reason').textContent).toBe(RUN_AUTO_WARNING);
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     byId('auto-play').click();
     for (let i = 0; i < 3; i++) {
