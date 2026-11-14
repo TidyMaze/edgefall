@@ -1293,9 +1293,11 @@ describe('the Open world first, and Quick game (#1612, Decision #1513)', () => {
     await game.settle();
     expect(game.hook('__plies')).toBe(1);
     expect(byId<HTMLButtonElement>('quick-game').textContent).toMatch(/Confirm/); // the question sits on the button pressed
+    expect(byId('quick-game').classList.contains('confirm')).toBe(true); // the dock draws its label from the class (#1678: the question was invisible there)
     byId<HTMLButtonElement>('quick-game').click();
     await game.settle();
     expect(game.hook('__plies')).toBe(0);
+    expect(byId('quick-game').classList.contains('confirm')).toBe(false);
   });
   it('opens an invite link at once on a fresh profile: the table is joined, and the menu still leads with the Open world (#1612)', async () => {
     await boot('?net=hook#room=the-room');

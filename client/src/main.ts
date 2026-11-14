@@ -6302,7 +6302,10 @@ let confirmQuick: Confirm = null;
 let quickLapse = 0; // ends the question
 function askQuickGame(confirm: Confirm): void {
   confirmQuick = confirm;
-  for (const quick of quickButtons) quick.textContent = confirm === null ? 'Quick game' : 'Confirm quick game';
+  for (const quick of quickButtons) {
+    quick.textContent = confirm === null ? 'Quick game' : 'Confirm quick game';
+    quick.classList.toggle('confirm', confirm !== null); // the dock draws its label from the class (#1678)
+  }
   clearTimeout(quickLapse);
   if (confirm !== null) quickLapse = setTimeout(askQuickGame, CONFIRM_MS, null);
 }
