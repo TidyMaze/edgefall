@@ -159,7 +159,7 @@ describe('world_heroes', () => {
   test('lists the heroes that said Hello and gave a place, nearest first, with their name and distance', () => {
     const { worldRoom, room } = setup();
     value(worldRoom.join({}));
-    expect(value(worldRoom.heroes())).toEqual({ you: '(0,0)', heroes: [] });
+    expect(value(worldRoom.heroes())).toEqual({ you: '(0,0)', heroes: [], note: 'no other hero seen yet' });
     room.say('far', encodeHello('Far'));
     room.say('near', encodeHello('Near'));
     room.say('silent', encodeHello('Silent')); // no place yet: not listed
@@ -215,6 +215,24 @@ describe('world_heroes', () => {
     expect(value(worldRoom.heroes()).problem).toBe('a connection problem, still trying');
     room.join('peer'); // a peer connected after all
     expect(value(worldRoom.heroes()).problem).toBeUndefined();
+  });
+
+  test('a join error is current for 30 s, longer than the retry; an error every 20 s never flickers to the note (#1677)', () => {
+    const { worldRoom, room, t } = setup();
+    value(worldRoom.join({}));
+    room.error('ICE failed');
+    for (let i = 0; i < 3; i++) {
+      t.tick(20_000);
+      expect(value(worldRoom.heroes()).problem).toBe('a connection problem, still trying');
+      expect(value(worldRoom.heroes()).note).toBeUndefined();
+      room.error('ICE failed');
+    }
+    t.tick(30_001); // no new error
+    const after = value(worldRoom.heroes());
+    expect(after.problem).toBeUndefined();
+    expect(after.note).toBe('no other hero seen yet');
+    room.error('again');
+    expect(value(worldRoom.heroes()).problem).toBe('a connection problem, still trying');
   });
 });
 

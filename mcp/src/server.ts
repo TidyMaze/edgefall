@@ -256,7 +256,7 @@ export function createServer(
     {
       description:
         'The heroes in the public world room with a known place, the nearest to you first: id, name, cell (q,r) and distance in cells. ' +
-        'A hero silent for 10 s is gone. problem says when the connection has an error. Empty when nobody else is here.',
+        'A hero silent for 10 s is gone. problem says the connection has a current error (it clears after 30 s without a new one). note says "no other hero seen yet" when the list is empty and there is no error.',
     },
     () => toolResult(worldRoom.heroes()),
   );

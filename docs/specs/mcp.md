@@ -396,7 +396,7 @@ An agent can be a hero in the public Open world (seed 1305, room `ow:1305:0`, mu
 | Tool | Input | Output |
 |---|---|---|
 | `join_world_room` | `name`, up to 16 characters, default `Claude` | `{ room, name, hero, heroes }`; enters the world of seed 1305 with the hero on the spawn, drops the world in progress, joins the room |
-| `world_heroes` | none | `{ you, heroes: [{ id, name, cell, distance }], problem? }`, the nearest first; `problem` when the connection has an error |
+| `world_heroes` | none | `{ you, heroes: [{ id, name, cell, distance }], problem? }`, the nearest first; `problem` while a join error is current (30 s), `note` when empty without an error |
 | `world_visit` | `hero` (an `id`), or `q` and `r` | `{ steps, hero, target, arrived }`; walks to the hero and stops next to it, following it, or to the cell |
 | `leave_world_room` | none | `{ left: true }`; closes the room |
 

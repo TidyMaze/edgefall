@@ -47,6 +47,8 @@ export interface Heroes {
   heroes: Hero[];
   /** What is wrong with the connection, when something is: absent when all is well. */
   problem?: string;
+  /** Said when the list is empty and no error is current: no hero seen yet, which says nothing about the connection. */
+  note?: string;
 }
 
 export interface VisitInput {
@@ -70,7 +72,8 @@ interface Running {
   sender: Sender;
   peers: Peers;
   name: string;
-  problem: string;
+  /** When the last join error came, in clock ms: `null` when none. */
+  problemAt: number | null;
   stop: () => void;
 }
 
@@ -80,6 +83,9 @@ type Cell = readonly [q: number, r: number];
 const MAX_STEPS = 40;
 const ANONYMOUS = 'Claude';
 const PROBLEM = 'a connection problem, still trying';
+/** A join error counts for this long (ms), longer than the 15 s retry of the browser: PeerNet has no "joined" signal, only a peer joining clears it sooner. */
+const PROBLEM_MS = 30_000;
+const ALONE = 'no other hero seen yet';
 
 const ok = <T>(value: T): Result<T> => ({ ok: true, value });
 const fail = (code: ErrorCode, message: string): Result<never> => ({ ok: false, error: { code, message } });
@@ -132,9 +138,9 @@ export class WorldRoom {
     }
     // A new world always starts: its value is the state, the hero on the spawn.
     const hero = (this.world.newWorld({ seed: PUBLIC_SEED }) as { ok: true; value: WorldState }).value.hero;
-    const run: Running = { net, sender: new Sender(), peers: new Peers(), name: cleanName(name ?? '') || ANONYMOUS, problem: '' } as Running; // `stop` is set with the timer, below
+    const run: Running = { net, sender: new Sender(), peers: new Peers(), name: cleanName(name ?? '') || ANONYMOUS, problemAt: null } as Running; // `stop` is set with the timer, below
     net.onJoin((peer) => {
-      run.problem = '';
+      run.problemAt = null;
       net.send(encodeHello(run.name), peer);
       net.send(run.sender.now()!, peer); // the place is set before any peer can join
     });
@@ -144,7 +150,7 @@ export class WorldRoom {
       else if (message?.t === 'pos') run.peers.position(peer, message, this.opts.clock()); // a break or a troop is not a place: the agent's state does not need them
     });
     net.onLeave((peer) => run.peers.leave(peer));
-    net.onError(() => (run.problem = PROBLEM));
+    net.onError(() => (run.problemAt = this.opts.clock()));
     this.running = run;
     const [q, r] = cellOf(hero);
     run.sender.set(q, r);
@@ -161,7 +167,9 @@ export class WorldRoom {
     const at = this.at();
     if (!at) return changed();
     const heroes = run.peers.cells(at).map(({ peer, cell, name }) => ({ id: peer, name, cell: text(cell), distance: hexDistance(at, cell) }));
-    return ok({ you: text(at), heroes, ...(run.problem && { problem: run.problem }) });
+    const now = this.opts.clock();
+    if (run.problemAt !== null && now - run.problemAt <= PROBLEM_MS) return ok({ you: text(at), heroes, problem: PROBLEM });
+    return ok({ you: text(at), heroes, ...(heroes.length === 0 && { note: ALONE }) });
   }
 
   /**
