@@ -752,6 +752,47 @@ describe('the public Open world online', () => {
     expect(data().openworld).toBe(String(PUBLIC_SEED));
   });
 
+  it('the Say menu opens, sends the index of an emote or phrase once per 2 s, and lists the heroes nearby (#1671)', async () => {
+    const game = await joined();
+    const room = game.world()!;
+    expect(byId('openworld-emotes').hidden).toBe(true);
+    byId('openworld-emote').click();
+    expect(byId('openworld-emotes').hidden).toBe(false);
+    expect(byId('openworld-emote').getAttribute('aria-expanded')).toBe('true');
+    const buttons = [...byId('openworld-emotes').querySelectorAll('button')];
+    expect(buttons.map((b) => b.textContent)).toEqual(['Wave', 'GG', 'Follow me', 'Hello', 'Duel?', 'Thanks']);
+    buttons[3]!.click();
+    expect(decode(room.sent.at(-1)![0])).toEqual({ t: 'emote', id: 3 });
+    const count = room.sent.length;
+    buttons[4]!.click(); // inside 2 s: dropped
+    expect(room.sent).toHaveLength(count);
+    expect(byId('openworld-hud').dataset.say).toBe(''); // the plate shrinks while the menu is open
+    byId('openworld-emote').click();
+    expect(byId('openworld-emotes').hidden).toBe(true);
+    expect(byId('openworld-hud').dataset.say).toBeUndefined();
+    byId('openworld-emote').click();
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    byId('openworld-emote').dispatchEvent(esc);
+    expect(byId('openworld-emotes').hidden).toBe(true); // Escape closes the menu
+    expect(data().openworld).toBe(String(PUBLIC_SEED)); // and does not leave the world
+    byId('openworld-emote').dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true })); // another key with the menu shut: nothing
+    byId('openworld-emote').click();
+    byId('openworld-emote').dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })); // another key with the menu open: kept
+    expect(byId('openworld-emotes').hidden).toBe(false);
+    byId('openworld-hide').click();
+    expect(byId('openworld-emotes').hidden).toBe(true); // Hide closes it
+    expect((byId('openworld-emote') as HTMLButtonElement).disabled).toBe(true);
+    byId('openworld-hide').click();
+    expect((byId('openworld-emote') as HTMLButtonElement).disabled).toBe(false);
+    const again = game.world()!; // Show joined a new room
+    again.data(encodeHello('<b>Ana</b>'), 'p');
+    again.data(encodePos(5, 0, 0), 'p');
+    game.frame(16);
+    const items = [...byId('openworld-nearby').querySelectorAll('li')];
+    expect(items.map((li) => li.textContent)).toEqual(['<b>Ana</b>, 5 tiles away']); // text, never markup
+    expect(byId('openworld-nearby').querySelector('b')).toBeNull();
+  });
+
   it('Hide leaves the room and Show joins a new one', async () => {
     const game = await joined();
     const first = game.world()!;

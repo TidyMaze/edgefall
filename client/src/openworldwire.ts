@@ -27,7 +27,7 @@ import { storyStage } from './story';
 import { meshoptLoader } from './roomloader';
 import { WorldPeersHost } from './worldnet';
 import { worldKeys } from './worldevents';
-import { cleanName, readName, writeName } from './worldpeers';
+import { cleanName, EMOTES, readName, writeName } from './worldpeers';
 
 /** What the world takes from the page: the stores, and the few things it asks the page to do. */
 export interface OpenWorldDeps {
@@ -120,6 +120,20 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
   const netBox = document.getElementById('openworld-online')!;
   const netHide = document.getElementById('openworld-hide') as HTMLButtonElement;
   const netName = document.getElementById('openworld-name') as HTMLInputElement;
+  const nearby = document.getElementById('openworld-nearby')!;
+  const emotes = document.getElementById('openworld-emotes')!;
+  const emoteButton = document.getElementById('openworld-emote') as HTMLButtonElement;
+  const hud = document.getElementById('openworld-hud')!;
+  const openEmotes = (): void => {
+    emotes.hidden = false;
+    emoteButton.setAttribute('aria-expanded', 'true');
+    hud.dataset.say = ''; // the plate shrinks to the online box on a phone
+  };
+  const closeEmotes = (): void => {
+    emotes.hidden = true;
+    emoteButton.setAttribute('aria-expanded', 'false');
+    delete hud.dataset.say;
+  };
   const peers = new WorldPeersHost(
     (room) => (netHook(location.search) ? hookPeers() : p2pPeers(room)),
     deps.online,
@@ -131,6 +145,8 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
       document.getElementById('openworld-net')!.textContent = status.text;
       netHide.textContent = status.hidden ? 'Show' : 'Hide';
       netHide.setAttribute('aria-pressed', String(status.hidden));
+      emoteButton.disabled = status.hidden; // nobody hears a hidden hero
+      if (status.hidden || !status.available) closeEmotes();
     },
     () => readName(store),
     // The signed events of the public world (#1305): the player's key, the engine's rule of what can break, and what a break of another hero does.
@@ -145,6 +161,7 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
     },
     undefined,
     store, // the signed events are kept in this browser (#1305)
+    (heroes) => nearby.replaceChildren(...heroes.map(({ name, tiles }) => Object.assign(document.createElement('li'), { textContent: `${name}, ${tiles} ${tiles === 1 ? 'tile' : 'tiles'} away` }))), // names are text, never markup
   );
   mode.peers = peers;
   bindAsk(mode, document.querySelector<HTMLElement>('canvas[aria-label="Edgefall board"]')!); // the question of a wild marble (#1662)
@@ -153,6 +170,14 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
   // The clock the enemy marbles wander by (#1511): the wall clock in ticks, so every peer sees them in the same places.
   mode.wander = () => deps.wanderTick() ?? Math.floor(Date.now() / FightState.tickMs);
   netHide.addEventListener('click', () => (netHide.getAttribute('aria-pressed') === 'true' ? peers.show() : peers.hide()));
+  // The emotes and phrases (#1671): a fixed list, only its index goes on the wire; one a 2 s, the rest is dropped.
+  emotes.replaceChildren(...EMOTES.map((text, id) => Object.assign(document.createElement('button'), { type: 'button', textContent: text, onclick: () => peers.speak(id) })));
+  emoteButton.addEventListener('click', () => (emotes.hidden ? openEmotes() : closeEmotes()));
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || emotes.hidden) return;
+    e.stopPropagation(); // Escape closes the menu first, and does not leave the world
+    closeEmotes();
+  }, { capture: true });
   netName.addEventListener('input', () => {
     writeName(store, cleanName(netName.value)); // the field keeps what was typed, the store and the peers get the clean name
     peers.setName();

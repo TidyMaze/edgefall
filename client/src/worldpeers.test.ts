@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { b64 } from './moverecord';
-import { BREAK_BYTES, encodeTroop, TROOP_MAX, TROOP_REACH, cleanName, decode, encodeBreak, encodeHello, encodePos, hexDistance, KEEPALIVE_MS, MAX_NAME, MAX_PEERS, MIN_GAP_MS, PEER_TTL_MS, Peers, SETTLE_MS, PUBLIC_SEED, readName, roomOf, SEND_MS, Sender, writeName } from './worldpeers';
+import { EMOTE_GAP_MS, EMOTE_SHOW_MS, EMOTES, encodeEmote, BREAK_BYTES, encodeTroop, TROOP_MAX, TROOP_REACH, cleanName, decode, encodeBreak, encodeHello, encodePos, hexDistance, KEEPALIVE_MS, MAX_NAME, MAX_PEERS, MIN_GAP_MS, PEER_TTL_MS, Peers, SETTLE_MS, PUBLIC_SEED, readName, roomOf, SEND_MS, Sender, writeName } from './worldpeers';
 
 describe('the wire format', () => {
   it('names one room for the public world', () => {
@@ -336,5 +336,30 @@ describe('Peers', () => {
     expect(p.troop('a', [], 1001)).toBe(false); // a flood: under MIN_GAP_MS after the last
     expect(p.troop('a', [], 3000)).toBe(true);
     expect(p.cells()[0]!.troop).toEqual([]);
+  });
+});
+
+describe('emotes (#1671)', () => {
+  it('encodes an index in 3 bytes and decodes only the ids of the list', () => {
+    expect(decode(encodeEmote(2))).toEqual({ t: 'emote', id: 2 });
+    expect(decode(encodeEmote(EMOTES.length - 1))).toEqual({ t: 'emote', id: EMOTES.length - 1 });
+    expect(decode(encodeEmote(EMOTES.length))).toBeNull();
+    expect(decode(encodeEmote(255))).toBeNull();
+    expect(decode(new Uint8Array([2, 7]))).toBeNull();
+    expect(decode(new Uint8Array([2, 7, 0, 0]))).toBeNull();
+  });
+
+  it('keeps an emote for EMOTE_SHOW_MS, refuses one before a Hello or closer than EMOTE_GAP_MS to the last', () => {
+    const p = new Peers();
+    expect(p.emote('a', 1, 0)).toBe(false); // no Hello
+    p.hello('a', 0);
+    p.position('a', { q: 1, r: 1, seq: 0 }, 0);
+    expect(p.cells([0, 0])[0]!.say).toBeUndefined(); // no time given
+    expect(p.emote('a', 1, 100)).toBe(true);
+    expect(p.emote('a', 2, 100 + EMOTE_GAP_MS - 1)).toBe(false);
+    expect(p.cells([0, 0], 101)[0]!.say).toBe(1);
+    expect(p.cells([0, 0], 100 + EMOTE_SHOW_MS)[0]!.say).toBeUndefined();
+    expect(p.emote('a', 2, 100 + EMOTE_GAP_MS)).toBe(true);
+    expect(p.cells([0, 0], 100 + EMOTE_GAP_MS)[0]!.say).toBe(2);
   });
 });

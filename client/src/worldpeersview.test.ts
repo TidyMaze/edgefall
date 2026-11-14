@@ -58,6 +58,24 @@ function setup(wet: (q: number, r: number) => boolean = () => false) {
   return { scene, camera, root, layer };
 }
 
+describe('PeersLayer emotes (#1671)', () => {
+  it('shows the text of the emote index above a hero in view, as text, and clears it', () => {
+    const { root, layer } = setup();
+    const hero = { peer: 'a', cell: [1, 0] as [number, number], name: 'Ana', troop: [] };
+    expect(layer.update([{ ...hero, say: 4 }], [0, 0])).toBe(true);
+    const bubble = root.querySelector('.peer-say')!;
+    expect(bubble.textContent).toBe('Duel?');
+    expect(root.hidden).toBe(false);
+    expect(root.dataset.say).toBe('Duel?');
+    expect(layer.update([{ ...hero, say: 4 }], [0, 0])).toBe(false); // same: nothing to draw again
+    expect(layer.update([{ ...hero, say: 99 }], [0, 0])).toBe(true); // an index out of the list shows nothing
+    expect(root.querySelector('.peer-say')).toBeNull();
+    layer.update([{ ...hero, say: 0 }], [0, 0]);
+    layer.dispose();
+    expect(root.dataset.say).toBeUndefined();
+  });
+});
+
 describe('PeersLayer', () => {
   it('stands a marker on each peer in view and draws no edge indicator for it', () => {
     const { scene, root, layer } = setup();

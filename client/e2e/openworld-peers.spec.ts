@@ -129,6 +129,29 @@ test('a public name goes out in the Hello and shows over a near hero, Hide leave
   await expect(page.locator('#openworld-net')).toContainText('the direct connection failed');
 });
 
+test('the Say menu sends an emote by index, a hero next to us shows its emote above it, the nearby list names it, #1671', async ({ page }) => {
+  await enter(page, PUBLIC);
+  await page.evaluate(() => {
+    const w = window as unknown as Hook;
+    w.__netPeerIn([2, 1, 66, 111, 98], 'p'); // Bob, next to us
+    w.__netPeerIn([2, 2, 0, 1, 0, 0, 0], 'p');
+  });
+  await clickHud(page, '#openworld-emote');
+  await clickHud(page, '#openworld-emotes button:nth-child(4)');
+  expect(await page.evaluate(() => (window as unknown as Hook).__out.filter((m) => m[1] === 7))).toEqual([[2, 7, 3]]); // Hello, as one index
+  await page.evaluate(() => {
+    const w = window as unknown as Hook;
+    w.__netPeerIn([2, 7, 2], 'p'); // Follow me
+    w.__netPeerIn([2, 7, 200], 'p'); // an id off the list: dropped
+  });
+  await expect(page.locator('.peer-say')).toHaveText('Follow me');
+  await expect(page.locator('#openworld-nearby li')).toHaveText('Bob, 1 tile away');
+  await page.screenshot({ path: 'test-results/emote-bubble.png' });
+  await page.keyboard.press('Escape'); // closes the menu, the world stays
+  await expect(page.locator('#openworld-emotes')).toBeHidden();
+  await expect(page.locator('body')).toHaveAttribute('data-openworld', String(PUBLIC));
+});
+
 // #1305: the signed break event. The test signs as another hero (WebCrypto in the page) and plays the room through the hook.
 type Break = Hook & {
   __openworldCanBreak: (seed: number, q: number, r: number) => boolean;

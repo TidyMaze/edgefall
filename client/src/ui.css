@@ -1651,6 +1651,21 @@ body[data-openworld] #openworld-ask:not([hidden]) { display: block; }
   body:has(canvas[aria-label='Edgefall board']:focus-visible) #keyhint,
   body[data-keyhint] #keyhint { display: block; position: fixed; left: 20rem; top: 0.75rem; max-width: calc(100vw - 25rem); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 5; padding: 0.375rem 0.75rem; font: 0.8125rem/1.2 var(--display); color: var(--text); background: var(--panel); border: 1px solid var(--edge); border-radius: var(--r-button); pointer-events: none; }
 }
+/* The emotes of the public world (#1671): a bubble above a hero for a few seconds, and the menu of fixed emotes and phrases in the online box. */
+.peer-say { position: absolute; transform: translate(-50%, calc(-100% - 36px)); box-sizing: border-box; width: max-content; max-width: 10rem; padding: 0.25rem 0.5rem; color: #fff; text-align: center; background: rgba(11, 13, 15, 0.92); border: 2px solid #ff7ad9; border-radius: 0.75rem; font: 700 0.875rem/1.1 var(--ui); pointer-events: none; }
+.peer-say::after { content: ''; position: absolute; left: 50%; top: 100%; width: 0; height: 0; margin-left: -6px; border: 6px solid transparent; border-top-color: #ff7ad9; pointer-events: none; }
+#openworld-emote { border-color: var(--plate-accent); }
+#openworld-emote:disabled { opacity: 0.4; cursor: default; }
+#openworld-nearby { max-height: 10rem; overflow-y: auto; }
+/* While the Say menu is open on a phone the plate shows only the online box, at most 35 % of the height, so the hero stays in view; the list scrolls inside it, 3 rows. */
+@media (orientation: portrait) {
+  #openworld-hud[data-say] { max-height: calc(35dvh / var(--ui-scale, 1)); }
+  #openworld-hud[data-say]:not([data-folded]) > :not(#openworld-online) { display: none; }
+  #openworld-nearby { max-height: 4rem; }
+}
+#openworld-emotes:not([hidden]) { display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 0.5rem; }
+#openworld-nearby { flex-basis: 100%; margin: 0; padding: 0; list-style: none; font: 0.875rem/1.4 var(--ui); }
+#openworld-nearby:empty { display: none; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

@@ -9,7 +9,7 @@ import { joinErrorCause } from './netcounters';
 import type { Keys } from './moverecord';
 import type { Store } from './quality';
 import { BreakSet, SYNC_MAX, SYNC_MS, signBeaten, signBreak, signLair, verifyBreak } from './worldevents';
-import { type BreakEvent, decode, encodeBreak, encodeHello, Peers, hexDistance, PUBLIC_SEED, roomOf, Sender } from './worldpeers';
+import { type BreakEvent, decode, EMOTE_SEND_MS, EMOTES, encodeBreak, encodeEmote, encodeHello, Peers, hexDistance, PUBLIC_SEED, roomOf, Sender } from './worldpeers';
 import { PeersLayer } from './worldpeersview';
 
 /** What the Open world mode needs of the online layer. */
@@ -90,6 +90,9 @@ export class WorldPeersHost implements PeerHost {
   private readonly lastBreak = new Map<string, number>();
   /** How many events far from their sender each peer reported: no more than a sync (SYNC_MAX), since nothing proves its key was there. */
   private readonly far = new Map<string, number>();
+  /** When this hero last sent an emote, and the list of the heroes nearby last given to `nearby`. */
+  private lastSay = -Infinity;
+  private shownNearby = '';
   /** The lairs taken while the room was closed (the fight leaves the world): told when it opens. Kept across a leave. */
   private owed: [BreakEvent['kind'], Axial][] = [];
 
@@ -107,6 +110,7 @@ export class WorldPeersHost implements PeerHost {
     private readonly hooks: BreakHooks,
     private readonly clock: () => number = () => performance.now(),
     store: Store = null,
+    private readonly nearby: (heroes: { name: string; tiles: number }[]) => void = () => {},
   ) {
     this.held = new BreakSet(store);
   }
@@ -149,6 +153,7 @@ export class WorldPeersHost implements PeerHost {
       const message = decode(data);
       if (message?.t === 'hello') peers.hello(peer, this.clock(), message.name);
       else if (message?.t === 'break') void this.receive(peer, message.event);
+      else if (message?.t === 'emote') peers.emote(peer, message.id, this.clock());
       else if (message?.t === 'troop') peers.troop(peer, message.offsets, this.clock());
       else if (message) peers.position(peer, message, this.clock());
     });
@@ -252,6 +257,17 @@ export class WorldPeersHost implements PeerHost {
     else this.hooks.apply([event.q, event.r]);
   }
 
+  /** The hero says emote or phrase `id` (an index in EMOTES) to the peers (#1671). False when the room is closed, the id is unknown, or the
+   * last one went less than EMOTE_SEND_MS ago. */
+  speak(id: number): boolean {
+    const run = this.running;
+    const now = this.clock();
+    if (!run || !Number.isInteger(id) || id < 0 || id >= EMOTES.length || now - this.lastSay < EMOTE_SEND_MS) return false;
+    this.lastSay = now;
+    run.net.send(encodeEmote(id));
+    return true;
+  }
+
   /** The public name changed: tells the peers here. */
   setName(): void {
     this.running?.net.send(encodeHello(this.name()));
@@ -274,9 +290,15 @@ export class WorldPeersHost implements PeerHost {
       run.net.send(encodeBreak(owed.events.shift()!), owed.peer);
       if (owed.events.length === 0) this.syncing.shift();
     }
-    const cells = run.peers.cells(hero);
+    const cells = run.peers.cells(hero, now);
     this.lastCount = cells.length;
     this.update();
+    const list = cells.slice(0, 8).map((c) => ({ name: c.name || 'Another hero', tiles: hexDistance(hero, c.cell) }));
+    const key = list.map((h) => `${h.name}:${h.tiles}`).join('|');
+    if (key !== this.shownNearby) {
+      this.shownNearby = key;
+      this.nearby(list);
+    }
     return run.layer.update(cells, hero, [hero, ...troop], bobNow);
   }
 
@@ -307,6 +329,8 @@ export class WorldPeersHost implements PeerHost {
     const run = this.running;
     if (!run) return;
     this.running = null;
+    this.shownNearby = '';
+    this.nearby([]);
     this.syncing = [];
     this.lastBreak.clear();
     this.far.clear();

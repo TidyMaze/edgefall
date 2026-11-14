@@ -12,7 +12,7 @@ import type { PeerNet } from './p2p';
 import { generateKeys } from './moverecord';
 import type { Store } from './quality';
 import { EVENTS_KEY, SYNC_MAX, signBeaten, signBreak, signLair } from './worldevents';
-import { SETTLE_MS, decode, encodeBreak, encodeHello, encodePos, encodeTroop, PUBLIC_SEED, roomOf } from './worldpeers';
+import { SETTLE_MS, decode, encodeEmote, encodeBreak, encodeHello, encodePos, encodeTroop, PUBLIC_SEED, roomOf } from './worldpeers';
 import { RETRY_MS, WorldPeersHost, type NetStatus } from './worldnet';
 import { PeersLayer } from './worldpeersview';
 
@@ -48,6 +48,7 @@ function setup(allowed = true, store: Store = null) {
   const rooms: string[] = [];
   const clock = { now: 0 };
   const reports: NetStatus[] = [];
+  const lists: { name: string; tiles: number }[][] = [];
   const applied: (readonly [number, number])[] = [];
   const beaten: (readonly [number, number])[] = [];
   const lairs: (readonly [number, number])[] = [];
@@ -73,10 +74,72 @@ function setup(allowed = true, store: Store = null) {
     { keys: () => keysOnce, canBreak: (_seed, q) => q >= 0, apply: (cell) => applied.push(cell), canBeaten: (_seed, q) => q >= 0, beat: (cell) => beaten.push(cell), canLair: (_seed, q) => q >= 0, lair: (cell) => lairs.push(cell) },
     () => clock.now,
     store,
+    (list) => lists.push(list),
   );
   const enter = (seed = PUBLIC_SEED) => host.enter(seed, scene, camera, world as never);
-  return { host, nets, rooms, clock, root, scene, enter, reports, me, applied, beaten, lairs, keysOnce };
+  return { lists, host, nets, rooms, clock, root, scene, enter, reports, me, applied, beaten, lairs, keysOnce };
 }
+
+describe('WorldPeersHost emotes and heroes nearby (#1671)', () => {
+  it('sends an emote as one index, at most one every 2 s, and refuses an unknown index or a closed room', () => {
+    const { nets, host, clock, enter } = setup();
+    expect(host.speak(0)).toBe(false); // no room yet
+    enter();
+    expect(host.speak(9)).toBe(false);
+    expect(host.speak(-1)).toBe(false);
+    expect(host.speak(1.5)).toBe(false);
+    expect(nets[0]!.sent).toEqual([]);
+    expect(host.speak(2)).toBe(true);
+    expect(nets[0]!.sent).toEqual([[encodeEmote(2), undefined]]);
+    clock.now = 1999;
+    expect(host.speak(3)).toBe(false);
+    clock.now = 2000;
+    expect(host.speak(3)).toBe(true);
+    expect(nets[0]!.sent).toHaveLength(2);
+  });
+
+  it('shows the emote of a peer for a few seconds, drops an unknown id and a flood', () => {
+    const { nets, host, clock, root, enter } = setup();
+    enter();
+    const n = nets[0]!;
+    n.join('p');
+    n.data(encodeHello('Ana'), 'p');
+    n.data(encodePos(1, 0, 0), 'p');
+    n.data(encodeEmote(1), 'p');
+    host.frame(10, [0, 0]);
+    expect(root.dataset.say).toBe('GG');
+    clock.now = 100;
+    n.data(encodeEmote(4), 'p'); // a flood: the first one stays
+    n.data(new Uint8Array([2, 7, 99]), 'p'); // an unknown id: dropped
+    host.frame(11, [0, 0]);
+    expect(root.dataset.say).toBe('GG');
+    host.frame(4010, [0, 0]);
+    expect(root.dataset.say).toBe('');
+  });
+
+  it('lists the heroes nearby with their distance, once per change, and clears it when the room closes', () => {
+    const { nets, host, lists, enter } = setup();
+    enter();
+    const n = nets[0]!;
+    n.join('p');
+    n.data(encodeHello('Ana'), 'p');
+    n.data(encodePos(3, 0, 0), 'p');
+    n.join('q');
+    n.data(encodeHello(), 'q');
+    n.data(encodePos(9, 0, 0), 'q');
+    host.frame(10, [0, 0]);
+    host.frame(20, [0, 0]);
+    expect(lists.at(-1)).toEqual([
+      { name: 'Ana', tiles: 3 },
+      { name: 'Another hero', tiles: 9 },
+    ]);
+    const count = lists.length;
+    host.frame(30, [0, 0]);
+    expect(lists).toHaveLength(count); // unchanged: not told again
+    host.hide();
+    expect(lists.at(-1)).toEqual([]);
+  });
+});
 
 describe('WorldPeersHost', () => {
   it('joins the one room of the public seed, and only that', () => {

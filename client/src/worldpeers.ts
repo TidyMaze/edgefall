@@ -19,6 +19,15 @@ const BREAK = 3;
 const TROOP = 4;
 const BEATEN = 5;
 const LAIR = 6;
+const EMOTE = 7;
+
+/** The emotes and phrases of the public world (#1671): the wire carries only an index into this fixed list, and the text shown is read from
+ * it here, never from the wire. The first three are emotes, the rest preset phrases. */
+export const EMOTES = ['Wave', 'GG', 'Follow me', 'Hello', 'Duel?', 'Thanks'] as const;
+/** How long an emote stays above its hero (ms); the most one hero sends (one per EMOTE_SEND_MS), and the closest two are believed from one peer. */
+export const EMOTE_SHOW_MS = 4000;
+export const EMOTE_SEND_MS = 2000;
+export const EMOTE_GAP_MS = 1500;
 /** The most marbles of a troop on the wire, and how far from its hero one may stand (cells). */
 export const TROOP_MAX = 15;
 export const TROOP_REACH = 8;
@@ -49,7 +58,7 @@ export function encodeBreak(e: BreakEvent): Uint8Array {
   return out;
 }
 
-export type Message = { t: 'break'; event: BreakEvent } | { t: 'troop'; offsets: Axial[] } | { t: 'hello'; name: string } | { t: 'pos'; q: number; r: number; seq: number };
+export type Message = { t: 'break'; event: BreakEvent } | { t: 'troop'; offsets: Axial[] } | { t: 'hello'; name: string } | { t: 'pos'; q: number; r: number; seq: number } | { t: 'emote'; id: number };
 
 /** At most 4 positions a second. */
 export const SEND_MS = 250;
@@ -102,6 +111,9 @@ function nameOf(tail: Uint8Array): string {
 
 const int16 = (n: number): number => Math.max(-32768, Math.min(32767, Math.trunc(n)));
 
+/** An emote: version, type, the index in EMOTES, 3 bytes. */
+export const encodeEmote = (id: number): Uint8Array => new Uint8Array([VERSION, EMOTE, id]);
+
 /** A position: version, type, q and r as big-endian int16 (clamped), seq, 7 bytes. */
 export function encodePos(q: number, r: number, seq: number): Uint8Array {
   const out = new Uint8Array(7);
@@ -139,6 +151,7 @@ const isTroop = (offsets: readonly Axial[]): boolean =>
 export function decode(data: unknown): Message | null {
   if (!(data instanceof Uint8Array) || data.length < 2 || data[0] !== VERSION) return null;
   if (data[1] === HELLO) return data.length <= 2 + 4 * MAX_NAME ? { t: 'hello', name: nameOf(data.subarray(2)) } : null;
+  if (data[1] === EMOTE) return data.length === 3 && data[2]! < EMOTES.length ? { t: 'emote', id: data[2]! } : null; // an unknown id is dropped
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
   if (data[1] === BREAK || data[1] === BEATEN || data[1] === LAIR) {
     if (data.length !== BREAK_BYTES) return null;
@@ -235,6 +248,10 @@ interface Entry {
   heard: number;
   posAt: number;
   troopAt: number;
+  /** The emote last accepted (an index in EMOTES), until when it shows, and when it came. */
+  emote: number;
+  emoteUntil: number;
+  emoteAt: number;
   /** Until when its place is unproven: it jumped faster than MAX_SPEED. */
   unsettled: number;
 }
@@ -253,7 +270,7 @@ export class Peers {
     if (known) {
       known.heard = now;
       known.name = name;
-    } else if (this.table.size < MAX_TABLE) this.table.set(peer, { cell: null, offsets: [], name, seq: 0, heard: now, posAt: -Infinity, troopAt: -Infinity, unsettled: -Infinity });
+    } else if (this.table.size < MAX_TABLE) this.table.set(peer, { cell: null, offsets: [], name, seq: 0, heard: now, posAt: -Infinity, troopAt: -Infinity, emote: 0, emoteUntil: -Infinity, emoteAt: -Infinity, unsettled: -Infinity });
   }
 
   /** A position from `peer`. False when it is refused: no Hello first, too fast, or not newer than the last (seq mod 256). */
@@ -281,6 +298,17 @@ export class Peers {
     return true;
   }
 
+  /** An emote from `peer` (an index `decode` checked). False when refused: no Hello, or closer than EMOTE_GAP_MS to its last (a flood). */
+  emote(peer: string, id: number, now: number): boolean {
+    const e = this.table.get(peer);
+    if (!e || now - e.emoteAt < EMOTE_GAP_MS) return false;
+    e.emote = id;
+    e.emoteAt = now;
+    e.emoteUntil = now + EMOTE_SHOW_MS;
+    e.heard = now;
+    return true;
+  }
+
   /** The last place `peer` reported, null when none or when it got there faster than a hero goes (until SETTLE_MS have passed). */
   cellOf(peer: string, now: number): Axial | null {
     const e = this.table.get(peer);
@@ -296,11 +324,11 @@ export class Peers {
     for (const [peer, e] of this.table) if (now - e.heard > PEER_TTL_MS) this.table.delete(peer);
   }
 
-  /** The peers with a known place: at most MAX_PEERS, the nearest to `from` first when it is given. */
-  cells(from?: Axial): { peer: string; cell: Axial; name: string; troop: Axial[] }[] {
+  /** The peers with a known place: at most MAX_PEERS, the nearest to `from` first when it is given. `say` is the emote showing at `now`, when given. */
+  cells(from?: Axial, now?: number): { peer: string; cell: Axial; name: string; troop: Axial[]; say?: number }[] {
     const known = [...this.table].flatMap(([peer, e]) => {
       const [q, r] = e.cell ?? [0, 0];
-      return e.cell ? [{ peer, cell: e.cell, name: e.name, troop: e.offsets.map(([dq, dr]): Axial => [q + dq, r + dr]) }] : [];
+      return e.cell ? [{ peer, cell: e.cell, name: e.name, troop: e.offsets.map(([dq, dr]): Axial => [q + dq, r + dr]), say: now !== undefined && now < e.emoteUntil ? e.emote : undefined }] : [];
     });
     if (from) known.sort((a, b) => hexDistance(from, a.cell) - hexDistance(from, b.cell));
     return known.slice(0, MAX_PEERS);

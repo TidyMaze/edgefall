@@ -6,7 +6,7 @@ import { axialTo3D, type Axial } from './board';
 import type { World } from './openworld';
 import { bob, boatGeometry, boatMaterial, DRAFT, steer, type Wake } from './openworldboat';
 import { GROUND, MARBLE, topOf } from './openworldview';
-import { hexDistance, MAX_PEERS, TROOP_MAX } from './worldpeers';
+import { EMOTES, hexDistance, MAX_PEERS, TROOP_MAX } from './worldpeers';
 import { neonMarbleRim, neonWorldOn } from './neonlook';
 
 /** The marbles of every hero drawn: its own and a full troop each, one instanced mesh. */
@@ -58,6 +58,7 @@ export class PeersLayer {
   private wakes = new Map<string, Wake>();
   private readonly edges: HTMLElement[] = [];
   private readonly tags: HTMLElement[] = [];
+  private readonly bubbles: HTMLElement[] = [];
   private shown = '';
   private readonly boatPose = new THREE.Object3D();
   private heroes = 0;
@@ -88,17 +89,18 @@ export class PeersLayer {
    * and an edge indicator for each hero out of view. A marble on water rides a boat that bobs at `bobNow` (ms, `null`: held still).
    * Returns whether anything drawn changed, so the page draws the scene again.
    */
-  update(peers: readonly { peer: string; cell: Axial; name: string; troop: readonly Axial[] }[], hero: Axial, own: readonly Axial[] = [hero], bobNow: number | null = null): boolean {
+  update(peers: readonly { peer: string; cell: Axial; name: string; troop: readonly Axial[]; say?: number }[], hero: Axial, own: readonly Axial[] = [hero], bobNow: number | null = null): boolean {
     this.camera.updateMatrixWorld();
     const point = new THREE.Vector3();
     const matrix = new THREE.Matrix4();
     const out: { peer: string; cell: Axial; spot: Spot; name: string }[] = [];
     const named: { peer: string; spot: Spot; name: string }[] = [];
+    const said: { peer: string; spot: Spot; text: string }[] = [];
     let marbles = 0;
     let afloat = 0;
     const wakes = new Map<string, Wake>();
     let heroes = 0;
-    for (const { peer, cell, name, troop } of peers) {
+    for (const { peer, cell, name, troop, say } of peers) {
       const colour = peerColour(peer);
       for (const [i, at] of [cell, ...troop].entries()) {
         const p = axialTo3D(at[0], at[1]);
@@ -125,6 +127,7 @@ export class PeersLayer {
         if (drawn) {
           heroes++;
           if (name) named.push({ peer, spot, name });
+          if (say !== undefined && EMOTES[say]) said.push({ peer, spot, text: EMOTES[say] }); // the text is ours, picked by the index
         } else out.push({ peer, cell, spot, name });
       }
     }
@@ -136,14 +139,14 @@ export class PeersLayer {
     this.mesh.instanceColor!.needsUpdate = true;
     this.heroes = heroes;
     this.armies = peers.map((p) => `${p.name || p.peer}:${1 + p.troop.length}`).join(','); // the marbles each hero holds, as received
-    this.indicate(out, named, hero);
-    const key = peers.map((p) => `${p.peer}:${p.cell}:${p.troop.join(';')}`).join(' ');
+    this.indicate(out, named, said, hero);
+    const key = peers.map((p) => `${p.peer}:${p.cell}:${p.troop.join(';')}:${p.say ?? ''}`).join(' ');
     const changed = key !== this.shown;
     this.shown = key;
     return changed;
   }
 
-  private indicate(out: { peer: string; cell: Axial; spot: Spot; name: string }[], named: { peer: string; spot: Spot; name: string }[], hero: Axial): void {
+  private indicate(out: { peer: string; cell: Axial; spot: Spot; name: string }[], named: { peer: string; spot: Spot; name: string }[], said: { peer: string; spot: Spot; text: string }[], hero: Axial): void {
     this.pool(this.tags, named.length, () => {
       const tag = document.createElement('div');
       tag.className = 'peer-tag';
@@ -156,6 +159,19 @@ export class PeersLayer {
       tag.style.left = `${spot.left.toFixed(1)}%`;
       tag.style.top = `${spot.top.toFixed(1)}%`;
       tag.textContent = name; // text, never markup: a name comes from another player
+    });
+    this.pool(this.bubbles, said.length, () => {
+      const bubble = document.createElement('div');
+      bubble.className = 'peer-say';
+      bubble.setAttribute('aria-hidden', 'true');
+      return bubble;
+    });
+    said.forEach(({ peer, spot, text }, i) => {
+      const bubble = this.bubbles[i]!;
+      bubble.style.borderColor = `#${peerColour(peer).getHexString()}`;
+      bubble.style.left = `clamp(5.5rem, ${spot.left.toFixed(1)}%, calc(100% - 5.5rem))`; // kept inside the screen, 360 px included
+      bubble.style.top = `max(4rem, ${spot.top.toFixed(1)}%)`;
+      bubble.textContent = text;
     });
     this.pool(this.edges, out.length, () => {
       const edge = document.createElement('div');
@@ -174,7 +190,8 @@ export class PeersLayer {
       edge.setAttribute('aria-label', `${name || 'Another hero'}, ${tiles} ${tiles === 1 ? 'tile' : 'tiles'} away`);
       edge.lastElementChild!.textContent = name ? `${name} ${tiles}` : String(tiles);
     });
-    this.root.hidden = out.length === 0 && named.length === 0;
+    this.root.hidden = out.length === 0 && named.length === 0 && said.length === 0;
+    this.root.dataset.say = said.map(({ text }) => text).join(','); // for the browser checks
     this.root.dataset.peers = String(this.heroes + out.length); // for the browser checks
     this.root.dataset.marbles = String(this.mesh.count); // for the browser checks
     this.root.dataset.boats = String(this.boats.count); // for the browser checks
@@ -204,6 +221,7 @@ export class PeersLayer {
     this.boats.dispose();
     this.edges.length = 0;
     this.tags.length = 0;
+    this.bubbles.length = 0;
     this.root.replaceChildren();
     this.root.hidden = true;
     delete this.root.dataset.peers;
@@ -211,5 +229,6 @@ export class PeersLayer {
     delete this.root.dataset.marbles;
     delete this.root.dataset.boats;
     delete this.root.dataset.armies;
+    delete this.root.dataset.say;
   }
 }

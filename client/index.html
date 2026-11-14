@@ -103,9 +103,12 @@
         <p id="openworld-dungeon-note" role="status"></p>
         <div id="openworld-online" hidden>
           <p id="openworld-net" role="status"></p>
+          <ul id="openworld-nearby" aria-labelledby="openworld-net"></ul>
           <label for="openworld-name" class="sr-only">Public name, seen by the players online</label>
           <input id="openworld-name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="anonymous" />
           <button id="openworld-hide" type="button" aria-pressed="false">Hide</button>
+          <button id="openworld-emote" type="button" aria-expanded="false" aria-controls="openworld-emotes">Say</button>
+          <div id="openworld-emotes" role="group" aria-label="Emotes and phrases" hidden></div>
         </div>
       </div>
       <div id="openworld-peers" aria-label="Other heroes out of view" hidden></div>
