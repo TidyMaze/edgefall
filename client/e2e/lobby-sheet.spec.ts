@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 
 // #1044, docs/specs/thumb-dock.md section 1: the lobby controls of a battle royale (Hold in the dock, Start, Invite, Back to
 // the ship and the invite link in a sheet above the dock). The sheet is closed until Lobby opens it, it opens by itself
@@ -25,8 +25,7 @@ for (const { name, viewport } of viewports) {
     test('the lobby sheet stays closed until Lobby opens it above the dock, Esc gives the focus back, bug #1044', async ({ page }) => {
       await page.goto('./?bot=off&net=hook');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Battle royale', exact: true }).click();
+      await startMode(page, 'royale');
       await expect(page.getByRole('button', { name: 'Hold' })).toBeVisible(); // Hold stays in the dock
       await expect(page.locator('#lobby-sheet')).toBeHidden();
 
@@ -57,8 +56,7 @@ for (const { name, viewport } of viewports) {
     test('a waiting online room: the dock with Lobby fits the window and no label is clipped, bug #1044', async ({ page }) => {
       await page.goto('./?bot=off&net=hook');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Play online' }).click();
+      await startMode(page, 'online');
       await expect(page.getByRole('button', { name: 'Lobby' })).toBeVisible();
       const clipped = await page.evaluate(() =>
         [...document.querySelectorAll<HTMLElement>('#dock > button')]
@@ -75,8 +73,7 @@ for (const { name, viewport } of viewports) {
     test('a lobby waiting for players marks Lobby, the sheet stays shut until tapped, and the presence line keeps the status, bug #1044', async ({ page }) => {
       await page.goto('./?bot=off&net=hook');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Battle royale', exact: true }).click();
+      await startMode(page, 'royale');
       await page.getByRole('button', { name: 'Lobby' }).click();
       await page.getByRole('button', { name: 'Invite' }).click(); // the offline game becomes a room
       await page.keyboard.press('Escape'); // the player closes the sheet: the board is clear

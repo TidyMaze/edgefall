@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { openAdvanced } from './settings';
 
 // #839: the HUD buttons look alike. Copy is styled as Reset view, and the button that opens a private game
@@ -47,8 +47,7 @@ test('Play online shows its name and is as tall as Boss with a partner, #839', a
 test('Copy looks like Reset view and is as tall as the link beside it, #839', async ({ page }) => {
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Play online', exact: true }).click();
+  await startMode(page, 'online');
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeVisible();
   // #1032: Reset view is a thumb dock button (its label is a short word there), so Copy is no longer compared to it.
   const copy = await look(page, 'invite-copy');

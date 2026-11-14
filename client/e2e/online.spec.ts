@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { inviteLink, lowTierPages, openModes } from './modes';
+import { inviteLink, lowTierPages, openModes, startMode } from './modes';
 
 // Two isolated browser contexts. The transport is the ?net=hook test hook: the test relays records
 // from one page to the other, so no public Nostr relay is involved.
@@ -105,8 +105,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     const a = creator();
     const b = await (await browser.newContext()).newPage();
     await room({ a, b });
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     await expect(a.locator('#lobby-sheet')).toBeVisible();
     await expect(a.locator('#invite')).toBeVisible();
     await a.mouse.click(5, 5); // a tap on the board keeps the link while alone
@@ -125,8 +124,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     await room({ a, b });
 
     await expect(a.locator('#hud')).not.toBeEmpty(); // refresh() runs after the play-online listener is wired
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     const invite = await inviteLink(a);
     expect(invite).toMatch(/#room=[\w-]+&key=[\w-]{8}$/); // the creator key's fingerprint (#1323)
     await expect(a.locator('#hud')).toContainText('You are Black');
@@ -169,8 +167,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     await room({ a, b });
 
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     await expect(status(a)).toHaveText('You are Black. Waiting for an opponent...');
     await expect(a.locator('#invite')).toBeVisible();
     await expect(a.getByText('Invite link: send it to your opponent')).toBeVisible();
@@ -211,8 +208,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     const lost = new Set<string>();
     await room({ a, b }, lost);
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
     await b.goto(`./?net=hook&quality=low${hash}`);
     await b.locator('canvas').waitFor();
@@ -268,8 +264,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await room({ a, b, c });
 
     await expect(a.locator('#hud')).not.toBeEmpty(); // refresh() runs after the play-online listener is wired
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
     // The two joiners load at once: their page loads overlap instead of queueing one after the other.
     await Promise.all([b, c].map(async (page) => {
@@ -323,8 +318,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await calm(b, c);
     await room({ a, b, c });
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
     await Promise.all([b, c].map(async (page) => {
       await page.goto(`./?net=hook&quality=low${hash}`);
@@ -367,8 +361,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await calm(b);
     await room({ a, b });
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
     await b.goto(`./?net=hook&quality=low${hash}`);
     await b.locator('canvas').waitFor();
@@ -446,8 +439,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await calm(b, c);
     await room({ a, b, c }, lost);
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
     // The spectator's page loads now, in parallel with b's: the room drops its records until it is opened after the plies.
     await Promise.all([
@@ -521,8 +513,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await calm(b);
     await room({ a, b });
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.locator('#play-online').click();
+    await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
     await b.goto(`./?net=hook&quality=low${hash}`);
     await b.locator('canvas').waitFor();
@@ -562,9 +553,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     const turn = (page: Page) => page.locator('#hud .turn');
 
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.getByRole('button', { name: 'Boss with a partner' }).click();
-    await a.locator('#coop-list').getByRole('button', { name: 'The Echo' }).click();
+    await startMode(a, 'coop:echo');
     const hash = new URL(await inviteLink(a)).hash;
     expect(hash).toMatch(/^#room=[\w-]+&boss=echo&seed=\d+&key=[\w-]{8}$/);
     await b.goto(`./?bot=off&net=hook&quality=low${hash}`);
@@ -614,9 +603,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     const asked = (page: Page) => page.locator('#hud .rematch');
 
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.getByRole('button', { name: 'Boss with a partner' }).click();
-    await a.locator('#coop-list').getByRole('button', { name: 'The Echo' }).click();
+    await startMode(a, 'coop:echo');
     const hash = new URL(await inviteLink(a)).hash;
     await b.goto(`./?bot=off&net=hook&quality=low${hash}`);
     await b.locator('canvas').waitFor();
@@ -725,8 +712,7 @@ test('two tabs of the same browser context play an online game, bug #116', async
   await a.goto('./?bot=off&net=hook&quality=low'); // './' keeps the /edgefall/ path of E2E_BASE_URL, '/' is the Pages host root (404)
   await a.locator('canvas').waitFor();
   await expect(a.locator('#hud')).not.toBeEmpty(); // refresh() runs after the play-online listener is wired
-  await openModes(a);
-  await a.locator('#play-online').click();
+  await startMode(a, 'online');
   const invite = await inviteLink(a);
   await b.goto(`./?net=hook&quality=low${new URL(invite).hash}`, { waitUntil: 'commit' }); // held textures can hold the load event
   await textures; // main.ts runs on page b and waits for its textures (its canvas comes after them, #585)
@@ -793,8 +779,7 @@ test('the coordinator page closes: the lowest join_seq live peer coordinates on 
   await a.goto('./?bot=off&net=hook&beat=1200');
   await a.locator('canvas').waitFor();
   await expect(a.locator('#hud')).not.toBeEmpty();
-  await openModes(a);
-  await a.locator('#play-online').click();
+  await startMode(a, 'online');
   const hash = new URL(await inviteLink(a)).hash;
   // White first, so its join_seq is 2 and the spectator's 3: the pages load together, they open in that order.
   await Promise.all([b, c].map(async (page) => {

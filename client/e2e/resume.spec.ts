@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 
 // A local game survives a reload: saved in IndexedDB after every move, replayed on load (#218,
 // docs/specs/tech.md section 8).
@@ -77,8 +77,7 @@ test('a game at the hub hot-seat table survives a reload, still with no bot (#56
   await page.evaluate(() => {
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [-1, 0], beaten: [] }));
   });
-  await openModes(page);
-  await page.getByRole('button', { name: 'Hub' }).click();
+  await startMode(page, 'hub');
   await click(page, -1, -1); // the hot-seat table
   const hud = page.locator('#hud');
   await expect(hud).toContainText('Two players, one board.');

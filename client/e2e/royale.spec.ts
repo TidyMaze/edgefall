@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 
 // The offline battle royale (#502, rules.md section 10.4): 1 player against 5 bots on the radius 8 arena. A target
 // press locks the player's order (#611), or the player holds; the round resolves, and the HUD plate shows the reveal
@@ -86,8 +86,7 @@ test('Battle royale in the mode menu: a target press on the arena locks the orde
   page,
 }) => {
   await ready(page);
-  await openModes(page);
-  await page.getByRole('button', { name: 'Battle royale', exact: true }).click();
+  await startMode(page, 'royale');
   const hud = page.locator('#hud');
   await expect(hud.locator('.turn')).toHaveText('Battle royale · Round 1');
   await expect(hud.locator('.initiative li')).toHaveText(['You', 'Bot 1', 'Bot 2', 'Bot 3', 'Bot 4', 'Bot 5']);
@@ -142,12 +141,10 @@ test('each seat wears its own glyph on its marbles and beside its name on the pl
 test('battle royale arena is fully visible with fog at arena rim (#503)', async ({ page }) => {
   await ready(page);
   // First enter hub to verify entering royale from hub doesn't inherit hub fog radius
-  await openModes(page);
-  await page.getByRole('button', { name: 'Hub' }).click();
+  await startMode(page, 'hub');
   await expect(page.locator('body')).toHaveAttribute('data-hub');
   // Then enter battle royale
-  await openModes(page);
-  await page.getByRole('button', { name: 'Battle royale', exact: true }).click();
+  await startMode(page, 'royale');
   await expect(page.locator('#hud .turn')).toHaveText('Battle royale · Round 1');
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(null))));
   // Check that the top rim cells are within viewport and rendered

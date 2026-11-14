@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 import { openMore } from './runstart';
 
@@ -11,8 +11,7 @@ test('the rogue-lite run: the start shows the unlocks, a run over its summary, #
   await page.goto('./?bot=off');
   await page.waitForFunction(() => typeof (window as any).__run === 'function'); // the page is ready
   await page.evaluate(() => localStorage.setItem('ab-alone.roguelite', '1'));
-  await openModes(page);
-  await page.getByRole('button', { name: 'Rogue-lite run' }).click();
+  await startMode(page, 'run');
   await openMore(page);
   await expect(map.locator('.run-help').first()).toHaveText('Special marbles in rewards: Heavy, Anchor, Shield · Spark after 2 acts won in a run · Magnet after a run won · Bomb after a run won · Medic after 2 acts won in a run');
   await map.getByRole('button', { name: /^The Warden/ }).click();

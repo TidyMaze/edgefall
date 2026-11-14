@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { inviteLink, openModes } from './modes';
+import { inviteLink, startMode } from './modes';
 
 // The online battle royale (#504, docs/specs/tech.md section 6) between three browser contexts. The transport is the
 // ?net=hook test hook: the test relays every message from one page to the others, so no public Nostr relay is
@@ -47,8 +47,7 @@ test('three players: a round resolves at its deadline, the silent player holds (
 
   await a.goto('./?bot=off&net=hook&quality=low&round=1500');
   await expect(a.locator('#hud')).not.toBeEmpty(); // the mode menu's listeners are wired
-  await openModes(a);
-  await a.getByRole('button', { name: 'Battle royale', exact: true }).click();
+  await startMode(a, 'royale');
   await a.getByRole('button', { name: 'Lobby' }).click(); // the lobby sheet (#1044)
   await a.getByRole('button', { name: 'Invite' }).click(); // the offline game becomes a room
   const hash = new URL(await inviteLink(a)).hash;

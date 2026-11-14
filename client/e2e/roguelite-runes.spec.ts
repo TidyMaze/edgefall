@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ELITES, RUNES } from '../src/roguelite';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 import { openMore } from './runstart';
 
@@ -74,8 +74,7 @@ test('an elite of an archetype beaten for the first time finds its rune: told, k
   await shot(page, { path: 'test-results/roguelite-rune-found.png' });
   await page.reload(); // the next run starts with the rune
   await page.waitForFunction(() => typeof (window as any).__run === 'function');
-  await openModes(page);
-  await page.getByRole('button', { name: 'Rogue-lite run' }).click();
+  await startMode(page, 'run');
   await openMore(page);
   await expect(panel.locator('.run-runes')).toContainText(RUNES[k]!.name);
   await expect(panel.getByText('Runes to find')).not.toContainText(RUNES[k]!.name);

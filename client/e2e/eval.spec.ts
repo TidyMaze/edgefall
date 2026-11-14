@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The evaluation bar (#191): the engine's search score of the position, in local and bot games only.
@@ -85,8 +85,7 @@ test('the bar is absent in an online game, for the room creator and the invited 
   await page.goto('./?bot=off&net=hook');
   await page.locator('canvas').waitFor();
   await expect(page.locator('#eval')).toBeVisible();
-  await openModes(page);
-  await page.locator('#play-online').click();
+  await startMode(page, 'online');
   await expect(page.locator('#hud')).toContainText('You are Black');
   await expect(page.locator('#eval')).toBeHidden();
 });

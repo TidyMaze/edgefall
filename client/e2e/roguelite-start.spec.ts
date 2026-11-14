@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { openMore } from './runstart';
 import { shot } from './shot';
 
@@ -10,8 +10,7 @@ import { shot } from './shot';
 async function startScreen(page: Page): Promise<void> {
   await page.goto('./?nodes=50&bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Rogue-lite run' }).click();
+  await startMode(page, 'run');
   await expect(page.locator('#run-map')).toBeVisible();
 }
 

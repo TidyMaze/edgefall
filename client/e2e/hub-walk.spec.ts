@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The first minutes in the Hub (#1522, docs/specs/ui.md sections 4.5 and 4.7): a coach line says how to move until the player has
@@ -63,8 +63,7 @@ for (const [name, viewport, touch] of [
       await expect(coach).toBeHidden();
       await page.goto('./?firstrun'); // a new launch: the first run is done, the Hub is opened from the menu on the saved cell
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Hub' }).click();
+      await startMode(page, 'hub');
       await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 1,0');
       await expect(coach).toBeHidden(); // it does not come back
     });

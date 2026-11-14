@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // #1538: the Medal room lists the wins of the attempts of each boss, an attempt being a fight whose first move was played;
@@ -30,8 +30,7 @@ test('the Medal room shows the wins of the attempts of each boss, and the first 
     'ab-alone.medals': JSON.stringify({ echo: 7 }),
     'ab-alone.boss-tally': JSON.stringify({ echo: { wins: 2, attempts: 5 }, hull: { wins: 0, attempts: 3 } }),
   });
-  await openModes(page);
-  await page.getByRole('button', { name: 'Hub' }).click();
+  await startMode(page, 'hub');
   await click(page, 0, 2); // the Medal room
   const reader = page.locator('#reader');
   await expect(reader).toContainText('The Echo: 7 turns. Won 2 of 5.');

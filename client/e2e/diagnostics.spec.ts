@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { inviteLink, openModes } from './modes';
+import { inviteLink, startMode } from './modes';
 import { openAdvanced } from './settings';
 
 // Copy diagnostics (#220): the last events, the counters and the game, in the clipboard or selected in a text box.
@@ -91,8 +91,7 @@ test('an online game exports its connection counters, its refused moves and its 
   await a.goto('./?bot=off&net=hook');
   await a.locator('canvas').waitFor();
   await expect(a.locator('#hud')).not.toBeEmpty();
-  await openModes(a);
-  await a.locator('#play-online').click();
+  await startMode(a, 'online');
   const invite = await inviteLink(a);
   await b.goto(`./?net=hook${new URL(invite).hash}`);
   await b.locator('canvas').waitFor();

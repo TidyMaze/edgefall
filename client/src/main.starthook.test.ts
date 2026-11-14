@@ -35,6 +35,50 @@ describe('__startMode (#1690)', () => {
     expect(document.body.dataset.hub).toBeTruthy();
   });
 
+  it('starts the Open world', async () => {
+    const game = await boot('?bot=off&openworld=5');
+    await game.settle();
+    game.hook('__startMode', 'world');
+    await game.settle();
+    expect(document.body.dataset.openworld).toBeTruthy();
+  });
+
+  it('starts the battle royale, once', async () => {
+    const game = await boot('?bot=off');
+    await game.settle();
+    game.hook('__startMode', 'royale');
+    expect(document.getElementById('hud')!.textContent).toContain('Battle royale');
+  });
+
+  it('starts the online game and waits for an opponent', async () => {
+    const game = await boot('?bot=off&net=hook');
+    await game.settle();
+    game.hook('__startMode', 'online');
+    await game.settle();
+    expect(document.getElementById('hud')!.textContent).toContain('Waiting for an opponent');
+  });
+
+  it('starts a partner fight against the boss', async () => {
+    const game = await boot('?bot=off&net=hook');
+    await game.settle();
+    game.hook('__startMode', 'coop:echo');
+    await game.settle();
+    expect(game.hook<{ id: string }>('__fight').id).toBe('echo');
+  });
+
+  it('does not read boss as the daily', async () => {
+    const game = await boot('?bot=off');
+    await game.settle();
+    expect(() => game.hook('__startMode', 'boss')).toThrow('unknown mode boss');
+    expect(() => game.hook('__startMode', 'coop:nope')).toThrow('unknown mode coop:nope');
+  });
+
+  it('says when the page is booted, the landing settled', async () => {
+    const game = await boot('?bot=off');
+    await game.settle();
+    expect(game.hook('__booted')).toBe(true);
+  });
+
   it('refuses an id that is no mode and no boss', async () => {
     const game = await boot('?bot=off');
     await game.settle();

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // Hint (#192, docs/specs/ui.md section 4.2): a press shows the engine's best move for the side to move as a ghost,
@@ -276,15 +276,13 @@ test('no Hint during a boss fight, a daily fight or an online game, for the room
 
   await page.goto('./?net=hook');
   await ready(page);
-  await openModes(page);
-  await page.locator('#daily').click();
+  await startMode(page, 'daily');
   await expect(page.locator('#hud')).toContainText('Daily challenge');
   await expect(hint).toBeHidden();
 
   await page.goto('./?net=hook');
   await ready(page);
-  await openModes(page);
-  await page.getByRole('button', { name: 'Play online' }).click();
+  await startMode(page, 'online');
   await expect(page.locator('#hud')).toContainText('Waiting for an opponent');
   await expect(hint).toBeHidden();
 });

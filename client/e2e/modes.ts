@@ -9,7 +9,7 @@ export async function openModes(page: Page): Promise<void> {
 /** Starts a mode (`arena`, `run`, `daily`, `world`, `hub`) or a boss by id (`echo`, `hull`...) through the test hook, with no menu pressed (#1690).
  * The menu's own specs and one spec per mode still go through the real UI. */
 export async function startMode(page: Page, id: string): Promise<void> {
-  await page.waitForFunction(() => typeof (window as unknown as { __startMode?: unknown }).__startMode === 'function'); // the hooks are set once the page has booted
+  await page.waitForFunction(() => (window as unknown as { __booted?: () => boolean }).__booted?.() === true); // set once the landing and the saved game are settled: a mode started sooner is replaced by the Hub's entry
   await page.evaluate((mode) => (window as unknown as { __startMode: (m: string) => void }).__startMode(mode), id);
 }
 

@@ -7375,13 +7375,18 @@ if (navigator.webdriver) {
   hooks.__modeProbe = () => modeProbe.samples(); // the first-frame times of the mode entries (#1582)
   hooks.__modeReset = () => modeProbe.reset();
   hooks.__modeMarks = () => modeProbe.marks();
-  const entries = { arena: () => startLocal(false), run: beginRun, boss: startDaily, world: enterOpenWorld, hub: () => enterHub(loadProgress(store).at), daily: startDaily }; // each mode's own entry, as the menus call it
+  const entries = { arena: () => startLocal(false), run: beginRun, boss: startDaily, world: enterOpenWorld, hub: () => enterHub(loadProgress(store).at) }; // each mode's own entry, as the menus call it
   hooks.__enterMode = (mode: keyof typeof entries) => entries[mode]();
-  // Any mode or boss by id, with no menu to press (#1690): a mode of `entries`, or a boss of boss_ids(), whatever the first-win lock or the lifts say.
+  // Any mode by id, a boss of boss_ids() or a partner fight `coop:<boss>`, with no menu to press (#1690), whatever the first-win lock or the lifts say.
+  const startable: Record<string, () => unknown> = { arena: entries.arena, run: entries.run, world: entries.world, hub: entries.hub, daily: startDaily, online: () => playOnline(), royale: () => !online && startRoyale({ seed: crypto.getRandomValues(new Uint32Array(1))[0]!, rounds: [] }) };
   hooks.__startMode = (id: string) => {
-    if (Object.hasOwn(entries, id)) return entries[id as keyof typeof entries]();
-    if (!boss_ids().includes(id)) throw new Error(`unknown mode ${id}`);
-    startBoss(id, crypto.getRandomValues(new Uint32Array(1))[0]!);
+    if (Object.hasOwn(startable, id)) return startable[id]!();
+    const partner = id.startsWith('coop:') ? id.slice(5) : null;
+    const boss = partner ?? id;
+    if (!boss_ids().includes(boss)) throw new Error(`unknown mode ${id}`);
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+    if (partner) playOnline({ boss, seed });
+    else startBoss(boss, seed);
   };
   hooks.__openworldEnemies = () => openWorld.loaded.mode.enemies();
   hooks.__openworldDrawn = () => openWorld.loaded.mode.drawn; // the frames drawn since the world opened: a spec waits for one before it reads the wild fight (#1601)
@@ -8189,3 +8194,4 @@ renderer.setAnimationLoop((now) => {
 // in its store: the click does the same, and a world only replaces the board on screen.
 if (openWorldParam !== '' || read(store, WILD_KEY)) openWorldButton.click(); // last: the whole page is ready; a reload during a wild fight comes back to the world (#1511)
 wildMarked(false); // the mark is only for the reload
+hookHost.__booted = () => true; // the landing and the saved game are settled: a test hook may start a mode now (#1690)

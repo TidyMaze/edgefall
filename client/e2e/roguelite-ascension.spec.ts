@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 import { openMore } from './runstart';
 
@@ -14,8 +14,7 @@ test('the rogue-lite run: the start screen picks an ascension level, a run won u
     localStorage.setItem('ab-alone.roguelite', '1');
     localStorage.setItem('ab-alone.roguelite.ascension', '4');
   });
-  await openModes(page);
-  await page.getByRole('button', { name: 'Rogue-lite run' }).click();
+  await startMode(page, 'run');
   await openMore(page);
   await expect(map.locator('button[data-ascension]:enabled')).toHaveCount(5); // levels 0 to 4
   await expect(map.locator('button[data-ascension="5"]')).toBeDisabled();

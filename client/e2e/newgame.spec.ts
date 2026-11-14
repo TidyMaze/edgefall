@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 
 // New game (#230): it leaves the local game in progress for the start position, bot on or off as it was,
 // and deletes its save (#218). Once a move is played the first press asks "Confirm new game" for a few
@@ -208,8 +208,7 @@ test('no New game button during a daily fight', async ({ page }) => {
   const button = page.locator('#new-game');
   await page.goto('./?net=hook');
   await ready(page);
-  await openModes(page);
-  await page.locator('#daily').click();
+  await startMode(page, 'daily');
   await expect(page.locator('#hud')).toContainText('Daily challenge');
   await expect(button).toBeHidden();
 });
@@ -218,8 +217,7 @@ test('no New game button in an online game', async ({ page }) => {
   const button = page.locator('#new-game');
   await page.goto('./?net=hook');
   await ready(page);
-  await openModes(page);
-  await page.getByRole('button', { name: 'Play online' }).click();
+  await startMode(page, 'online');
   await expect(page.locator('#hud')).toContainText('Waiting for an opponent');
   await expect(button).toBeHidden();
 });

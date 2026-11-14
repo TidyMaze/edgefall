@@ -76,8 +76,7 @@ test('a plain boss fight shows no daily line and does not count a daily attempt,
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await expect(page.locator('#hud')).not.toContainText('Daily challenge');
   await page.getByRole('button', { name: 'Retry' }).click();
-  await openModes(page);
-  await page.locator('#daily').click();
+  await startMode(page, 'daily');
   await expect(page.locator('#hud')).toContainText('Daily challenge 2027-03-30 · attempt 1');
 });
 
@@ -89,8 +88,7 @@ test('the daily goal shows before the first move, folds away after it, and the G
   await page.clock.setFixedTime(new Date('2027-03-30T08:00:00Z'));
   await page.goto('./?bot=off');
   await expect(page.locator('#daily')).toBeEnabled();
-  await openModes(page);
-  await page.locator('#daily').click();
+  await startMode(page, 'daily');
   const goal = page.locator('#hud .goal');
   const control = page.getByRole('button', { name: 'Goal' });
   await expect(goal).toHaveText(/^Eject 6 .+/); // before the first move the HUD line holds the goal: this date's boss is The Echo, its two-step card (#1524)

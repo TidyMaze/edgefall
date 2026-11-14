@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The rogue-lite run (#798, docs/specs/roguelite.md) in the browser: Rogue-lite run in the mode menu shows the map, a
@@ -8,8 +8,7 @@ test('the rogue-lite run: the map from the mode menu, a pick starts its fight, t
   const map = page.locator('#run-map');
   const note = page.locator('#hud small');
   await page.goto('./?nodes=50');
-  await openModes(page);
-  await page.getByRole('button', { name: 'Rogue-lite run' }).click();
+  await startMode(page, 'run');
   await expect(map).toBeVisible();
   await expect(map.locator('.run-line')).toHaveText('Rogue-lite run · army 14 marbles · pick a fight');
   await shot(page, { path: testInfo.outputPath('roguelite-map.png') });

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { inviteLink, openModes } from './modes';
+import { inviteLink, startMode } from './modes';
 import { shot } from './shot';
 import { openAdvanced } from './settings';
 
@@ -17,8 +17,7 @@ import { openAdvanced } from './settings';
 // Every boss has its door on its deck and every mode with no table its room, on the gallery ring of a radius 3 map.
 
 async function ship(page: Page): Promise<void> {
-  await openModes(page);
-  await page.getByRole('button', { name: 'Hub', exact: true }).click(); // the mode menu's, not the exit's "Back to the hub" (#1517)
+  await startMode(page, 'hub');
 }
 
 /** Opens `url`, then Ship with the marble saved on `cell` of the Mess. */

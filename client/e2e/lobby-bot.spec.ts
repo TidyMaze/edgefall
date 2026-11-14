@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { inviteLink, lowTierPages, openModes } from './modes';
+import { inviteLink, lowTierPages, startMode } from './modes';
 
 // #1529: a lobby nobody joins offers Play the bot while you wait after 20 s (?lobbywait shortens it under the test browser, 300 ms here).
 // The bot game is of the same kind, the room stays open and listening, and a peer who joins during it shows a line to switch to the room.
@@ -27,8 +27,7 @@ test('Play the bot while you wait: a bot game, the room kept, a switch line once
   await room({ a, b });
   await a.goto('./?bot=off&net=hook&quality=low&lobbywait=300');
   await a.locator('canvas').waitFor();
-  await openModes(a);
-  await a.locator('#play-online').click();
+  await startMode(a, 'online');
   const invite = await inviteLink(a);
   const bot = a.getByRole('button', { name: 'Play the bot while you wait' });
   await expect(bot).toBeVisible();
