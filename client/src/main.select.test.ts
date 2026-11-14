@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { type Axial } from './board';
 import { boot, type Game } from './test/harness';
 
-// Selecting a line and previewing its move (#1679): the far end selects the line, the HUD counts it, a touch screen
+// Selecting a line and previewing its move (#1679): the HUD counts the line, a touch screen
 // previews on a first tap and plays on a second.
 
 type Move = { cells: Axial[]; dir: number };
@@ -28,15 +28,24 @@ const target = (m: Move): Axial => {
 };
 
 describe('selecting a line (#1679)', () => {
-  it('selects the whole line from its two ends and says how many marbles', async () => {
+  it('counts the marbles of the line as they are clicked, in order', async () => {
     const game = await boot('?bot=off');
     const mv = trio(game);
-    const ends = [mv.cells[0]!, mv.cells[2]!].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    game.click(...ends[0]!);
+    game.click(...mv.cells[0]!);
     expect(hudText()).toContain('1 marble selected: pick an arrow');
-    game.click(...ends[1]!);
+    game.click(...mv.cells[1]!);
+    game.click(...mv.cells[2]!);
     expect(rings(game).length).toBe(3);
     expect(hudText()).toContain('3 marbles selected: pick an arrow');
+  });
+
+  it('a click two cells away leaves a gap: it is refused, and a cell next to the first plays nothing (#1688)', async () => {
+    const game = await boot('?bot=off');
+    game.click(-2, 2);
+    game.click(0, 2); // the gap: refused, one marble stays selected
+    expect(rings(game)).toEqual([[-2, 2]]);
+    game.click(1, 1);
+    expect(plies(game)).toBe(0);
   });
 
   it('keeps one marble when the far marble is not two cells in line', async () => {

@@ -17,7 +17,6 @@ import {
   moveForClick,
   parseMoves,
   toggleSelection,
-  fillLine,
   type Axial,
   type Move,
 } from './board';
@@ -5139,10 +5138,8 @@ function click(q: number, r: number): void {
     return hud(` · ${roomTurn(dualShown!.room!)}`);
   }
   if (side === engine.to_move()) {
-    const before = selected.length;
     selected = toggleSelection(selected, [q, r]);
     dropPreview();
-    if (before === 1 && selected.length === 1) selected = fillLine(selected, [q, r], (c) => engine.board()[cellIndex(c[0], c[1])] === side); // the far end of a line selects it all (#1679)
     keyDir = -1;
     hint.clear(); // a new selection
     if (firstRun === 'match' && guided) showStep(nextStep(matchStep, { selected: selected.length }));

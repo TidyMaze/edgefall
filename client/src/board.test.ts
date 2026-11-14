@@ -16,7 +16,6 @@ import {
   moveForClick,
   parseMoves,
   toggleSelection,
-  fillLine,
   type Move,
 } from './board';
 
@@ -203,23 +202,6 @@ describe('toggleSelection', () => {
 
   it('clears the selection when removing the middle marble would leave a gap', () => {
     expect(toggleSelection([[0, 0], [1, 0], [2, 0]], [1, 0])).toEqual([]);
-  });
-});
-
-describe('fillLine', () => {
-  const all = () => true;
-  it('selects the whole line from one marble to the marble two cells away (#1679)', () => {
-    expect(fillLine([[0, 0]], [2, 0], all)).toEqual([[0, 0], [1, 0], [2, 0]]);
-    expect(fillLine([[2, 2]], [2, 0], all)).toEqual([[2, 2], [2, 1], [2, 0]]);
-  });
-  it('keeps the selection when the middle cell is not ours, the target is off line or the selection is not one marble', () => {
-    const sel: [number, number][] = [[0, 0]];
-    expect(fillLine(sel, [2, 0], (c) => c[0] !== 1)).toEqual(sel);
-    expect(fillLine(sel, [3, 0], all)).toEqual(sel);
-    expect(fillLine(sel, [1, 1], all)).toEqual(sel);
-    expect(fillLine([], [2, 0], all)).toEqual([]);
-    const two: [number, number][] = [[0, 0], [1, 0]];
-    expect(fillLine(two, [3, 0], all)).toEqual(two);
   });
 });
 

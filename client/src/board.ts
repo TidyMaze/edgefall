@@ -137,17 +137,6 @@ function movesTo(moves: Move[], selection: readonly Axial[], target: Axial): Mov
   });
 }
 
-/** A click on an own marble two cells from the one selected, in line, with our marble between: the whole line of 3 (#1679).
- * Anything else keeps the selection. */
-export function fillLine(selection: readonly Axial[], cell: Axial, owns: (c: Axial) => boolean): Axial[] {
-  if (selection.length !== 1) return [...selection];
-  const [q, r] = selection[0]!;
-  const dir = DIRECTIONS.find(([dq, dr]) => cell[0] === q + 2 * dq && cell[1] === r + 2 * dr);
-  if (!dir) return [...selection];
-  const mid: Axial = [q + dir[0], r + dir[1]];
-  return owns(mid) ? [selection[0]!, mid, cell] : [...selection];
-}
-
 /** The legal move for "selected group, then clicked target cell", or null. */
 export function moveForClick(moves: Move[], selection: readonly Axial[], target: Axial): Move | null {
   return movesTo(moves, selection, target)[0] ?? null;
