@@ -1689,6 +1689,8 @@ body[data-openworld] #openworld-ask:not([hidden]) { display: block; }
 #settings-menu .setting-reset button { padding-inline-start: 0.75rem; } /* no icon, no empty slot */
 #settings-menu button.danger { color: var(--danger); border-color: var(--danger); }
 #settings-menu button.danger:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
+/* The Hub Cutaway (#1689, ?hub=cutaway): the ship stands in place of the deck, so the plates over the deck's cells have nothing to label. */
+body[data-hub-cutaway='true'] #hub-labels { display: none; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

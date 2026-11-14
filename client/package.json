@@ -13,7 +13,7 @@
     "layout:check": "bun run scripts/check-layout-bounds.ts",
     "e2e:layout": "playwright test e2e/phone-layout.spec.ts --project=chromium",
     "e2e": "playwright test --project=chromium --project=chromium-serial",
-    "e2e:budget": "E2E_BUDGET=1 playwright test e2e/world-budget.spec.ts --project=chromium --workers=1 --retries=0",
+    "e2e:budget": "E2E_BUDGET=1 playwright test e2e/world-budget.spec.ts e2e/hub-cutaway.spec.ts --project=chromium --workers=1 --retries=0",
     "e2e:all": "playwright test",
     "e2e:webgpu": "playwright test -c playwright.webgpu.config.ts",
     "build": "bun run wasm && tsc --noEmit && vite build"

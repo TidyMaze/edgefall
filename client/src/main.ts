@@ -343,6 +343,7 @@ import { NO_ARMY, NO_RESOURCES, type Army, type Resources } from './openworldres
 import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hullKeeps, leave as leaveBrought, leaveRelic, lose, placeBrought, relicsMask, sell, sellRelic, thrownOff, upgrade as upgradeMarble, wildFoes, withoutKinds, type Stock } from './openworldworkshop';
 import { workshopHtml } from './workshopview';
 import { bossLockLine, labelsHtml, nextGoal, pipsHtml, railHtml } from './hubview';
+import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, shipState } from './hubcutaway';
 import { clearStray } from './modeswitch';
 import { indexedDbStore } from './idb';
 import { LocalSaves, type LocalGame } from './savegame';
@@ -503,7 +504,9 @@ const RUN_POINTS = boardPoints(CELLS, 1, [0, 0.5]);
 const DUAL_BOARD_POINTS = boardPoints(DUAL_CELLS, 1, [0, 0.5]);
 const blenderBoard = (): boolean => fight?.id === 'ballast' || fight?.id === 'dual' || (run !== null && !fight); // the boards framed like the hub's (#1374)
 const terraceFramed = (): boolean => tableZeroActive({ room: keepRoom, ready: terraceReady });
+let cutawayShown = false; // the Hub Cutaway ship is drawn in place of the deck (#1689, `?hub=cutaway`)
 const fightView = (): View => {
+  if (hub && cutawayShown) return CUTAWAY_VIEW; // a fixed camera on the whole ship
   if (hub && terraceFramed()) return fitTerrace(HUB_POINTS, innerWidth < innerHeight ? 3.4 : 3.6, innerWidth, innerHeight);
   if (royale && terraceFramed()) return fitTerrace(ROYALE_POINTS, 4, innerWidth, innerHeight);
   if (terraceFramed() && blenderBoard()) return fitTerrace(fight?.id === 'ballast' ? BALLAST_POINTS : fight?.id === 'dual' ? DUAL_BOARD_POINTS : RUN_POINTS, activeRadius(), innerWidth, innerHeight);
@@ -4284,6 +4287,7 @@ const sightOf = (board: ArrayLike<number>): Set<number> => visibleCells(board, P
 // The terrace (#1314): the arena's glTF from Blender, in place of the room in a 1v1 game. A page whose file is missing or broken
 // keeps the room; so do the hub, Ballast Mind, the Dual Room, the royale and a run, until their own PRs (#1374); `?scene=room` asks for it.
 let terraceReady = false;
+let terraceArena: THREE.Group | null = null; // the arena's file as drawn: its sky, ridges and ground stand behind the ship no more (#1689)
 let hubProps: HubKit | null = null; // the props of the hub file, put on the rooms of the game's deck (#1374)
 /** The boards of the terrace (#1374): the arena's own radius 4 slab, and the slabs of the two bosses whose board is another one. */
 const terraceBoards: Record<'arena' | 'ballast' | 'dual' | 'hub' | 'royale', THREE.Group | null> = { arena: null, ballast: null, dual: null, hub: null, royale: null };
@@ -4297,7 +4301,9 @@ const syncDishes = (): void => {
 };
 /** Shows the board of the fight, hides the others. */
 const showBoard = (): void => {
-  for (const [name, board] of Object.entries(terraceBoards)) if (board) board.visible = name === boardOf();
+  for (const [name, board] of Object.entries(terraceBoards)) if (board) board.visible = name === boardOf() && !(name === 'hub' && cutawayShown); // the ship stands in place of the hub's deck (#1689)
+  sceneRenderer.marbles.visible = !(hub && cutawayShown); // and of its room glyphs and marble
+  if (terraceArena) terraceArena.visible = !(hub && cutawayShown); // the ship floats in space
   const wearsProp = boardOf() !== 'hub'; // the deck's silhouette prop stands by every board but the hub's (#1551)
   sceneRenderer.showDeckProp(wearsProp, frame?.radius ?? RADIUS, innerWidth < innerHeight);
   document.body.dataset.deckProp = String(wearsProp); // read by the e2e tests
@@ -4320,6 +4326,23 @@ function wearKit(mesh: THREE.Mesh, kit: THREE.Mesh, y: number): void {
   mesh.position.y = y - TERRACE_LIFT; // the marbles' group stands 0.11 higher on the terrace
 }
 const terraceFile = (name: string) => meshoptLoader().loadAsync(`${import.meta.env.BASE_URL}assets/pbr/${name}.glb`);
+// The Hub Cutaway (#1689): behind `?hub=cutaway`, off by default; with the flag off its file is never asked for. One shell is loaded at a time, the window's.
+const cutawaySpace = new THREE.Color(NEON.sky);
+const cutaway = cutawayOn(location.search) ? new Cutaway(terraceFile, () => refresh()) : null;
+if (cutaway) sceneRenderer.terrace.add(cutaway.group);
+/** Draws the ship in the Hub of the terrace, and the deck again anywhere else; the camera follows when the ship comes or goes. */
+function syncCutaway(): void {
+  if (!cutaway) return;
+  const { beaten } = loadProgress(store);
+  const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipState(beaten, locked, locked ? null : goalRoom(nextGoal(beaten, ranRun(store)))));
+  if (shown) sceneRenderer.scene.background = cutawaySpace; // the ship floats in the dark, not in the deck's sky
+  if (shown === cutawayShown) return;
+  cutawayShown = shown;
+  document.body.dataset.hubCutaway = String(shown); // read by the e2e tests, and by the CSS that hides the plates
+  showBoard();
+  view = fitted = fightView();
+  applyView();
+}
 let boardRequested = false;
 /** The board shows next: a page that opened in the world asks for its files now (#1520), and the canvas stays veiled until the terrace is drawn: not the room, not a blank board. */
 function needBoard(): void {
@@ -4364,6 +4387,7 @@ function loadBoard(): void {
   .then(([[arena, kit, hint, props, ballast, dual, hubDeck, royaleSlab]]) => {
     const drawn = mergeByMaterial(arena.scene, true, neonLook); // 5 draw calls, not 1,489 nodes
     sceneRenderer.terrace.add(drawn);
+    terraceArena = drawn;
     terraceBoards.arena = drawn.getObjectByName('terrace_board') as THREE.Group;
     hubProps = hubKit(withoutHubStaircase(hubDeck.scene));
     for (const [name, file] of [['ballast', ballast], ['dual', dual], ['hub', hubDeck], ['royale', royaleSlab]] as const) {
@@ -4439,6 +4463,7 @@ function refresh(): void {
   if (!replaying && cueWatch.selection.changed(selected)) playCue('selection'); // when the selection changes, not on each redraw
   if (previewed && !previewLive()) dropPreview(); // the selection, the position or the game moved on (#1679)
   syncTableZero();
+  syncCutaway();
   dirty = CHANGE_DRAWS;
   syncSpace();
   syncAuto();
@@ -5529,6 +5554,7 @@ boardZoomButton.addEventListener('click', () => {
 });
 
 addEventListener('resize', () => {
+  syncCutaway(); // the shell follows the window (#1689)
   if (view === fitted) view = fitted = fightView();
   frameCamera();
   setPixelRatio(renderPixelRatio(devicePixelRatio, navigator.webdriver));
