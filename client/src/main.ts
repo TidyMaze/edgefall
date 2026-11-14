@@ -17,6 +17,7 @@ import {
   moveForClick,
   parseMoves,
   toggleSelection,
+  fillLine,
   type Axial,
   type Move,
 } from './board';
@@ -829,7 +830,14 @@ function syncEntrance(now: number): void {
   if (entrance.active) document.body.dataset.entrance = entrance.name; // read by the e2e tests
   else delete document.body.dataset.entrance;
 }
+// The touch preview of an arrow (#1679, tapPreview below): declared here because applyView, which drops it, runs early.
+let previewed: { cell: Axial; key: string; engine: object; plies: number } | null = null;
+let tapHover = false; // the hover was set by a tap, not a mouse
+const tapPlay = Object.assign(document.createElement('div'), { id: 'tap-play', hidden: true, textContent: 'Play' });
+document.body.append(tapPlay);
+const selectionKey = (): string => selected.map((c) => c.join(',')).join(';');
 function applyView(): void {
+  if (previewed) dropPreview(); // the camera moved: the Play pill would stay at its old pixels (#1679)
   dirty = CHANGE_DRAWS;
   syncEntrance(performance.now());
   if (freeCam.active) {
@@ -4406,6 +4414,7 @@ function syncTableZero(): void {
 function refresh(): void {
   if (!booted) return; // the page is still booting: the lets declared further down are not initialised yet (#1628)
   if (!replaying && cueWatch.selection.changed(selected)) playCue('selection'); // when the selection changes, not on each redraw
+  if (previewed && !previewLive()) dropPreview(); // the selection, the position or the game moved on (#1679)
   syncTableZero();
   dirty = CHANGE_DRAWS;
   syncSpace();
@@ -5076,6 +5085,7 @@ function play(seenMove: Move): void {
     return refresh();
   }
   selected = [];
+  dropPreview();
   keyDir = -1;
   if (firstRun === 'match') advanceMatch(seenMove, pushed);
   void online?.send(record);
@@ -5107,10 +5117,16 @@ function click(q: number, r: number): void {
     return hud(` · ${roomTurn(dualShown!.room!)}`);
   }
   if (side === engine.to_move()) {
+    const before = selected.length;
     selected = toggleSelection(selected, [q, r]);
+    dropPreview();
+    if (before === 1 && selected.length === 1) selected = fillLine(selected, [q, r], (c) => engine.board()[cellIndex(c[0], c[1])] === side); // the far end of a line selects it all (#1679)
     keyDir = -1;
     hint.clear(); // a new selection
     if (firstRun === 'match' && guided) showStep(nextStep(matchStep, { selected: selected.length }));
+    refresh();
+    if (selected.length > 0 && firstRun !== 'match') hud(pickNote(`${selected.length} marble${selected.length > 1 ? 's' : ''} selected: pick an arrow`)); // how many marbles are in the line (#1679)
+    return void botTurn();
   } else {
     // The engine is the only judge: a click that is not a legal move changes nothing.
     const mv = moveForClick(legalMoves(), selected, [q, r]);
@@ -5246,6 +5262,7 @@ canvas.addEventListener('pointermove', (e) => {
       return;
     } else if (press.drag || isDrag(e.clientX - press.x, e.clientY - press.y)) {
       press.drag = true;
+      dropPreview();
       view = orbit(view, e.clientX - last.x, e.clientY - last.y);
     }
     applyView();
@@ -5262,6 +5279,40 @@ canvas.addEventListener('pointermove', (e) => {
   refreshGhosts(legalMoves());
 });
 
+// A touch screen has no hover: the first tap on an arrow cell shows the ghost of its move and a Play pill over it, a second tap on the same cell plays it (#1679).
+// The preview belongs to one selection of one game position: any other selection, move or game drops it, and the ghost it set with it.
+function dropPreview(): void {
+  previewed = null;
+  tapPlay.hidden = true;
+  if (tapHover) hover = null;
+  tapHover = false;
+}
+const previewLive = (): boolean => !hub && !royale && previewed !== null && previewed.engine === engine && previewed.plies === history.length && previewed.key === selectionKey();
+/** The note under the plate: a mode with a rule line of its own (a boss fight, the Dual Room) keeps it alone. */
+const pickNote = (text: string): string => (fight || dualShown ? '' : `<span class="pick-note">${text}</span>`);
+const EDGE = 8; // px kept between the Play pill and the window's edge
+function tapPreview(e: PointerEvent, cell: Axial): boolean {
+  if (e.pointerType === 'mouse' || firstRun === 'match' || hub || royale || armed || swapping || selected.length === 0) return false;
+  if (previewLive() && sameCell(previewed!.cell, cell)) return dropPreview(), false; // the second tap: the click plays it
+  const mv = moveForClick(legalMoves(), selected, cell);
+  if (!mv) return false;
+  previewed = { cell, key: selectionKey(), engine, plies: history.length };
+  hover = cell;
+  tapHover = true;
+  refreshGhosts(legalMoves());
+  const at = sceneRenderer.cellToScreen(cell[0], cell[1], innerWidth, innerHeight, 1, 0);
+  tapPlay.hidden = false; // shown first: its size places it
+  const { width, height } = tapPlay.getBoundingClientRect();
+  const dock = document.getElementById('hud-dock')!.getBoundingClientRect();
+  let y = at.y - 34; // above the arrow, so the ghost under it stays in view; below it when the plate is there
+  if (y - height / 2 < Math.max(EDGE, dock.bottom) && at.x + width / 2 > dock.left && at.x - width / 2 < dock.right) y = at.y + 34;
+  tapPlay.style.left = `${Math.min(Math.max(at.x, EDGE + width / 2), innerWidth - EDGE - width / 2)}px`;
+  tapPlay.style.top = `${Math.min(Math.max(y, EDGE + height / 2), innerHeight - EDGE - height / 2)}px`;
+  tapPlay.classList.toggle('still', reducedMotion());
+  hud(pickNote('Tap the arrow again to play'));
+  return true;
+}
+
 function release(e: PointerEvent): void {
   const wasClick = e.type === 'pointerup' && press && !press.drag && pointers.size === 1;
   const dropped = e.type === 'pointerup' && marbleDrag && press!.drag && pointers.size === 1;
@@ -5277,6 +5328,7 @@ function release(e: PointerEvent): void {
     return;
   }
   const cell = cellAt(e);
+  if (cell && tapPreview(e, cell)) return;
   if (cell) click(cell[0], cell[1]);
   else if (royale && raycaster.intersectObjects(arenaDiscs).length) return; // the hole (#610): no prop behind it
   else if (propsShut()) return; // a fight is on: no prop behind the board opens (#1668)

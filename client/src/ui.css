@@ -1666,6 +1666,12 @@ body[data-openworld] #openworld-ask:not([hidden]) { display: block; }
 #openworld-emotes:not([hidden]) { display: flex; flex-basis: 100%; flex-wrap: wrap; gap: 0.5rem; }
 #openworld-nearby { flex-basis: 100%; margin: 0; padding: 0; list-style: none; font: 0.875rem/1.4 var(--ui); }
 #openworld-nearby:empty { display: none; }
+/* #1679: the line that counts the selected marbles and the touch preview: a hint line in the text colour, and a Play pill over the previewed arrow. */
+#hud .pick-note { display: block; margin-top: 0.25rem; color: var(--text); font-size: 0.875rem; font-weight: 500; }
+#tap-play { position: fixed; z-index: 5; transform: translate(-50%, -50%); padding: 0.375rem 0.75rem; border-radius: 999px; background: var(--accent); color: #0b0e10; font: 600 0.875rem/1 var(--ui); pointer-events: none; box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.4); animation: tap-play-pulse 0.9s ease-in-out infinite; }
+#tap-play[hidden] { display: none; }
+@keyframes tap-play-pulse { 50% { transform: translate(-50%, -50%) scale(1.12); } }
+#tap-play.still { animation: none; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */
