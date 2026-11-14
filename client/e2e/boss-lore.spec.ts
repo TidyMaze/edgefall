@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { parseRecorded } from '../src/test/chaplain-game';
 import { BOSS_LORE } from '../src/lorelogs';
 import { SEALED } from '../src/story';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // #1589: a boss win shows that boss's entry of the story under the banner (a sheet over the dock that lets every press through), files it in
@@ -27,9 +27,7 @@ for (const { name, viewport, touch } of sizes) {
       });
       await page.goto('./?bot=off');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Boss fight' }).click();
-      await page.locator('#boss-list').getByRole('button', { name: 'The Swarm' }).click();
+      await startMode(page, 'swarm');
       await expect(page.locator('#lore')).toBeHidden(); // none during the fight
       await page.evaluate((records) => (window as any).__playMoves(records), plies);
       await expect(page.locator('#hud')).toContainText('Victory');
@@ -65,9 +63,7 @@ for (const { name, viewport, touch } of sizes) {
       });
       await page.goto('./?bot=off');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Boss fight' }).click();
-      await page.locator('#boss-list').getByRole('button', { name: 'The Hull' }).click();
+      await startMode(page, 'hull');
       await page.evaluate((records) => (window as any).__playMoves(records), hullPlies);
       await expect(page.locator('#hud')).toContainText('Victory');
       await expect(page.locator('#lore-title')).toHaveText(SEALED.title);

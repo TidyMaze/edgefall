@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { ANNOUNCED_AT, CONVERTED_AT, EXPLODED_AT, SEED, parseRecorded } from '../src/test/chaplain-game';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { shot } from './shot';
 
 // Waits for a draw that began after this call. It is asked of the page, so the draw throttle does not hold it (#435).
@@ -24,9 +24,7 @@ test('start The Echo, play a move, the boss replies, Retry resets the board', as
     await page.mouse.click(p.x, p.y);
   };
 
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await expect(hud).toContainText('P1');
   await expect(hud).toContainText('White to move');
@@ -162,9 +160,7 @@ const startChaplain = async (page: Page, { reduced = true } = {}) => {
   await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
   await page.goto('./?nodes=200');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Chaplain' }).click();
+  await startMode(page, 'chaplain');
   await expect(page.locator('#boss-bar .name')).toContainText('The Chaplain');
   await expect(page.locator('body')).toHaveAttribute('data-converted', '0');
 };
@@ -267,9 +263,8 @@ test('start The Choir: the boss moves the army in turn, the next army is marked,
     await page.mouse.click(p.x, p.y);
   };
 
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Choir' }).click();
+  await page.keyboard.press('Shift'); // a gesture: the page makes its audio on the first one, the menu press used to be it, and the tell cue needs it
+  await startMode(page, 'choir');
   await expect(page.locator('#boss-bar .name')).toContainText('The Choir');
   await expect(hud).toContainText('White ejected 0/6 · Black ejected 0/6');
   await expect(hud).toContainText('Next army: Alto');
@@ -329,9 +324,7 @@ test('start The Ballast Mind: its radius 5 board on the Bridge, its shells in th
   await page.goto('./');
   await page.locator('canvas').waitFor();
   const body = page.locator('body');
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Ballast Mind' }).click();
+  await startMode(page, 'ballast');
   await expect(page.locator('#boss-bar .name')).toContainText('The Ballast Mind');
   await expect(page.locator('#hud')).toContainText('White ejected 0/12 · Black ejected 0/12');
   await expect(body).toHaveAttribute('data-deck', 'bridge');
@@ -350,9 +343,7 @@ test('The Ballast Mind radius 5 board frames in 1280x720 and phone upright, task
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('./');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Ballast Mind' }).click();
+  await startMode(page, 'ballast');
   await expect(page.locator('#boss-bar .name')).toContainText('The Ballast Mind');
 
   // Verify all radius 5 cells fit within the 1280x720 viewport

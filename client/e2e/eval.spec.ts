@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { shot } from './shot';
 
 // The evaluation bar (#191): the engine's search score of the position, in local and bot games only.
@@ -67,9 +67,7 @@ test('the bar follows a bot game, and is absent in a boss fight, #191', async ({
   await expect.poll(plies, { timeout: 30_000 }).toBe(2); // the bot answered
   await expect(bar).toHaveAttribute('data-ply', '2', { timeout: 30_000 });
 
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await expect(bar).toBeHidden();
   await click(page, 0, 2);

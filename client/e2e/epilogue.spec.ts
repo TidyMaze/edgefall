@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { parseRecorded } from '../src/test/chaplain-game';
 import { BOSS_ENDS } from '../src/bossends';
 import { CLAMP_OPEN, EPILOGUE } from '../src/epilogue';
-import { openModes } from './modes';
+import { startMode, startBoss } from './modes';
 import { shot } from './shot';
 
 // #1546, #1588: each boss has its own victory line, and the win that reaches stage 7 plays a short epilogue once. There is no recorded win of The
@@ -29,9 +29,7 @@ for (const { name, viewport, touch } of sizes) {
       }, story);
       await page.goto('./?bot=off');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Boss fight' }).click();
-      await page.locator('#boss-list').getByRole('button', { name: boss }).click();
+      await startBoss(page, boss);
       await page.evaluate((records) => (window as any).__playMoves(records), plies);
       await expect(page.locator('#hud')).toContainText('Victory');
     }
@@ -80,9 +78,7 @@ for (const { name, viewport, touch } of sizes) {
       expect(await page.evaluate(() => localStorage.getItem('ab-alone.epilogue'))).toBe('seen');
       await page.reload();
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Boss fight' }).click();
-      await page.locator('#boss-list').getByRole('button', { name: 'The Hull' }).click();
+      await startMode(page, 'hull');
       await page.evaluate((records) => (window as any).__playMoves(records), hullPlies);
       await expect(page.locator('#hud')).toContainText('Victory');
       await expect(page.locator('#epilogue')).toBeHidden();

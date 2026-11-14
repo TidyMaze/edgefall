@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pauseClock, stepClock } from './clock';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { shot } from './shot';
 
 // The Overseer (#635, game-design.md section 7.11) from the fixture of the core tests
@@ -42,9 +42,7 @@ async function startOverseer(page: Page): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' }); // the setup slides take no time
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Overseer' }).click();
+  await startMode(page, 'overseer');
   await expect(page.locator('#boss-bar .name')).toContainText('The Overseer');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'chapel');
 }

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ICONS } from '../src/icons';
 import { knockPitch } from '../src/sound';
-import { openModes } from './modes';
+import { startMode } from './modes';
 
 // The ejection sound (world.md section 7): the page says which sound an ejection played in
 // data-sound, and window.__audio() gives the state of the audio context ('none' before one exists).
@@ -202,9 +202,7 @@ test('the music names the scene, and builds its layers only once the Music slide
   await page.keyboard.press('ArrowRight'); // a key is a gesture: it starts the audio
   await expect.poll(async () => (await scene()).layers).toBe(1);
   await page.keyboard.press('Escape');
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect.poll(async () => scene()).toMatchObject({ id: 'boss:echo', layers: 1, pulse: 0.5, track: false });
 });
 

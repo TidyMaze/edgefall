@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 
 // Boss phase notches scratched on the arena frame (#356, world.md section 6 rule 4): one lit notch per boss marble left
 // (per ejection for The Echo) until the next phase, dark as they go, and a glyph at the threshold. Clear board and the low tier keep them (section 8).
@@ -30,9 +30,7 @@ test('an ejected boss marble puts a phase notch out on the frame, with clear boa
   const notches = () => page.evaluate(() => (window as any).__notches());
   expect(await notches()).toEqual({ lit: 0, dark: 0, glyph: false }); // no boss, no phase
 
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   const hud = page.locator('#hud');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   expect(await notches()).toEqual({ lit: 3, dark: 0, glyph: true }); // P2 after 3 ejections

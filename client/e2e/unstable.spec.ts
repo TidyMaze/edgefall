@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Unstable Core (#751, game-design.md section 7.13) from the fixtures of the core tests: fight seed 2 and ?bot=off, so
@@ -34,9 +34,7 @@ async function startCore(page: Page, reducedMotion = true): Promise<void> {
   await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
   await page.goto('./?bot=off&quality=low');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Unstable Core' }).click();
+  await startMode(page, 'core');
   await expect(page.locator('#boss-bar .name')).toContainText('The Unstable Core');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'furnace');
   await page.mouse.move(2, 2); // no hover ghost

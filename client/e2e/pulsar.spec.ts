@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pauseClock, stepClock } from './clock';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Pulsar (#675, game-design.md section 7.10) from the fixture of the core tests: fight seed 2 and ?bot=off, so the
@@ -27,9 +27,7 @@ async function startPulsar(page: Page, reducedMotion: boolean): Promise<void> {
   await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Pulsar' }).click();
+  await startMode(page, 'pulsar');
   await expect(page.locator('#boss-bar .name')).toContainText('The Pulsar');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'bridge');
   await page.mouse.move(2, 2); // no hover ghost

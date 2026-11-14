@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // Auto-play (#792, docs/specs/ui.md section 4.3): the bot plays the player's side, stoppable, and a boss needs its medal.
@@ -26,9 +26,7 @@ test('the bot plays the player side of a bot game until Auto-play is turned off'
 test('Auto-play is greyed with its reason against a boss without a medal, and plays once the medal is earned', async ({ page }) => {
   await page.goto('./?nodes=50');
   const fight = async () => {
-    await openModes(page);
-    await page.getByRole('button', { name: 'Boss fight' }).click();
-    await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+    await startMode(page, 'echo');
     await expect(page.locator('#boss-bar .name')).toHaveText('The Echo');
   };
   await fight();

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 
 // New game (#230): it leaves the local game in progress for the start position, bot on or off as it was,
 // and deletes its save (#218). Once a move is played the first press asks "Confirm new game" for a few
@@ -199,9 +199,7 @@ test('no New game button during a boss fight', async ({ page }) => {
   await page.goto('./?net=hook');
   await ready(page);
   await expect(button).toBeVisible();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await expect(button).toBeHidden();
 });

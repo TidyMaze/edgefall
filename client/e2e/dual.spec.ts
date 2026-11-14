@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { parseRecorded } from '../src/test/chaplain-game';
 import { BRIDGE_AT, RETURN_AT, RETURN_CELL, SEED } from '../src/test/dual-game';
-import { openModes } from './modes';
+import { startBoss } from './modes';
 import { shot } from './shot';
 
 // The Dual Room (#947, #955, game-design.md section 7.15) from the recorded fight of the wasm tests (fight seed 1,
@@ -33,9 +33,7 @@ test('The Dual Room: two rooms split by a void, a return lands on its mark a ply
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Dual Room' }).click();
+  await startBoss(page, 'The Dual Room');
   await expect(page.locator('#boss-bar .name')).toContainText('The Dual Room');
   await expect(body).toHaveAttribute('data-deck', 'mess');
   await expect(body).toHaveAttribute('data-bridge', 'void');

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startBoss } from './modes';
 import { shot } from './shot';
 
 // The Assembly Line (#744, game-design.md section 7.12) from the fixture of the core tests: fight seed 1 and ?bot=off, so
@@ -28,9 +28,7 @@ async function startAssembly(page: Page): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Assembly Line' }).click();
+  await startBoss(page, 'The Assembly Line');
   await expect(page.locator('#boss-bar .name')).toContainText('The Assembly Line');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'cargo');
   await page.mouse.move(2, 2); // no hover ghost

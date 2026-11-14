@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { deckOf } from '../src/deck';
-import { openModes } from './modes';
+import { openModes, startBoss } from './modes';
 
 // #400: each mode and boss plays on its deck (docs/specs/world.md sections 1, 3 and 5), named in body[data-deck].
 // body[data-deck-set] names the deck whose texture set the cells wear (#401). The light and the texture of each deck are
@@ -18,9 +18,7 @@ test('hot-seat, each boss and online play on their decks, #400', async ({ page }
     ['The Choir', 'furnace'],
     ['The Chaplain', 'chapel'],
   ] as const) {
-    await openModes(page);
-    await page.locator('#boss-fight').click();
-    await page.locator('#boss-list').getByRole('button', { name: boss }).click();
+    await startBoss(page, boss);
     await expect(body).toHaveAttribute('data-deck', deck);
     await expect(body).toHaveAttribute('data-deck-set', deck);
   }

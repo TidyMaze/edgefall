@@ -7375,8 +7375,14 @@ if (navigator.webdriver) {
   hooks.__modeProbe = () => modeProbe.samples(); // the first-frame times of the mode entries (#1582)
   hooks.__modeReset = () => modeProbe.reset();
   hooks.__modeMarks = () => modeProbe.marks();
-  const entries = { arena: () => startLocal(false), run: beginRun, boss: startDaily, world: enterOpenWorld, hub: () => enterHub(loadProgress(store).at) }; // each mode's own entry, as the menus call it
+  const entries = { arena: () => startLocal(false), run: beginRun, boss: startDaily, world: enterOpenWorld, hub: () => enterHub(loadProgress(store).at), daily: startDaily }; // each mode's own entry, as the menus call it
   hooks.__enterMode = (mode: keyof typeof entries) => entries[mode]();
+  // Any mode or boss by id, with no menu to press (#1690): a mode of `entries`, or a boss of boss_ids(), whatever the first-win lock or the lifts say.
+  hooks.__startMode = (id: string) => {
+    if (Object.hasOwn(entries, id)) return entries[id as keyof typeof entries]();
+    if (!boss_ids().includes(id)) throw new Error(`unknown mode ${id}`);
+    startBoss(id, crypto.getRandomValues(new Uint32Array(1))[0]!);
+  };
   hooks.__openworldEnemies = () => openWorld.loaded.mode.enemies();
   hooks.__openworldDrawn = () => openWorld.loaded.mode.drawn; // the frames drawn since the world opened: a spec waits for one before it reads the wild fight (#1601)
   hooks.__openworldWander = (tick: number | null) => ((wanderTick = tick), openWorld.loaded.mode.stepWander(undefined, true)); // the tick of the marbles' clock, or null for the real one (#1511)

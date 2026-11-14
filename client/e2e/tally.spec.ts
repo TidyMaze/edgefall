@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 
 // Tally's line at the start of a match (#294): one line in the HUD plate, gone after the first move.
 
@@ -20,9 +20,7 @@ test('a local game starts with its goal line, the first move takes it off the pl
 test('a boss fight starts with the line of its boss', async ({ page }) => {
   await page.goto('./');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
 
   await expect(page.locator('#hud .tally')).toHaveText('Mirror logged. Six out to balance the books.'); // #1038: the boss bar names the boss, the line keeps its flavour
 });

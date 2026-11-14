@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startBoss } from './modes';
 
 // The deck atmospheres themselves (data-deck per mode and boss) are checked in deck.spec.ts. There is no ?deck= URL.
 test('the Mess Deck bay is complete once the page has loaded (#660)', async ({ page }) => {
@@ -23,9 +23,7 @@ test('the deck prop stands by the board of each deck and not by the hub, #1551',
   const body = page.locator('body');
   await expect(body).toHaveAttribute('data-deck-prop', 'true');
   for (const [boss, deck] of [['The Hull', 'cargo'], ['The Choir', 'furnace'], ['The Chaplain', 'chapel'], ['The Pulsar', 'bridge']] as const) {
-    await openModes(page);
-    await page.locator('#boss-fight').click();
-    await page.locator('#boss-list').getByRole('button', { name: boss }).click();
+    await startBoss(page, boss);
     await expect(body).toHaveAttribute('data-deck', deck);
     await expect(body).toHaveAttribute('data-deck-prop', 'true');
   }

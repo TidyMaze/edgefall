@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Magnetizer (#645, #671, game-design.md section 7.9) from the fixture of the core tests: fight seed 120 and ?bot=off,
@@ -36,9 +36,7 @@ async function startMagnetizer(page: Page): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' }); // the setup slides take no time
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Magnetizer' }).click();
+  await startMode(page, 'magnetizer');
   await expect(page.locator('#boss-bar .name')).toContainText('The Magnetizer');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'furnace');
 }

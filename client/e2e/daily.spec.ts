@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { loseByRepetition, startDaily } from './fight-end';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { shot } from './shot';
 
 // Daily challenge (#195): the UTC date gives the boss and the seed, the same for every load of the
@@ -72,9 +72,7 @@ test('the daily challenge keeps its boss and seed all day, counts attempts, and 
 test('a plain boss fight shows no daily line and does not count a daily attempt, #195', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2027-03-30T08:00:00Z'));
   await page.goto('./');
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await expect(page.locator('#hud')).not.toContainText('Daily challenge');
   await page.getByRole('button', { name: 'Retry' }).click();
@@ -179,9 +177,7 @@ test('when the clipboard is refused, the result text is selected to copy by hand
 
 test('a plain boss fight shows no result card at its end, #196', async ({ page }) => {
   await page.goto('./?bot=off');
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await loseByRepetition(page);
   await expect(page.locator('#daily-card')).toBeHidden();

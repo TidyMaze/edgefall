@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { shot } from './shot';
 
 // One mode at a time (#1275, docs/specs/ui.md): a mode left for another leaves nothing of itself on screen. The modes load
@@ -8,9 +8,7 @@ import { shot } from './shot';
 test('a boss fight and a battle royale left for the Hub leave no control and no marble behind, #1275', async ({ page }) => {
   await page.goto('./');
   await expect(page.locator('#hud')).toContainText('Hub');
-  await openModes(page);
-  await page.locator('#boss-fight').click();
-  await page.locator('#boss-list button').first().click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-retry')).toBeVisible();
   await expect(page.locator('#boss-bar')).toBeVisible();
   await openModes(page);

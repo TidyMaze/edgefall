@@ -1,14 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startBoss } from './modes';
 
 // #1551: a boss fight opens with an entrance beat of about 1.5 s: a card with the boss and its deck, the camera and the light of its space coming in.
 // It ends on its own, any press or key ends it at once, and reduced motion has none. ?entrance asks for it on a page under automation.
 async function fight(page: Page, boss: string): Promise<void> {
   await page.goto('./?bot=off&entrance');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: boss }).click();
+  await startBoss(page, boss);
 }
 
 test('The Hull arrives with its card and ends on its own, the board playable after it, #1551', async ({ page }) => {

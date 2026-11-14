@@ -6,6 +6,19 @@ export async function openModes(page: Page): Promise<void> {
   if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
 }
 
+/** Starts a mode (`arena`, `run`, `daily`, `world`, `hub`) or a boss by id (`echo`, `hull`...) through the test hook, with no menu pressed (#1690).
+ * The menu's own specs and one spec per mode still go through the real UI. */
+export async function startMode(page: Page, id: string): Promise<void> {
+  await page.waitForFunction(() => typeof (window as unknown as { __startMode?: unknown }).__startMode === 'function'); // the hooks are set once the page has booted
+  await page.evaluate((mode) => (window as unknown as { __startMode: (m: string) => void }).__startMode(mode), id);
+}
+
+const BOSS_OF: Record<string, string> = { 'The Echo': 'echo', 'The Hull': 'hull', 'The Choir': 'choir', 'The Chaplain': 'chaplain', 'The Ballast Mind': 'ballast', 'The Alien': 'alien', 'The Rail Yard': 'railyard', 'The Magnetizer': 'magnetizer', 'The Pulsar': 'pulsar', 'The Overseer': 'overseer', 'The Assembly Line': 'assembly', 'The Unstable Core': 'core', 'The Dual Room': 'dual', 'The Stalker': 'stalker', 'The Swarm': 'swarm' };
+/** Starts the boss called `name` (its menu label) through the test hook. */
+export async function startBoss(page: Page, name: string): Promise<void> {
+  await startMode(page, BOSS_OF[name] ?? name);
+}
+
 /** Shows the Open world plate (`#openworld-hud`) and clicks its button `selector`. The plate folds to its chip 8 s after the entry
  * (openworldfold.ts, #1138): on a software-GL runner the page takes longer than that to draw its first frames, so the plate is folded
  * when the test reaches it (#1436). The chip shows it again with no clock. The click itself is made once, never retried: a click

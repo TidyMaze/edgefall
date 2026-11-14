@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { parseRecorded } from '../src/test/chaplain-game';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Swarm (#1008, #1266, game-design.md section 7.14) from the recorded win of the core tests (fight seed 0, ?bot=off):
@@ -21,9 +21,7 @@ test('The Swarm: a wave announced on its mark lands there, the clock counts down
   });
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Swarm' }).click();
+  await startMode(page, 'swarm');
   await expect(page.locator('#boss-bar .name')).toContainText('The Swarm');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'cargo');
   await expect(tell).toHaveText('40 turns to the evac · 3 marbles land on their marks next turn · the swarm wins after it ejects 2 of your marbles');

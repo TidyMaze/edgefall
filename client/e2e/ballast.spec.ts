@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Ballast Mind (#749, game-design.md section 7.5): every 2 turns it borrows an effect of another boss, named in the
@@ -31,9 +31,7 @@ test('The Ballast Mind names its borrowed effect a turn ahead, then plays the Pu
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Ballast Mind' }).click();
+  await startMode(page, 'ballast');
   await expect(page.locator('#boss-bar .name')).toContainText('The Ballast Mind');
   await page.mouse.move(2, 2); // no hover ghost
   const tell = page.locator('#hud .boss .tell');
@@ -59,9 +57,7 @@ test('The Ballast Mind lands the Swarm wave on the rim and marks the cell, #1197
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Ballast Mind' }).click();
+  await startMode(page, 'ballast');
   await expect(page.locator('#boss-bar .name')).toContainText('The Ballast Mind');
   await page.mouse.move(2, 2); // no hover ghost
   const tell = page.locator('#hud .boss .tell');

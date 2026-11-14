@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Echo offers the player the mirror of its move as a free move (#958, game-design.md section 7.4). ?bot=off: the
@@ -20,9 +20,7 @@ test('The Echo offers a free move: its marble ringed, a diamond on the selected 
   await page.emulateMedia({ reducedMotion: 'reduce' }); // slides take no time
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   for (const [q, r] of [[0, 2], [0, 1], [0, -1], [1, -1]] as const) await click(page, q, r);
   await expect(body).toHaveAttribute('data-echo-free', '1');
@@ -55,9 +53,7 @@ for (const [name, viewport, touch] of [
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.goto('./?bot=off');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Boss fight' }).click();
-      await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+      await startMode(page, 'echo');
       await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
       const card = page.locator('#hud .boss .goal-card');
       await expect(card.locator('ol.goal-steps li')).toHaveText([

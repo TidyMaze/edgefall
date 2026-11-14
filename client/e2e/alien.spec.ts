@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Alien (#588, game-design.md section 7.7) from a fixture: fight seed 7 and ?bot=off, so the test plays both sides
@@ -27,9 +27,7 @@ async function startAlien(page: Page, seed = 7): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' }); // slides take no time
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Alien' }).click();
+  await startMode(page, 'alien');
   await expect(page.locator('#boss-bar .name')).toContainText('The Alien');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'cargo');
 }

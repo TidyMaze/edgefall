@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Rail Yard (#626, game-design.md section 7.8) from a fixture: fight seed 77 and ?bot=off, so the test plays both
@@ -22,9 +22,7 @@ async function startRailYard(page: Page, reducedMotion: boolean): Promise<void> 
   await page.emulateMedia({ reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Rail Yard' }).click();
+  await startMode(page, 'railyard');
   await expect(page.locator('#boss-bar .name')).toContainText('The Rail Yard');
   await expect(page.locator('body')).toHaveAttribute('data-deck', 'cargo');
 }

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { CONVERTED_AT, SEED, parseRecorded } from '../src/test/chaplain-game';
-import { openModes } from './modes';
+import { startBoss } from './modes';
 import { shot } from './shot';
 
 // The boss health bar (#788): at the top centre of a boss fight, the name over one red fragment per ejection needed, one
@@ -13,9 +13,7 @@ const fight = async (page: Page, boss: string, seed = 0) => {
   }, seed);
   await page.goto('./?nodes=200');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: boss }).click();
+  await startBoss(page, boss);
   await expect(page.locator('#boss-bar .name')).toHaveText(boss);
 };
 

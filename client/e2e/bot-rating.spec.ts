@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The bot's estimated rating and level in the fight HUD (#1611, docs/specs/roguelite.md section 32), read through the test hook
@@ -44,9 +44,7 @@ test('a boss fight shows Boss and its rating from its own search budget, on a ph
   await pinNormal(page);
   await page.goto('./?x=1');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(line(page)).toHaveText('Boss ~1000 · Easy');
   await expect(page.locator('body')).toHaveAttribute('data-bot-rating', '1000');
   expect(await line(page).getAttribute('title')).toMatch(/search/i);

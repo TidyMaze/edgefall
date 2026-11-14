@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 
 // #1032, docs/specs/thumb-dock.md: the main controls sit in a thumb dock at the bottom of the window. In every state
 // below no dock button covers a board cell, every dock button is a 44 px target, the dock stays in the window and
@@ -88,9 +88,7 @@ for (const { name, viewport } of viewports) {
     test('a boss fight: the dock holds Goal and Retry, clear of the board, bug #1032', async ({ page }) => {
       await page.goto('./?bot=off&net=hook');
       await page.locator('canvas').waitFor();
-      await openModes(page);
-      await page.getByRole('button', { name: 'Boss fight' }).click();
-      await page.locator('#boss-list button').first().click();
+      await startMode(page, 'echo');
       await expect(page.locator('#hud')).toContainText('P1');
       await expect(page.locator('#boss-goal')).toBeVisible();
       await check(page, 'a boss fight');

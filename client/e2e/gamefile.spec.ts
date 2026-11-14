@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { openAdvanced } from './settings';
 
 // A local game exported as a JSON file and imported back, replayed through the engine (#219,
@@ -249,9 +249,7 @@ async function expectNoExportImport(page: Page): Promise<void> {
 test('export and import are not shown during a boss fight, #287', async ({ page }) => {
   await page.goto('./?net=hook');
   await expectLocalMenu(page);
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await expectNoExportImport(page);
 });

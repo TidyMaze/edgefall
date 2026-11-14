@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { openModes, startMode } from './modes';
 import { shot } from './shot';
 
 // #1538: the Medal room lists the wins of the attempts of each boss, an attempt being a fight whose first move was played;
@@ -17,9 +17,7 @@ async function openWith(page: Page, saved: Record<string, string>): Promise<void
 }
 
 async function startEcho(page: Page): Promise<void> {
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await page.locator('#boss-list').getByRole('button', { name: 'The Echo' }).click();
+  await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
 }
 
