@@ -1672,6 +1672,14 @@ body[data-openworld] #openworld-ask:not([hidden]) { display: block; }
 #tap-play[hidden] { display: none; }
 @keyframes tap-play-pulse { 50% { transform: translate(-50%, -50%) scale(1.12); } }
 #tap-play.still { animation: none; }
+/* Reset everything (#1684): the last row of Settings, a danger action; it opens a confirm page (the question, Erase, Cancel) in place of the items. */
+#settings-menu[data-page='reset'] > :not(.setting-reset), #settings-menu:not([data-page='reset']) > .setting-reset { display: none; }
+#settings-menu[data-page='reset'] { overflow-y: visible; } /* the three short rows need no scroller: with one, Chromium painted a stale block of the menu's size mirrored at the bottom */
+.setting-reset { display: flex; flex-direction: column; gap: 0.25rem; grid-column: 1 / -1; color: var(--text); font: 0.875rem/1.3 var(--ui); }
+.setting-reset p { margin: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--danger); border-radius: 2px; }
+#settings-menu .setting-reset button { padding-inline-start: 0.75rem; } /* no icon, no empty slot */
+#settings-menu button.danger { color: var(--danger); border-color: var(--danger); }
+#settings-menu button.danger:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

@@ -709,7 +709,10 @@ describe('the settings toggles', () => {
       'setting-free-cam',
       'setting-export-game',
       'setting-import-game',
-      'copy-diagnostics', // the last row (#1032)
+      'copy-diagnostics', // the last row of Advanced (#1032)
+      'setting-reset-all', // the last row of Settings (#1684), then the confirm page's two buttons
+      'reset-erase',
+      'reset-cancel',
     ]);
     const sound = row('sound');
     expect(sound.querySelector('svg')).not.toBeNull();

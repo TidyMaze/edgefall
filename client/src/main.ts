@@ -224,6 +224,7 @@ import { boardHtml, buildBoard, loadRivals, ratingHistory, visitBoard } from './
 import { loadRankedProfile, rankedHudHtml, settleRanked1v1, settleRankedRoyale, type RankedMode } from './ranked';
 import { archiveList, LEVEL_NAMES, menuOpen, motionReduced, nextDisplay, settingsList, themeAttribute, VOLUME_NAMES, type MenuEvent, type Theme } from './settings';
 import { groupSettings } from './settingsgroups';
+import { RESET_ASK, eraseAll } from './reset';
 import { icon } from './icons';
 import { fpsAt, fpsLabel, fpsOf, keepWindow, stampDrawn } from './fps';
 import { GpuCost, gpuFrameReader, gpuMetricOf, gpuStatsOn, modeOfScene, type TimedRenderer } from './gpucost';
@@ -1241,6 +1242,27 @@ ledgerButton.addEventListener('click', openLedger);
 groupSettings(menu); // the items under their headings (#1566), Copy diagnostics from the page into Advanced
 const archive = menu.appendChild(document.createElement('div'));
 archive.className = 'setting-archive';
+// Reset everything (#1684, reset.ts): the last row of Settings, a danger action that opens an in-game confirm page in place of the items.
+menu.insertAdjacentHTML(
+  'beforeend',
+  `<button id="setting-reset-all" type="button" class="danger" title="Reset everything" aria-label="Reset everything">${icon('newgame')}<span>Reset everything</span></button>` +
+    `<div class="setting-reset" role="alertdialog" aria-labelledby="reset-ask"><p id="reset-ask">${RESET_ASK}</p>` +
+    '<button id="reset-erase" type="button" class="danger">Erase</button><button id="reset-cancel" type="button">Cancel</button></div>',
+);
+const resetAll = document.getElementById('setting-reset-all') as HTMLButtonElement;
+resetAll.addEventListener('click', () => {
+  menu.dataset.page = 'reset';
+  document.getElementById('reset-cancel')!.focus({ preventScroll: true }); // the safe answer first
+});
+document.getElementById('reset-cancel')!.addEventListener('click', () => {
+  delete menu.dataset.page;
+  resetAll.focus();
+});
+document.getElementById('reset-erase')!.addEventListener('click', () => {
+  stopBeats(); // no timer rewrites a key between the sweep and the reload: the Open world's beats and the royale's tick
+  clearInterval(ticking);
+  void eraseAll(store, indexedDB).then(() => location.reload());
+});
 function openArchive(): void {
   menu.dataset.page = 'archive';
   archive.classList.remove('ledger');
