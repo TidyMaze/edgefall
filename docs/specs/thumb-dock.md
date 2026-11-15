@@ -41,6 +41,20 @@ Notes:
 - Clipboard (`#copy-diagnostics`) leaves the bottom-right corner (open question 1).
 - `#support` (the support container with the replay bar and clipboard) is emptied: the replay bar goes to the dock and the top band (replay review), the clipboard moves (open question 1).
 
+### Once the Hub Cutaway is on (#1698)
+
+Behind `?hub=cutaway` until #1696; #1697 removes the old rows above. Design: `cutaway-v2.html` on the `pr-screenshots` branch. The Modes menu goes, and with it Game modes, World and Quick game in the dock. The first slot is the exit on every screen but the Hub (ui.md section 4.10).
+
+| Screen | Dock |
+|---|---|
+| Hub (the ship) | none: the bays, the goal line (Go in a window) and the cog |
+| Table | the exit, New, Hint, Undo, Replay (Auto-play when allowed) |
+| Boss fight | the exit, Retry or Rematch, Goal, Replay |
+| Open world | the exit alone, as today; the plate keeps Nearest tower |
+| Online lobby, battle royale | the exit, Hold (royale), Lobby |
+
+Settings is the only menu and stays at the cog; the update dot moves to the cog. Targets stay 44 px. Not measured: these docks on a device.
+
 ## 2. Geometry
 
 Assumed for every size: the dock is `left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom))` on a phone. Dock height is 62 px: 44 px button, 8 px padding top and bottom, 1 px border. Button gap 8 px horizontal. Vertical gap between wrapped rows is 4 px (from #1030 as the lead gave it).

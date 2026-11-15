@@ -769,6 +769,74 @@ sheet). Esc in the world presses the exit (#1605) and Browser Back (section 4.9)
 slot stays New game. A wild fight keeps Flee (F) in the first slot until it is over, as Flee leads to the same place, then World.
 A boss or lair fight in progress with a ply played is not saved, so the exit asks for a second press, `Sure?` in the `.confirm` look, lapsing after `CONFIRM_MS` as New game does (`newgame.ts`); a fight over or with no ply, the world, the Hub, a town, a run, the Trainer and a table ask nothing, and Browser Back never asks.
 
+**The Hub Cutaway rewrites this table (#1698; amends Decision #1513, owner 2026-11-14).** Design: `cutaway-v2.html` on the `pr-screenshots` branch (`hub-cutaway/`).
+Status: the ship is built behind `?hub=cutaway`, off by default (#1689, #1691, #1694). The old table below stays true with the flag off until #1696 turns the Cutaway on and #1697 removes
+the old path (the Modes menu, Quick game, the dock's World button and the old Hub code). What follows is written as it will be once the flag is on.
+
+**One home for every feature.** A feature starts in one place; any other screen may show its state and lead there, never start it.
+
+- A room of the ship is in the Hub: every mode, every boss, the run, the Daily, the records and the logs.
+- A place on Hollow is in the Open world: wild fights, teleporters, the map, towns and their Workshop (openworld.md, unchanged).
+- An action on the game in progress is in the dock: New, Hint, Undo, Replay, Retry, Goal, Flee, Hold, Lobby, and the exit in the first slot.
+- A preference or a tool is in Settings, the only menu; Reset everything stays its last row (#1684).
+
+**Tower or bay: the bay stays.** A boss starts from its bay in the ship and nowhere else. Its tower stays on Hollow with what it guards and gives, and is the way in: rolling onto it
+opens the ship on the boss's deck, the boss's room amber and the first-entry confirm up (the deck is lit for the visit, shut or not). A gate does the same for the Mining cut, its
+biome kept; a town opens the Mess. Enter starts the same fight or run as a tap on the bay; Stay and the exit lead back to the tower or gate (`hubentry.ts`, #1694).
+
+| Screen | Enter | Exit, first slot | State |
+|---|---|---|---|
+| Plain table | Hub, House table bay; New game | the exit, to the Hub (the table is no longer a home) | Once the flag is on (#1697) |
+| Hub (the ship) | Boot of a returning player; the exit of any mode | none: the home, no dock. Back goes to the table | Behind `?hub=cutaway` |
+| A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its bay: the marble rolls there, the confirm asks, Enter starts | Hub | Behind `?hub=cutaway` |
+| Open world | Hub, Airlock bay | Hub (the world saved) | Behind `?hub=cutaway` |
+| Town | Roll onto a town: the ship opens on the Mess | World, hero on the entrance | Behind `?hub=cutaway` |
+| Dungeon gate (the run) | Roll onto a gate: the ship opens on the Mining cut, the biome kept | Stay or the exit: World, hero on the entrance | Behind `?hub=cutaway` |
+| Tower (a lair fight) | Roll onto a lair: the ship opens on the boss's bay | Stay or the exit: World, hero on the entrance | Behind `?hub=cutaway` |
+| Wild fight | A marble touches the hero | Flee, then World | Built |
+| Online room (Play online, Fight together, Boss duel, an invite link) | Comms desk, Shift crew bays; `#room=` opens its table | the exit; its Lobby sheet | Once the flag is on |
+
+Not changed by the Cutaway: the first slot of the dock is the exit in every mode (Hub or World), Esc and Browser Back press it, and a fight with a ply played asks `Sure?`.
+
+**The Modes menu goes once the flag is on (#1696, #1697).** World and Quick leave the dock with it, and the Hub at home has no dock. The dock of a table is New, Hint, Undo, Replay;
+in the Open world the plate keeps Nearest tower and Quick game goes. Two taps reach any mode from any game: the exit, then a bay.
+
+**A new player (#1665 with the Cutaway).** Plays the guided first match first, then lands in the ship with only the Mess lit; the other decks stay dark with a padlock and open after
+the first win (the lock, section 4.10 above) as the old menu's locked rows did. A returning player still lands on the Hub at boot, and an invite link still opens its table.
+
+**Small phones** frame two or three decks around the marble. The shell is tall under 600 px wide or 500 px high, wide above (`hubcutaway.ts`). Measured on the real GPU path with the flag on: 19 draw calls since the bays and lift (#1691; 17 for the ship alone, #1689), 4,731 (tall) and 4,815 (wide) triangles in the frame.
+
+Every feature, after:
+
+| Feature | One home |
+|---|---|
+| A game against the bot | Hub, House table. New stays in the table's dock to restart |
+| Hot-seat for two | Hub, Crew table |
+| Online with a friend | Hub, Comms desk (an invite link still opens its table) |
+| Battle royale | Hub, Arena |
+| Ranked, Leaderboard | Hub, Clamp list (Leaderboard on the second row of its sheet) |
+| Boss with a partner, Boss vs a player | Hub, Shift crew (Boss vs a player on the second row of its sheet) |
+| The 15 solo boss fights | Hub, the boss's bay; its tower is a way in |
+| Daily challenge | Hub, Morning count (the notice board only reports it) |
+| Rogue-lite run | Hub, Mining cut; a gate opens the ship on it |
+| Trainer | Hub, Table zero |
+| Entering the Open world | Hub, Airlock |
+| Going to the Hub | The exit, first slot, on every screen but the Hub |
+| Medals and best turns | Hub, Medal wall (the counts stay as lines to read) |
+| The ship's logs | Hub, the Logs bay of each deck; the Ledger joins the Medal wall; the transcript stays a setting |
+| What waits for the first win | Hub: the ship in its locked look, in place of a locked menu |
+| Workshop, a town's contract and ledger line | Open world, the town (unchanged) |
+| Wild fights, teleporters, Teleport, the Map, Nearest tower, the world's logs, resources, recruits, other heroes | Open world (unchanged) |
+| New, Hint, Undo, Auto-play, Retry, Rematch, Goal, Flee, Hold, Lobby, Replay | Dock (unchanged) |
+| Reset view | The button over the board (#1681) |
+| Quick game | Gone: it is the House table, two taps away |
+| Sound, display, accessibility, difficulty, steering, the Guide | Settings (unchanged) |
+| Export and import a game, diagnostics, FPS, render, free camera, Console | Settings, Advanced (unchanged) |
+| New version: reload | Settings, first row, the dot on the cog |
+| Reset everything | Settings, last row (unchanged) |
+
+**Old table (flag off, until #1697 removes it).**
+
 | Screen | Enter | Exit, first slot | State |
 |---|---|---|---|
 | Plain table | Boot, New game | none: New game | Built |

@@ -571,7 +571,7 @@ plan as the game.
 | Rogue-lite run | **Dungeon gates**: one in each biome but the meadow (forest, tundra, desert, badlands, archipelago), 160 to 420 ground units out, each with a dungeon tier from its ring (section 15). An act is one dungeon, in matching terrain | Roll onto the gate from a neighbour | Leave the run: the hero returns to the entrance cell | Gate, map icon and entrance built (#1593): rolling onto a gate starts the run, in the biome of the gate's ground (#1597) |
 | Teleporters | Pads in the clearing and in the open ground, one a square of 8 x 8 chunks (section 10) | Roll onto a pad, Teleport button | Pick another pad | Built. Pads inside towns and gate clearings are planned |
 | Console | Leaves the player's UI | n/a | n/a | Planned |
-| Boss fight menu | Fast travel to the towers already found | Menu entry | n/a | Planned |
+| Boss fight menu | Fast travel to the towers already found | Menu entry | n/a | Planned; unchanged by the Cutaway, where a tower opens the ship on its boss bay (#1698) |
 | Quick game (bot, hot-seat, online) | Outside the world: a permanent button that skips it | The button (dock, and the Open world plate) | Back to the menu | Bot built (#1612): the dock and the plate start a bot game, an unfinished game asks first. Hot-seat and online are planned |
 
 - **Rule for every place**: it is entered by walking or rolling onto it, and every exit returns the hero to the entrance cell, as a
