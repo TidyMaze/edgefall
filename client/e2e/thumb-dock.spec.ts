@@ -112,6 +112,8 @@ for (const { name, viewport } of viewports) {
         mv.dir,
       );
       await click(target.cell);
+      // A touch's first tap on a target previews the move, the second plays it (tapPreview, "Tap the arrow again to play"): only Firefox sends a touch here (#1701).
+      if (browserName === 'firefox' && hasTouch) await click(target.cell);
       await expect(page.locator('#replay')).toBeEnabled();
       await page.locator('#replay').click();
       await expect(page.locator('#replay-bar')).toBeVisible();
