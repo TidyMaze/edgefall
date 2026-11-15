@@ -132,7 +132,7 @@
           <button autocomplete="off" id="settings" type="button" aria-label="Settings" aria-haspopup="true" aria-expanded="false" aria-controls="settings-menu" disabled>
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M10.3 2h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9L2 13.7v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
           </button>
-          <div id="settings-menu" role="group" aria-label="Settings" hidden></div>
+          <div id="settings-menu" role="group" aria-label="Settings" hidden><button id="update" type="button" hidden>New version: reload</button></div>
         </div>
         <span id="auto-reason" hidden></span>
         <input id="import-file" type="file" accept=".json,application/json" hidden aria-label="Game file" />
@@ -162,6 +162,7 @@
         <button autocomplete="off" id="new-game" type="button" data-label="New" disabled></button>
         <button autocomplete="off" id="hint" type="button" data-label="Hint" aria-label="Hint" aria-pressed="false" disabled>Hint</button>
         <button autocomplete="off" id="undo" type="button" data-label="Undo" aria-label="Undo" title="Undo: take back your move and the bot's reply" hidden>Undo</button>
+        <button autocomplete="off" id="replay" type="button" data-label="Replay" aria-label="Replay" disabled>Replay</button>
         <div id="dock-replay" class="steps" role="group" aria-label="Replay">
           <button id="replay-first" type="button" aria-label="First position" title="First position">&#9198;</button>
           <button id="replay-prev" type="button" aria-label="Previous move" title="Previous move">&#9664;</button>
@@ -177,7 +178,6 @@
         <button id="auto-play" type="button" data-label="Auto" aria-label="Auto-play" aria-pressed="false" aria-describedby="auto-reason" hidden>Auto-play</button>
       </nav>
       <div id="mode-menu" role="group" aria-label="Game modes" hidden>
-        <button id="update" type="button" hidden>New version: reload</button>
         <p id="lock-banner" hidden>Win your first game vs the bot</p>
         <p id="lock-note" hidden>More unlocks after your first win</p>
         <button autocomplete="off" id="play-online" type="button" title="Play a friend or a stranger over the network." disabled>Play online</button>
@@ -197,7 +197,6 @@
         <button autocomplete="off" id="ship" type="button" title="Walk the ship and pick a table, a door or a boss." disabled>Hub</button>
         <div id="menu-view">
           <button autocomplete="off" id="reset-view" type="button" aria-label="Reset view" disabled>Reset view</button>
-          <button autocomplete="off" id="replay" type="button" data-label="Replay" aria-label="Replay" disabled>Replay</button>
         </div>
       </div>
       <div id="lobby-sheet" role="group" aria-label="Lobby" hidden>
@@ -211,6 +210,11 @@
           <input id="invite" type="text" readonly hidden aria-label="Invite link" />
           <button id="invite-copy" type="button" hidden>Copy</button>
         </div>
+      </div>
+      <!-- The bay sheet (#1693, ?hub=cutaway): two rows for the Clamp list or the Shift crew bay of the ship, above the dock like the other sheets. -->
+      <div id="bay-sheet" role="group" aria-label="Bay" hidden>
+        <button id="bay-row-1" type="button"></button>
+        <button id="bay-row-2" type="button"></button>
       </div>
       <div id="goal-sheet" role="status" hidden></div>
       <!-- The lore of a boss win (#1589): a sheet above the dock that lets every press through, the entry of the boss beaten. -->

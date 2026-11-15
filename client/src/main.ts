@@ -1251,6 +1251,7 @@ menu.append(archiveButton, ledgerButton);
 archiveButton.addEventListener('click', openArchive);
 ledgerButton.addEventListener('click', openLedger);
 groupSettings(menu); // the items under their headings (#1566), Copy diagnostics from the page into Advanced
+menu.prepend(updateButton); // New version: reload is the first row of Settings, its dot on the cog (#1693)
 const archive = menu.appendChild(document.createElement('div'));
 archive.className = 'setting-archive';
 // Reset everything (#1684, reset.ts): the last row of Settings, a danger action that opens an in-game confirm page in place of the items.
@@ -1315,6 +1316,14 @@ applyView(); // camera and fog
 const lobbyButton = document.getElementById('lobby') as HTMLButtonElement;
 const lobbySheet = document.getElementById('lobby-sheet')!;
 let lobbyOpen = false;
+// The bay sheet (#1693, `?hub=cutaway`): the Clamp list bay offers Ranked and Leaderboard, the Shift crew bay Boss with a partner and Boss vs a player (and the co-op boss list). One sheet at a time.
+const baySheet = document.getElementById('bay-sheet')!;
+let baySheetOpen = false;
+function closeBay(): void {
+  if (!baySheetOpen) return;
+  baySheetOpen = false;
+  baySheet.hidden = true;
+}
 let menuIsOpen = false;
 const moveMenu = (event: MenuEvent): void => {
   menuIsOpen = menuOpen(menuIsOpen, event);
@@ -1322,6 +1331,7 @@ const moveMenu = (event: MenuEvent): void => {
     moveModes('outside'); // one sheet at a time (#1032)
     closeGoal();
     closeLobby(); // one sheet at a time (#1044)
+    closeBay();
   }
   menu.hidden = !menuIsOpen;
   delete menu.dataset.page; // the menu opens on its items again
@@ -1744,6 +1754,7 @@ const moveModes = (event: MenuEvent): void => {
     moveMenu('outside'); // one sheet at a time (#1032)
     closeGoal();
     closeLobby(); // one sheet at a time (#1044)
+    closeBay();
   }
 };
 modeButton.addEventListener('click', () => moveModes('button'));
@@ -1814,9 +1825,9 @@ const reader = document.getElementById('reader')!;
 reader.classList.toggle('flat', flatHud);
 let consoleScreen!: THREE.Mesh; // set by drawProps
 let recorder!: THREE.Mesh; // set by drawProps
-// The terrace has no console screen (#1369): its Console entry of Game modes opens the same reader, the page as a plate, the camera stays.
+// The terrace has no console screen (#1369): its Console entry (Settings, Advanced, #1693) opens the same reader, the page as a plate, the camera stays.
 document.getElementById('console-entry')!.addEventListener('click', () => {
-  moveModes('outside'); // the menu closes, as Leaderboard's does
+  moveMenu('outside'); // Settings closes
   openReader();
 });
 function openReader(id?: string): void {
@@ -3155,7 +3166,7 @@ function stepReplay(step: ReplayStep): void {
 }
 function syncReplay(): void {
   if (hub || royale) leaveReplay();
-  replayButton.hidden = Boolean(hub || royale);
+  replayButton.hidden = Boolean(hub || royale) || history.length === 0; // no move to review, no button: the dock keeps its width at 320 px (#1693)
   replayButton.disabled = history.length === 0;
   replayBar.hidden = replaying === null;
   replaySlider.max = String(history.length);
@@ -3163,8 +3174,7 @@ function syncReplay(): void {
   document.getElementById('replay-label')!.textContent = replayLabel(shownPly(), history.length);
 }
 replayButton.addEventListener('click', () => {
-  moveModes('outside'); // the Replay button sits in the Game modes menu (#1612): a press closes it
-  showPly(history.length);
+  showPly(history.length); // the Replay button is in the dock (#1693)
 });
 for (const step of ['first', 'prev', 'next', 'last'] as const) {
   document.getElementById(`replay-${step}`)!.addEventListener('click', () => stepReplay(step));
@@ -4458,6 +4468,7 @@ function placeShip(): void {
 }
 function syncCutaway(): void {
   if (!cutaway) return;
+  if (!hub) closeBay(); // the Hub is left: no sheet of its bays
   const { beaten } = loadProgress(store);
   const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipNow(beaten), shipInset(), shipSolid());
   if (shown) {
@@ -6383,6 +6394,7 @@ function cancelHubWalk(): void {
   }
   askedFor = null;
   hubConfirm.hidden = true;
+  closeBay(); // a tap, a key or Stay: the sheet of the bay left goes with it (#1693)
 }
 /** One roll to a neighbour cell; false when the marble did not roll (a locked lift, a room that asks first). */
 function walk(to: Axial): boolean {
@@ -6447,6 +6459,7 @@ function enterRoom(at: HubSpot): void {
     if (cutaway) (hub!.bumped = LOCKED_BAY_LINE), refresh(); // a tap on a bay that waits says why, no start (#1692)
     return; // the Hub stays as it is: its boss and mode doors wait for the first win (#1665)
   }
+  if (cutawayShown && (door?.kind === 'ranked' || door?.kind === 'together')) return openBaySheet(door.kind); // their bay offers two rows (#1693)
   if (door?.kind === 'terminal') return openReader(door.lore);
   if (door?.kind === 'medals') return openReader(MEDAL_ROOM);
   if (door?.kind === 'boss') startBoss(door.boss, crypto.getRandomValues(new Uint32Array(1))[0]!);
@@ -7050,6 +7063,7 @@ const coopList = document.getElementById('coop-list')!;
 function showCoopList(shown: boolean): void {
   coopList.hidden = !shown;
   coopButton.setAttribute('aria-expanded', String(shown));
+  syncBayRows();
 }
 for (const id of boss_ids()) {
   const entry = document.createElement('button');
@@ -7082,6 +7096,62 @@ coopButton.addEventListener('click', () => {
   listIsDuel = false;
   showCoopList(open); // hidden or opened by Boss duel: open it
 });
+// The two-row sheets of the Clamp list and the Shift crew bays (#1693, `?hub=cutaway`): the rows press the buttons of the Modes menu that stay behind them, hidden under the flag until #1697 removes them.
+const BAY_ROWS = { ranked: { name: 'Clamp list', rows: ['Ranked', 'Leaderboard'] }, together: { name: 'Shift crew', rows: ['Boss with a partner', 'Boss vs a player'] } } as const;
+const bayRows = [document.getElementById('bay-row-1'), document.getElementById('bay-row-2')] as HTMLButtonElement[];
+function syncBayRows(): void {
+  const together = baySheet.dataset.bay === 'together';
+  bayRows[0]!.setAttribute('aria-expanded', String(together && !coopList.hidden && !listIsDuel));
+  bayRows[1]!.setAttribute('aria-expanded', String(together && !coopList.hidden && listIsDuel));
+}
+function openBaySheet(kind: keyof typeof BAY_ROWS): void {
+  moveModes('outside');
+  moveMenu('outside');
+  closeGoal();
+  closeLobby(); // one sheet at a time
+  const { name, rows } = BAY_ROWS[kind];
+  baySheet.dataset.bay = kind;
+  baySheet.setAttribute('aria-label', name);
+  bayRows.forEach((row, i) => {
+    row.textContent = rows[i]!;
+    if (kind === 'ranked') row.removeAttribute('aria-expanded');
+  });
+  showCoopList(false);
+  baySheetOpen = true;
+  baySheet.hidden = false;
+  if (kind === 'together') syncBayRows();
+  bayRows[0]!.focus();
+}
+if (cutaway) {
+  baySheet.append(coopList); // the boss list of Boss with a partner and Boss vs a player is the sheet's
+  for (const id of ['ranked', 'leaderboard', 'fight-together', 'boss-duel']) document.getElementById(id)!.hidden = true; // their home is the bay (#1693)
+  bayRows[0]!.addEventListener('click', () => {
+    if (baySheet.dataset.bay === 'together') return coopButton.click();
+    if (rankedButton.disabled) return;
+    const at = hub!.at;
+    const from = placeFrom;
+    closeBay();
+    rankedButton.click(); // as the door did: the game starts, its exit leads back to the Hub
+    roomOf = at;
+    placeFrom = from;
+    syncExit();
+  });
+  bayRows[1]!.addEventListener('click', () => {
+    if (baySheet.dataset.bay === 'together') return duelButton.click();
+    if (boardButton.hasAttribute('disabled')) return;
+    closeBay();
+    boardButton.click();
+  });
+  coopList.addEventListener('click', (e) => {
+    if ((e.target as Element).closest('button')) closeBay(); // a boss was picked: its room opens
+  });
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && baySheetOpen) closeBay();
+  });
+  addEventListener('pointerdown', (e) => {
+    if (baySheetOpen && !within(baySheet, e.target)) closeBay();
+  });
+}
 // Back to the hub from an online table (#522): the room is closed and the page is a local one again.
 function leaveOnline(): void {
   lobbyOpenedAt = 0; // the wait and its offer end with the room (#1529)
@@ -8047,6 +8117,7 @@ function openLobby(): void {
   moveModes('outside'); // one sheet at a time (#1032, #1044)
   moveMenu('outside');
   closeGoal();
+  closeBay();
   paintLobby();
 }
 function closeLobby(): void {

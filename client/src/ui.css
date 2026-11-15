@@ -195,11 +195,11 @@ body[data-openworld] #settings-menu { --settings-clear: 68px; } /* the exit is a
 #mode-menu[hidden] { display: none; }
 #modes[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
 @media (max-width: 600px), (pointer: coarse) { #mode-menu button { min-height: 2.75rem; } }
-#update, #reset-view, #invite-copy, #lobby-bot, #room-switch, #hint, #undo, #replay, #auto-play, #new-game, #modes, #play-online, #fight-together, #boss-duel, #ranked, #rematch, #boss-fight, #daily, #roguelite, #trainer, #trainer-next, #openworld, #ship, #boss-retry, #wild-flee, #exit, #boss-goal, #leaderboard, #console-entry, #boss-list button, #coop-list button, #copy-diagnostics {
+#update, #bay-sheet > button, #reset-view, #invite-copy, #lobby-bot, #room-switch, #hint, #undo, #replay, #auto-play, #new-game, #modes, #play-online, #fight-together, #boss-duel, #ranked, #rematch, #boss-fight, #daily, #roguelite, #trainer, #trainer-next, #openworld, #ship, #boss-retry, #wild-flee, #exit, #boss-goal, #leaderboard, #console-entry, #boss-list button, #coop-list button, #copy-diagnostics {
   padding: 0.5rem 0.75rem; cursor: pointer; color: var(--text); background: var(--panel);
   border: 1px solid var(--edge); border-radius: 2px; font: 0.875rem/1.2 var(--ui);
 }
-#update:focus-visible, #reset-view:focus-visible, #invite-copy:focus-visible, #lobby-bot:focus-visible, #room-switch:focus-visible, #hint:focus-visible, #undo:focus-visible, #replay:focus-visible, #replay-bar button:focus-visible, #auto-play:focus-visible, #new-game:focus-visible, #modes:focus-visible, #play-online:focus-visible, #fight-together:focus-visible, #boss-duel:focus-visible, #ranked:focus-visible, #rematch:focus-visible, #boss-fight:focus-visible, #daily:focus-visible, #roguelite:focus-visible, #trainer:focus-visible, #trainer-next:focus-visible, #openworld:focus-visible, #ship:focus-visible, #boss-retry:focus-visible, #wild-flee:focus-visible, #exit:focus-visible, #boss-goal:focus-visible, #leaderboard:focus-visible, #console-entry:focus-visible, #boss-list button:focus-visible, #coop-list button:focus-visible, #copy-diagnostics:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#update:focus-visible, #bay-sheet > button:focus-visible, #reset-view:focus-visible, #invite-copy:focus-visible, #lobby-bot:focus-visible, #room-switch:focus-visible, #hint:focus-visible, #undo:focus-visible, #replay:focus-visible, #replay-bar button:focus-visible, #auto-play:focus-visible, #new-game:focus-visible, #modes:focus-visible, #play-online:focus-visible, #fight-together:focus-visible, #boss-duel:focus-visible, #ranked:focus-visible, #rematch:focus-visible, #boss-fight:focus-visible, #daily:focus-visible, #roguelite:focus-visible, #trainer:focus-visible, #trainer-next:focus-visible, #openworld:focus-visible, #ship:focus-visible, #boss-retry:focus-visible, #wild-flee:focus-visible, #exit:focus-visible, #boss-goal:focus-visible, #leaderboard:focus-visible, #console-entry:focus-visible, #boss-list button:focus-visible, #coop-list button:focus-visible, #copy-diagnostics:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 #boss-list, #coop-list { display: flex; flex-direction: column; gap: 0.25rem; align-items: stretch; }
 #boss-list [aria-disabled='true'] { opacity: 0.75; cursor: not-allowed; }
 #boss-list .lock { display: block; font-size: 0.75em; font-weight: 700; line-height: 1.1; }
@@ -1080,7 +1080,7 @@ body[data-openworld]::before { display: none; }
   -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat;
 }
 /* The button's own text and icon are hidden: the short label after it is the one shown (the name stays the text). */
-@media (max-width: 420px) { #dock:has(#undo:not([hidden])) { gap: 1px; padding: 4px; } } /* Undo (#1672) is a seventh control: the dock tightens so seven 44 px buttons fit 360 px */
+@media (max-width: 420px) { #dock:has(#undo:not([hidden]), #replay:not([hidden])) { gap: 1px; padding: 4px; } } /* Undo (#1672) is a seventh control, Replay (#1693) a sixth: the dock tightens so seven 44 px buttons fit 360 px and six fit 320 px */
 #dock > button { font-size: 0; }
 #dock > button svg { display: none; }
 #dock > button::after { content: attr(data-label); font: 500 0.6875rem/1 var(--ui); overflow: hidden; text-overflow: clip; }
@@ -1095,6 +1095,7 @@ body[data-openworld]::before { display: none; }
 /* The dock's icons (#1136): 24 px, 1.75 px rounded strokes, masks that take the button's colour. */
 #dock #new-game { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E"); }
 #dock #hint { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z'/%3E%3C/svg%3E"); }
+#dock #replay { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2'/%3E%3C/svg%3E"); }
 #dock #open-world-entry { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3c-3 3.5-3 14.5 0 18M12 3c3 3.5 3 14.5 0 18'/%3E%3C/svg%3E"); }
 #dock #quick-game { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 3L5 14h6l-1 7 8-11h-6z'/%3E%3C/svg%3E"); }
 #dock #modes { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'/%3E%3C/svg%3E"); }
@@ -1112,14 +1113,14 @@ body:has(#replay-bar:not([hidden])) #dock-replay { display: flex; }
 body:has(#replay-bar:not([hidden])) #dock > button { display: none; }
 #dock-replay button { font-size: 1rem; border-radius: var(--r-button); }
 #dock-replay #replay-live { background: var(--active-fill); color: var(--active-ink); font-size: 0.8125rem; }
-/* The update banner is a dot on Game modes; its row is the first of the Game modes sheet. */
-body:has(#update:not([hidden])) #modes { background-image: radial-gradient(circle at calc(100% - 8px) 8px, var(--accent) 4px, var(--panel) 4px, var(--panel) 5px, transparent 5px); }
+/* The update banner is a dot on the cog; its row is the first of Settings (#1693). */
+body:has(#update:not([hidden])) #settings { background-image: radial-gradient(circle at calc(100% - 8px) 8px, var(--accent) 4px, var(--panel) 4px, var(--panel) 5px, transparent 5px); }
 #dock #modes { position: relative; }
 /* A lobby waits (#1044): Lobby takes the accent and a dot on its corner, steady, never a flash. */
 #dock #lobby { position: relative; }
 #dock #lobby[data-waiting='true'] { background-image: radial-gradient(circle at calc(100% - 8px) 8px, var(--accent) 4px, var(--panel) 4px, var(--panel) 5px, transparent 5px); }
 /* The sheets: above the dock, 8 px over it, as wide as the window less 16 px a side, scrolling when taller than 60 %. */
-#dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet {
+#dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet {
   position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); box-sizing: border-box; max-height: 60dvh; overflow-y: auto;
   padding: 8px; background: var(--panel); border: 1px solid var(--edge); border-radius: 2px;
 }
@@ -1145,10 +1146,8 @@ body:has(#update:not([hidden])) #modes { background-image: radial-gradient(circl
 #trainer-text p { margin: 0; }
 #trainer-card #trainer-next[hidden] { display: none; }
 #dock-wrap #trainer-card button { min-height: 44px; min-width: 44px; }
-/* A boss list needs the room: the Console entry steps aside while one is open, so the menu never scrolls at 1280x720 (#1407). */
-#dock-wrap #mode-menu:has(> [aria-expanded='true']) #console-entry { display: none; }
 #dock-wrap #mode-menu { display: flex; flex-direction: column; flex-flow: column nowrap; justify-content: flex-start; gap: 4px; align-items: stretch; min-width: 0; }
-#dock-wrap #mode-menu #menu-view { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; } /* Reset view and Replay side by side, one row (#1612) */
+#dock-wrap #mode-menu #menu-view { display: grid; grid-template-columns: 1fr; gap: 4px; } /* Reset view, alone since Replay went to the dock (#1693) */
 #dock-wrap #mode-menu > button, #dock-wrap #mode-menu #boss-list button, #dock-wrap #mode-menu #coop-list button { min-height: 44px; min-width: 44px; }
 #dock-wrap #mode-menu #boss-list:not([hidden]), #dock-wrap #mode-menu #coop-list:not([hidden]) { flex: none; width: 100%; overflow-x: auto; margin: 0; padding: 0; }
 /* A desktop window (a fine pointer, 1101 px and wider) has room for the growing roster: the boss lists run three to a row and every item is 28 px high and the sheet may take 80 % of the height, so every boss and Daily challenge show without a scroll at 1280x720 (#1069). */
@@ -1197,18 +1196,18 @@ body[data-reading] #lore { display: none; }
   #dock > button::after { font-size: 0.625rem; }
   #dock-replay { flex-direction: column; flex: none; }
   #support { right: 68px; bottom: 16px; }
-  #dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet {
+  #dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet {
     left: auto; right: calc(100% + 8px); bottom: 0; width: min(22rem, calc(100vw - 120px)); max-height: calc(100dvh - 32px);
   }
 }
 /* A desktop window: the dock is a centred bar at the bottom, its width that of its buttons, its sheets centred above it. */
 @media (orientation: landscape) and (min-height: 661px) {
   #dock-wrap { left: 50%; right: auto; transform: translateX(-50%); width: max-content; }
-  #dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet { left: 50%; right: auto; transform: translateX(-50%); width: min(24rem, calc(100vw - 32px)); }
+  #dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet { left: 50%; right: auto; transform: translateX(-50%); width: min(24rem, calc(100vw - 32px)); }
   #dock > button, #dock-replay button { width: 5.5rem; flex: none; }
 }
 /* A sheet over the dock hides the evaluation plate and the diagnostics box, which sit above the dock (#1032). */
-body:has(#dock-wrap :is(#mode-menu, #daily-card, #lobby-sheet):not([hidden])) #support { display: none; }
+body:has(#dock-wrap :is(#mode-menu, #daily-card, #lobby-sheet, #bay-sheet):not([hidden])) #support { display: none; }
 /* Held sideways the settings menu lies left of the dock column, not over it (#1032), and the score bar lies at its left, bottom 16 px: the menu ends above it. */
 @media (orientation: landscape) and (max-height: 660px) {
   #settings-menu { --settings-clear: 68px; }
@@ -1254,7 +1253,7 @@ body[data-openworld] #dock-wrap > :not(#dock), body[data-openworld] #dock > :not
 #dock-wrap button { transition: transform var(--motion-instant) var(--ease-out); }
 #dock-wrap button:active:not(:disabled) { transform: scale(0.96); }
 @keyframes sheet-in { from { opacity: 0; transform: translateY(8px); } }
-#dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet { animation: sheet-in var(--motion-base) var(--ease-out); }
+#dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet { animation: sheet-in var(--motion-base) var(--ease-out); }
 
 /* HUD tally motion (#1095, docs/specs/motion.md story 5): a pip that has just gone out grows back to size on --motion-base, so a change
    in the count catches the eye. The pip and the score text already carry the number; reduced motion cuts the animation (rule above). */
@@ -1774,6 +1773,18 @@ body:not([data-hub-cutaway='true']) :is(#ship-goal-line, #ship-gocard) { display
 @media (min-width: 600px) and (min-height: 500px) { #ship-goal-line { display: none; } }
 @media (max-width: 599px), (max-height: 499px) { #ship-gocard { display: none; } }
 
+/* The bay sheet (#1693, ?hub=cutaway): the two rows of the Clamp list and the Shift crew bays, and the co-op boss list moved into it. */
+#dock-wrap #bay-sheet { display: flex; flex-direction: column; gap: 4px; align-items: stretch; min-width: 0; }
+#dock-wrap #bay-sheet[hidden] { display: none; }
+#dock-wrap #bay-sheet > button, #dock-wrap #bay-sheet #coop-list button { min-height: 44px; min-width: 44px; }
+#dock-wrap #bay-sheet #coop-list:not([hidden]) { flex: none; width: 100%; margin: 0; padding: 0; }
+#dock-wrap #bay-sheet { border-radius: var(--r-card); }
+:root[data-palette='default'] #dock-wrap #bay-sheet { --accent: var(--plate-accent); }
+#dock-wrap #bay-sheet > button, #dock-wrap #bay-sheet #coop-list button { border-radius: var(--r-button); }
+#dock-wrap #bay-sheet > button[aria-expanded='true'] { background: var(--active-fill); border-color: var(--active-fill); color: var(--active-ink); }
+@media (orientation: landscape) and (min-width: 1101px) and (pointer: fine) {
+  #dock-wrap #bay-sheet #coop-list:not([hidden]) { display: grid; grid-template-columns: repeat(3, 1fr); }
+}
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import page from '../index.html?raw';
 
 // The page's controls, in their places (#839, #1032, docs/specs/thumb-dock.md): the thumb dock at the bottom holds the
-// game's controls in order, the Game modes sheet above it starts with the update banner, and the top column keeps the
+// game's controls in order, Settings starts with the update row, and the top column keeps the
 // cog, the lobby controls and the invite link.
 const doc = new DOMParser().parseFromString(page, 'text/html');
 const children = (id: string): string[] => [...doc.getElementById(id)!.children].map((el) => el.id);
 
 describe('The page controls', () => {
-  it('the thumb dock holds the game controls in order: Exit (#1517), Flee (a wild fight, #1511), Retry, Rematch, Goal, New game, Hint, the replay steps, Hold, Lobby, Open world (#1612), Quick game (#1612), Modes, Auto-play (View and Replay are in the Modes menu, #1612: five dock controls fit 320 px)', () => {
+  it('the thumb dock holds the game controls in order: Exit (#1517), Flee (a wild fight, #1511), Retry, Rematch, Goal, New game, Hint, Undo, Replay (#1693), the replay steps, Hold, Lobby, Open world (#1612), Quick game (#1612), Modes, Auto-play (Reset view is in the Modes menu, #1612: six dock controls fit 320 px, e2e/thumb-dock.spec.ts)', () => {
     expect(children('dock')).toEqual([
       'exit',
       'wild-flee',
@@ -19,6 +19,7 @@ describe('The page controls', () => {
       'new-game',
       'hint',
       'undo',
+      'replay',
       'dock-replay',
       'royale-hold',
       'lobby',
@@ -41,8 +42,9 @@ describe('The page controls', () => {
     expect(children('online')).toEqual(['settings-box', 'auto-reason', 'import-file']);
   });
 
-  it('the Game modes sheet starts with the update banner, then the modes', () => {
-    expect(children('mode-menu')[0]).toBe('update');
+  it('Settings starts with the update row (#1693), the Game modes sheet with the modes', () => {
+    expect(children('settings-menu')[0]).toBe('update');
+    expect(children('mode-menu')).not.toContain('update');
     expect(children('mode-menu')).toContain('play-online');
   });
 

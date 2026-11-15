@@ -85,6 +85,7 @@ describe('the service worker (#193)', () => {
     expect(worker.register).toHaveBeenCalledWith('/sw.js');
     expect(update).toHaveBeenCalledOnce(); // the check for a new build at each load
     const button = byId<HTMLButtonElement>('update');
+    expect(byId('settings-menu').firstElementChild).toBe(button); // the first row of Settings (#1693), its dot on the cog (ui.css)
     expect(button.hidden).toBe(true);
     listeners.controllerchange!();
     expect(button.hidden).toBe(false);
@@ -689,6 +690,7 @@ describe('the settings toggles', () => {
     await boot('?bot=off');
     const ids = [...byId('settings-menu').querySelectorAll('button')].map((b) => b.id);
     expect(ids).toEqual([
+      'update', // New version: reload, the first row (#1693)
       'setting-sound', // Sound (#1566)
       'setting-transcript',
       'setting-log-archive',
@@ -709,6 +711,7 @@ describe('the settings toggles', () => {
       'setting-free-cam',
       'setting-export-game',
       'setting-import-game',
+      'console-entry', // the Console, hidden outside the terrace (#1693)
       'copy-diagnostics', // the last row of Advanced (#1032)
       'setting-reset-all', // the last row of Settings (#1684), then the confirm page's two buttons
       'reset-erase',

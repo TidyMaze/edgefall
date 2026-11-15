@@ -8,7 +8,7 @@ import { settingsList } from './settings';
 
 const everyItem = (): string[] => [
   ...settingsList(false, 'system', 'scarab', 'smoked', 100, false, false, false, 'default', true).map((s) => `setting-${s.id}`),
-  'setting-fps', 'setting-log-archive', 'setting-ledger', 'level-reset', 'copy-diagnostics',
+  'setting-fps', 'setting-log-archive', 'setting-ledger', 'level-reset', 'copy-diagnostics', 'console-entry',
 ];
 
 beforeEach(() => {
@@ -64,7 +64,7 @@ describe('groupSettings', () => {
     const menu = document.getElementById('settings-menu')!;
     groupSettings(menu);
     const group = (id: string): string => document.getElementById(id)!.closest('.setting-section')!.querySelector('.setting-heading')!.textContent!;
-    for (const id of ['setting-fps', 'setting-render-mode', 'setting-free-cam', 'setting-export-game', 'setting-import-game', 'copy-diagnostics']) expect(group(id), id).toBe('Advanced');
+    for (const id of ['setting-fps', 'setting-render-mode', 'setting-free-cam', 'setting-export-game', 'setting-import-game', 'console-entry', 'copy-diagnostics']) expect(group(id), id).toBe('Advanced'); // the Console is a tool (#1693)
     for (const id of ['setting-sound', 'setting-transcript', 'setting-log-archive', 'setting-ledger']) expect(group(id), id).toBe('Sound');
     expect(group('setting-reduced-motion')).toBe('Accessibility');
     expect(group('setting-palette')).toBe('Accessibility');

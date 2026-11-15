@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { openModes, startMode } from './modes';
+import { BLACK_WINS } from './end-games';
 
 // #1032, docs/specs/thumb-dock.md: the main controls sit in a thumb dock at the bottom of the window. In every state
 // below no dock button covers a board cell, every dock button is a 44 px target, the dock stays in the window and
@@ -112,7 +113,6 @@ for (const { name, viewport } of viewports) {
       );
       await click(target.cell);
       await expect(page.locator('#replay')).toBeEnabled();
-      await openModes(page); // Replay sits in the Game modes menu (#1612)
       await page.locator('#replay').click();
       await expect(page.locator('#replay-bar')).toBeVisible();
       const result = await check(page, 'a review');
@@ -137,3 +137,29 @@ for (const { name, viewport } of viewports) {
     });
   });
 }
+
+// #1693: Replay joined the dock once there is a move to review: at 320 px each control stays a 44 px target and inside the screen, before and after.
+test('the dock controls fit a 320 px phone with and without Replay, each at least 44 px, #1693', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('./?bot=off');
+  await page.locator('canvas').waitFor();
+  const boxes = () => page.evaluate(() => [...document.querySelectorAll('#dock > button')].filter((b) => (b as HTMLElement).getClientRects().length).map((b) => b.getBoundingClientRect().toJSON()));
+  const fit = (list: Awaited<ReturnType<typeof boxes>>) => {
+    for (const b of list) {
+      expect(b.width).toBeGreaterThanOrEqual(44);
+      expect(b.height).toBeGreaterThanOrEqual(44);
+      expect(b.left).toBeGreaterThanOrEqual(0);
+      expect(b.right).toBeLessThanOrEqual(320);
+    }
+  };
+  await expect(page.locator('#replay')).toBeHidden(); // no move yet
+  const before = await boxes();
+  expect(before.length).toBe(5);
+  fit(before);
+  const save = JSON.stringify({ version: 1, mode: 'local', layout: 'standard', bot: false, moves: BLACK_WINS });
+  await page.locator('#import-file').setInputFiles({ name: 'game.json', mimeType: 'application/json', buffer: Buffer.from(save) });
+  await expect(page.locator('#replay')).toBeVisible();
+  const after = await boxes();
+  expect(after.length).toBeGreaterThanOrEqual(6);
+  fit(after);
+});

@@ -127,13 +127,14 @@ test('the log archive rereads an entry read on another deck, #513', async ({ pag
   await expect(body).toHaveAttribute('data-console', /^mess-house-rule /);
 });
 
-// #1369: the terrace has no console screen, so its Console entry in Game modes reads the deck's entry as a plate.
-test('the terrace Console entry in Game modes reads the deck entry, #1369', async ({ page }) => {
+// #1369: the terrace has no console screen, so its Console entry (Settings, Advanced, #1693) reads the deck's entry as a plate.
+test('the terrace Console entry in Settings, Advanced, reads the deck entry, #1369', async ({ page }) => {
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
   await expect(page.locator('body')).toHaveAttribute('data-scene', 'table-zero');
-  await page.locator('#modes').click();
-  await page.locator('#mode-menu #console-entry').click();
+  await page.locator('#settings').click();
+  await page.locator('#settings-advanced > summary').click();
+  await page.locator('#settings-menu #console-entry').click();
   await expect(page.locator('body')).toHaveAttribute('data-reading', 'mess-house-rule');
   await expect(page.locator('#reader')).toBeVisible();
   await expect(page.locator('#reader')).toContainText("Captain's order, pinned above table four");

@@ -35,3 +35,21 @@ describe('the Game modes sheet, the boss list and the settings menu, #1136', () 
     expect(css).not.toContain('backdrop-filter');
   });
 });
+
+// #1693: the update row is the first row of Settings, its dot on the cog; the bay sheet is a sheet above the dock like the others, a bay's boss list inside the Shift crew's.
+describe('the homes moved in #1693', () => {
+  it('draws the update dot on the cog and no longer on Modes', () => {
+    expect(css).toMatch(/body:has\(#update:not\(\[hidden\]\)\) #settings \{[^}]*background-image: radial-gradient/);
+    expect(css).not.toMatch(/#update:not\(\[hidden\]\)\) #modes/);
+  });
+
+  it('tightens the dock when Replay shows so six buttons fit 320 px', () => {
+    expect(css).toMatch(/@media \(max-width: 420px\) \{ #dock:has\(#undo:not\(\[hidden\]\), #replay:not\(\[hidden\]\)\) \{ gap: 1px; padding: 4px; \} \}/);
+  });
+
+  it('puts the bay sheet above the dock with the other sheets, its rows and boss list at 44 px', () => {
+    expect(css).toMatch(/#dock-wrap #lobby-sheet, #dock-wrap #bay-sheet \{/);
+    expect(css).toMatch(/#dock-wrap #bay-sheet\[hidden\]/);
+    expect(css).toMatch(/#dock-wrap #bay-sheet > button, #dock-wrap #bay-sheet #coop-list button \{[^}]*min-height: 44px;/);
+  });
+});

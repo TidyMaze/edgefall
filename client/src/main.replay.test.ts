@@ -44,9 +44,13 @@ describe('the replay bar', () => {
   it('has a Replay button that waits for a first move, and a bar that opens on the live position', async () => {
     const game = await boot('?bot=off');
     expect(byId<HTMLButtonElement>('replay').disabled).toBe(true);
+    expect(byId('dock').contains(byId('replay'))).toBe(true); // a dock action, not a row of the Modes sheet (#1693)
+    expect(byId('mode-menu').contains(byId('replay'))).toBe(false);
+    expect(byId('replay').hidden).toBe(true); // nothing to review yet (#1693)
     expect(bar()).toBe(false);
     playOne(game);
     playOne(game);
+    expect(byId('replay').hidden).toBe(false);
     byId('replay').click();
     expect(bar()).toBe(true);
     expect(label()).toBe('Move 2 of 2 (live)');

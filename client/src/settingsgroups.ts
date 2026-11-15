@@ -19,7 +19,7 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
   {
     id: 'settings-advanced',
     name: 'Advanced',
-    items: ['#setting-fps', '#setting-render-mode', '#setting-free-cam', '#setting-export-game', '#setting-import-game', '#copy-diagnostics'],
+    items: ['#setting-fps', '#setting-render-mode', '#setting-free-cam', '#setting-export-game', '#setting-import-game', '#console-entry', '#copy-diagnostics'],
     collapsed: true,
   },
 ];

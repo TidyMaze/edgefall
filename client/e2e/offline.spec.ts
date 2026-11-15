@@ -124,7 +124,7 @@ test('a new build reloads the idle page once, never twice (#1437)', async ({ pag
   // One reload per build: the second takeover of the same build keeps the page, the button stays.
   await page.evaluate(() => ((window as any).__marker = 'old'));
   await takeover();
-  await expect(page.locator('#update')).toHaveJSProperty('hidden', false); // in the Modes menu, shown once it opens
+  await expect(page.locator('#update')).toHaveJSProperty('hidden', false); // the first row of Settings, its dot on the cog (#1693)
   await page.waitForTimeout(1500);
   expect(await marker()).toBe('old');
 });
