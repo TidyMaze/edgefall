@@ -343,6 +343,32 @@ describe('WorldPeersHost', () => {
     expect(reports.at(-1)!.text).toBe('Online: 1 other hero here.');
   });
 
+  it('keeps rejoining while the error text says still trying and nobody is here, waiting 15 s, 30 s, then 60 s (#1670)', () => {
+    const { nets, host, reports, rooms, clock, enter } = setup();
+    enter();
+    clock.now = 0;
+    nets[0]!.fail('handshake timed out');
+    let at = 0;
+    for (const [wait, room] of [[RETRY_MS, 2], [2 * RETRY_MS, 3], [60000, 4], [60000, 5]] as const) {
+      clock.now = at + wait - 1;
+      host.frame(clock.now, [0, 0]);
+      expect(rooms).toHaveLength(room - 1);
+      at += wait;
+      clock.now = at;
+      host.frame(at, [0, 0]); // no new error from the new room: the text still says still trying, so it tries again later
+      expect(rooms).toHaveLength(room);
+      expect(reports.at(-1)!.text).toBe('Online: a connection problem, still trying.');
+    }
+    nets[4]!.join('p'); // a peer at last: no more rejoins, and the next error starts again at 15 s
+    host.frame(at + 60000, [0, 0]);
+    expect(rooms).toHaveLength(5);
+    clock.now = at + 70000;
+    nets[4]!.fail('handshake timed out');
+    nets[4]!.leave('p');
+    host.frame(at + 70000 + RETRY_MS, [0, 0]);
+    expect(rooms).toHaveLength(6);
+  });
+
   it('does not rejoin when a hero is connected, or after the join error cleared', () => {
     const { nets, host, rooms, clock, enter } = setup();
     enter();
