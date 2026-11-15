@@ -16,7 +16,7 @@ async function ship(page: Page, size: { width: number; height: number }): Promis
   await expect(bay(page, 'cargo:run')).toHaveAttribute('data-state', 'goal');
 }
 
-test('a phone: the goal line over the dock, the beacon on the goal bay, the route and the tag; a tap on the line rolls to the room', async ({ page }) => {
+test('a phone: the goal line at the foot of the window, the beacon on the goal bay, the route and the tag; a tap on the line rolls to the room', async ({ page }) => {
   await ship(page, { width: 390, height: 844 });
   const line = page.locator('#ship-goal-line');
   await expect(line).toHaveText('Next goal: start a rogue-lite run on the Cargo deck.');
@@ -28,10 +28,10 @@ test('a phone: the goal line over the dock, the beacon on the goal bay, the rout
     const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
     const l = r('#ship-goal-line');
     const bays = [...document.querySelectorAll<HTMLElement>('#ship-bays .cut-bay:not([hidden])')].map((b) => b.getBoundingClientRect());
-    return { h: l.height, bottom: l.bottom, dock: r('#dock').top, left: l.left, right: l.right, under: bays.filter((b) => b.bottom > l.top && b.top < l.bottom).length };
+    return { h: l.height, bottom: l.bottom, window: innerHeight, left: l.left, right: l.right, under: bays.filter((b) => b.bottom > l.top && b.top < l.bottom).length };
   });
   expect(m.h).toBeGreaterThanOrEqual(44);
-  expect(m.bottom).toBeLessThanOrEqual(m.dock);
+  expect(m.bottom).toBeLessThanOrEqual(m.window); // the Hub at home has no dock (#1697): the line stands at the foot of the window
   expect(m.left).toBeGreaterThanOrEqual(0);
   expect(m.right).toBeLessThanOrEqual(390);
   expect(m.under).toBe(0); // no bay under the line

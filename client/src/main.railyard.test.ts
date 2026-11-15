@@ -3,7 +3,7 @@ import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
 import { JUMP_MS, PASS_MS, type Train } from './railyard';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Rail Yard on the harness (#626, game-design.md section 7.8): the announced train's rails, chevrons and counter,
 // the count down after each player move, the pass that knocks both sides' marbles off its line, and the phase after 3
@@ -34,9 +34,7 @@ function fightRailYard(game: Game): void {
     (a as Uint32Array).fill(SEED);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Rail Yard')!.click();
+  startBoss('The Rail Yard');
 }
 
 const trains = (game: Game): Train[] => game.hook<Train[]>('__trains');

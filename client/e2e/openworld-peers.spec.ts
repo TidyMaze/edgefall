@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { MIN_GAP_MS } from '../src/worldpeers';
-import { clickHud, openModes, showHud, lowTierOnCi } from './modes';
+import { clickHud, showHud, lowTierOnCi } from './modes';
 
 lowTierOnCi();
 

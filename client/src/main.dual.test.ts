@@ -6,7 +6,7 @@ import { BLOOD_MS } from './blood';
 import { RIM_LIGHT } from './frame';
 import { SLIDE_MS } from './slide';
 import type { View } from './camera';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 import { BRIDGE_AT, RETURN_AT, RETURN_CELL, SEED } from './test/dual-game';
 import { dualGame } from './test/dual-fixture';
 
@@ -39,15 +39,14 @@ function catchScene(): () => THREE.Scene {
   return () => scene!;
 }
 
-/** Starts the fight against The Dual Room from the mode menu, on the fixture's fight seed. */
-function fightDual(game: Game): void {
+/** Starts the fight against The Dual Room on the fixture's fight seed, through the test hook. `asPlayer`: the page then stops being under automation (the hook needs it to start the fight, a bay is the player's way), so that the loop draws as a player's page does. */
+function fightDual(game: Game, asPlayer = false): void {
   vi.spyOn(crypto, 'getRandomValues').mockImplementation((a) => {
     (a as Uint32Array).fill(SEED);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Dual Room')!.click();
+  startBoss('The Dual Room');
+  if (asPlayer) Object.defineProperty(navigator, 'webdriver', { value: false, configurable: true });
 }
 
 /** Plays the first `to` plies of the recorded fight by clicks, as a player's page does without the test hooks; after
@@ -161,7 +160,6 @@ describe('main.ts The Dual Room (#947, #955)', () => {
     fightDual(game);
     played(game, 0, RETURN_AT + 1);
     expect(dual(game).drop).not.toBeNull();
-    game.openModes();
     byId('battle-royale').click();
     game.frame(DROP_MS);
     game.frame(16);
@@ -227,8 +225,8 @@ describe('main.ts The Dual Room (#947, #955)', () => {
   });
 
   it('the page of a player keeps drawing while the returning marble falls (#848)', async () => {
-    const game = await boot('?bot=off&quality=low', { webdriver: false, reducedMotion: false }); // no dust drifting
-    fightDual(game);
+    const game = await boot('?bot=off&quality=low&entrance', { reducedMotion: false }); // no dust drifting
+    fightDual(game, true);
     clickPlies(game, RETURN_AT + 1);
     expect(dual(game).drop).not.toBeNull();
     const before = game.draws();
@@ -238,8 +236,8 @@ describe('main.ts The Dual Room (#947, #955)', () => {
   });
 
   it('the page of a player keeps drawing while the bridge comes down (#848)', async () => {
-    const game = await boot('?bot=off&quality=low', { webdriver: false, reducedMotion: false });
-    fightDual(game);
+    const game = await boot('?bot=off&quality=low&entrance', { reducedMotion: false });
+    fightDual(game, true);
     clickPlies(game, BRIDGE_AT);
     // Past the push's slide, the ejection and its splash: the bridge comes down alone, after the slide, longer than them.
     for (let elapsed = 15 * 16; elapsed <= BLOOD_MS; elapsed += 16) game.frame(16);
@@ -282,9 +280,7 @@ describe('main.ts The Dual Room (#947, #955)', () => {
   it('another boss, the hub and the battle royale show no void, no bridge and no mark', async () => {
     const game = await boot('?bot=off', { reducedMotion: true });
     fightDual(game);
-    game.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Echo')!.click();
+    startBoss('The Echo');
     expect(dual(game)).toEqual({ state: null, bridge: [0, 0, 0, 0, 0], mark: null, drop: null });
     expect(document.body.dataset.bridge).toBeUndefined();
     expect(document.body.dataset.dualRoom).toBeUndefined();
@@ -292,7 +288,6 @@ describe('main.ts The Dual Room (#947, #955)', () => {
     byId('ship').click();
     expect(document.body.dataset.bridge).toBeUndefined();
     fightDual(game);
-    game.openModes();
     byId('battle-royale').click();
     expect(document.body.dataset.bridge).toBeUndefined();
   });

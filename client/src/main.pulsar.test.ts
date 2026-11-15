@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
 import { resetView, type View } from './camera';
 import { SHOCK_MS, SHOCK_RADIUS, type Pulsar } from './pulsar';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Pulsar on the harness (#675, game-design.md section 7.10): the six pulsars, the charge of the active one (its
 // glow, counter and chevrons), the HUD line, and the pulse: the ring grows, the pushed marbles slide and the ones past
@@ -44,9 +44,7 @@ function fightPulsar(game: Game): void {
     (a as Uint32Array).fill(2);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Pulsar')!.click();
+  startBoss('The Pulsar');
 }
 
 /** Plays ply `k` of the fixture by two clicks. */
@@ -117,7 +115,6 @@ describe('main.ts The Pulsar in space (#1146)', () => {
     expect(walls(scene())[0]!.layers.isEnabled(0)).toBe(false); // the walls, gantry, lamps and props
     expect(named(scene(), 'pulsar')).toHaveLength(6); // the board and its beacons stay
     expect((scene().background as THREE.Color).getHex()).toBe(0x000000);
-    game.openModes();
     byId('ship').click(); // the ship's hub: no fight
     expect(space!.visible).toBe(false);
     expect(walls(scene())[0]!.layers.isEnabled(0)).toBe(true);
@@ -266,7 +263,7 @@ describe('main.ts The Pulsar (#675)', () => {
       expect(fitted.distance).toBeGreaterThan(resetView().distance); // drawn back
       document.querySelector('canvas')!.dispatchEvent(new WheelEvent('wheel', { deltaY: -300 }));
       expect(game.hook<View>('__view').distance).toBeLessThan(fitted.distance);
-      byId('reset-view').click();
+      byId('view-reset').click();
       expect(game.hook<View>('__view')).toEqual(fitted); // Reset view goes back to it
     });
   }
@@ -306,7 +303,7 @@ describe('main.ts The Pulsar (#675)', () => {
     windowOf(375, 812);
     dispatchEvent(new Event('resize'));
     expect(game.hook<View>('__view')).toEqual(own); // the player's view stays
-    byId('reset-view').click();
+    byId('view-reset').click();
     expect(game.hook<View>('__view')).toEqual(upright);
     windowOf(812, 375);
     dispatchEvent(new Event('resize'));

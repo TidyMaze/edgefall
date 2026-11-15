@@ -12,11 +12,9 @@ describe('ranked leaderboard dialog', () => {
     const game = await boot('?bot=off');
     localStorage.setItem('ab-alone.ranked', JSON.stringify({ version: 1, rating1v1: 1250, ratingRoyale: 1200, matches: [] }));
     localStorage.setItem('ab-alone.ranked.rivals', JSON.stringify({ version: 1, rivals: [{ pub: 'abcdef123', rating: 1400, timestamp: 1 }] }));
-    game.openModes();
     expect(byId('board').hidden).toBe(true);
     byId('leaderboard').click();
     expect(byId('board').hidden).toBe(false);
-    expect(byId('mode-menu').hidden).toBe(true);
     expect(byId('board-body').textContent).toContain('Your position: 2 of 2');
     expect(byId('board-body').querySelector('tr[data-me]')!.textContent).toContain('You');
     expect(document.activeElement).toBe(byId('board-close'));
@@ -30,18 +28,15 @@ describe('ranked leaderboard dialog', () => {
     localStorage.setItem('ab-alone.ranked', JSON.stringify({ version: 1, rating1v1: 1250, ratingRoyale: 1200, matches: [] }));
     localStorage.setItem('ab-alone.ranked.rivals', JSON.stringify({ version: 1, rivals: [{ pub: 'abcdef123', rating: 1400, timestamp: 1 }] }));
     localStorage.setItem('ab-alone.ranked.board', JSON.stringify({ version: 1, rank: 1 }));
-    game.openModes();
     byId('leaderboard').click();
     expect(byId('board-move').textContent).toBe('Down 1 place since your last visit');
     byId('board-close').click();
-    game.openModes();
     byId('leaderboard').click();
     expect(byId('board-move').textContent).toBe('Unchanged since your last visit');
   });
 
   it('shows an empty board, keeps Tab inside and closes on Escape', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('leaderboard').click();
     expect(byId('board-body').textContent).toContain('Play a ranked match');
     key('Tab'); // the shared board's join button comes first (#1287)

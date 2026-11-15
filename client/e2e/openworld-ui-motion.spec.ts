@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
 
 // #1105, docs/specs/openworld-animation.md story 7: the HUD plate and the New world sheet slide in on the base token, with
 // transform and opacity only, so the page does not shift. Reduced motion shows both at once, and focus stays on the button.

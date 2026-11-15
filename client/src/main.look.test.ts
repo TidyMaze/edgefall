@@ -5,7 +5,7 @@ import type { Axial } from './board';
 import { MARBLE_LOOK, TONAL, tonalMarble } from './look';
 import { GLASS_SKINS } from './glassskins';
 import { SKINS } from './skins';
-import { boot } from './test/harness';
+import { boot, startBoss } from './test/harness';
 
 // The tonal look of the board and the marbles (#1138, look.ts): flat tonal materials, one tone per skin, and none of the
 // board's, cells' or skins' maps. `?look=pbr` (the default) keeps the maps of today.
@@ -108,8 +108,7 @@ describe('main.ts tonal look (#1138)', () => {
   it('veils the Stalker cells in the veiled tone, rings the selection and the last move in sky blue', async () => {
     const scene = catchScene();
     const game = await boot('/?look=tonal&scene=room');
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Stalker')!.click();
+    startBoss('The Stalker');
     const veil = scene().getObjectByName('stalker-fog') as THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
     expect(veil.material.color.getHex()).toBe(TONAL.veiled);
     expect(veil.material.opacity).toBe(1);
@@ -129,8 +128,7 @@ describe('main.ts tonal look (#1138)', () => {
     const scene = catchScene();
     const game = await boot('/');
     const { Encounter } = await import('edgefall-wasm');
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Stalker')!.click();
+    startBoss('The Stalker');
     vi.spyOn(Encounter.prototype, 'play').mockImplementationOnce(() => {
       throw 'Hidden';
     });

@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { BLACK_WINS } from './end-games';
 
 // #1032, docs/specs/thumb-dock.md: the main controls sit in a thumb dock at the bottom of the window. In every state
 // below no dock button covers a board cell, every dock button is a 44 px target, the dock stays in the window and
-// clear of the HUD and the settings cog, and Esc closes the Game modes sheet and gives the focus back.
+// clear of the HUD and the settings cog.
 
 type Box = { left: number; top: number; right: number; bottom: number };
 
@@ -78,12 +78,12 @@ for (const { name, viewport } of viewports) {
   test.describe(name, () => {
     test.use({ viewport, isMobile: viewport.width < 600, hasTouch: viewport.width < 600 });
 
-    test('a normal game: the dock holds the five controls, clear of the board, bug #1032', async ({ page }) => {
+    test('a normal game: the dock holds the exit, New and Hint, clear of the board, bugs #1032 #1697', async ({ page }) => {
       await page.goto('./?bot=off&net=hook');
       await page.locator('canvas').waitFor();
       await expect(page.locator('#hud')).toContainText('Black to move');
       const result = await check(page, 'a normal game');
-      expect(result.ui.order).toEqual(['New game', 'Hint', 'Open world', 'Quick game', 'Game modes']);
+      expect(result.ui.order).toEqual(['Back to the hub', 'New game', 'Hint']);
     });
 
     test('a boss fight: the dock holds Goal and Retry, clear of the board, bug #1032', async ({ page }) => {
@@ -125,16 +125,6 @@ for (const { name, viewport } of viewports) {
         expect(slider!.height, 'the slider is a 44 px target on a touch screen, #928').toBeGreaterThanOrEqual(44);
       }
     });
-
-    test('Esc closes the Game modes sheet and gives the focus back to Game modes, bug #1032', async ({ page }) => {
-      await page.goto('./?bot=off&net=hook');
-      await page.locator('canvas').waitFor();
-      await openModes(page);
-      await expect(page.locator('#mode-menu')).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(page.locator('#mode-menu')).toBeHidden();
-      await expect(page.getByRole('button', { name: 'Game modes' })).toBeFocused();
-    });
   });
 }
 
@@ -154,12 +144,12 @@ test('the dock controls fit a 320 px phone with and without Replay, each at leas
   };
   await expect(page.locator('#replay')).toBeHidden(); // no move yet
   const before = await boxes();
-  expect(before.length).toBe(5);
+  expect(before.length).toBe(3); // the exit, New and Hint (#1697: no World, Quick or Modes)
   fit(before);
   const save = JSON.stringify({ version: 1, mode: 'local', layout: 'standard', bot: false, moves: BLACK_WINS });
   await page.locator('#import-file').setInputFiles({ name: 'game.json', mimeType: 'application/json', buffer: Buffer.from(save) });
   await expect(page.locator('#replay')).toBeVisible();
   const after = await boxes();
-  expect(after.length).toBeGreaterThanOrEqual(6);
+  expect(after.length).toBe(4); // and Replay
   fit(after);
 });

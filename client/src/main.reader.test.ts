@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { type Axial } from './board';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The terminal reader (#512): a click on the console screen, or the T key, frames the camera on it; a click on the
 // screen or the right arrow turns the page, the left arrow goes back; Esc, a click off the screen or a click past the
@@ -168,7 +168,6 @@ describe('main.ts, the terminal reader (#512)', () => {
     const game = await ready();
     await vi.waitFor(() => expect(data().scene).toBe('table-zero'));
     const button = document.getElementById('console-entry') as HTMLButtonElement;
-    expect(document.getElementById('mode-menu')!.contains(button)).toBe(false); // its home is Settings, Advanced (#1693)
     expect(button.closest('#settings-advanced')).not.toBeNull();
     expect(button.hidden).toBe(false);
     expect(document.getElementById('settings-menu')!.hidden).toBe(true);
@@ -193,9 +192,7 @@ describe('main.ts, the terminal reader (#512)', () => {
 describe('the props during a fight (#1668)', () => {
   const inFight = async (): Promise<Game> => {
     const game = await ready();
-    game.openModes();
-    document.getElementById('boss-fight')!.click();
-    [...document.getElementById('boss-list')!.querySelectorAll('button')].find((b) => b.textContent!.startsWith('The Echo'))!.click();
+    startBoss('The Echo');
     expect(game.hook('__fight')).not.toBeNull();
     game.frame();
     return game;

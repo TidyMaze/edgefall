@@ -5,7 +5,7 @@ import { frameShape } from './frame';
 import { HUB_CELLS, neighbours, roomsOf, type Spot } from './hub';
 import { SECRETS } from './story';
 import { BOSS_IDS } from './tally';
-import { arrowCell, bossLockLine, bossTitle, bumpLine, HUB_BOARD, hubHtml, hubTargetText, labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, reachabilityText, roomLabel, type Goal } from './hubview';
+import { arrowCell, bossTitle, bumpLine, HUB_BOARD, hubHtml, hubTargetText, labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, reachabilityText, roomLabel, type Goal } from './hubview';
 
 // The hub on screen (docs/specs/game-design.md section 3.5, #521): the board the map is drawn with, the arrow keys and
 // the HUD plate.
@@ -335,24 +335,6 @@ describe('the boss pips (#1249, #1527)', () => {
     );
     expect(pipsHtml([], {})).toContain('Medals 0 / 15');
     expect(pipsHtml([], { echo: 3, alien: 9, dual: 4, nobody: 1 })).toContain('Medals 3 / 15'); // a medal of a boss the roster has not does not count
-  });
-});
-
-describe('the lock of a boss in the boss menu (#1527)', () => {
-  it('says nothing for a boss the Hub lets the player reach, and names the boss to beat for one it does not', () => {
-    expect(bossLockLine('echo', [])).toBe('');
-    expect(bossLockLine('hull', [])).toBe('Beat The Echo first');
-    expect(bossLockLine('hull', ['echo'])).toBe('');
-    expect(bossLockLine('swarm', [])).toBe('Beat The Echo first');
-    expect(bossLockLine('choir', ['echo'])).toBe('Beat The Hull first');
-    expect(bossLockLine('overseer', ['echo', 'hull'])).toBe('Beat The Choir first');
-    expect(bossLockLine('pulsar', [])).toBe('Beat The Chaplain first');
-    expect(bossLockLine('pulsar', ['chaplain'])).toBe('');
-    expect(bossLockLine('ballast', ['ballast'])).toBe(''); // beaten already
-  });
-
-  it('holds no secret word of a later stage', () => {
-    for (const id of BOSS_IDS) for (const { word } of SECRETS) expect(bossLockLine(id, []), id).not.toMatch(word);
   });
 });
 

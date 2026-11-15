@@ -1,19 +1,17 @@
 import { expect, test } from '@playwright/test';
+import { startMode } from './modes';
 import { WAVE_1_WIN } from '../src/test/trainerline';
-import { openModes } from './modes';
 
-// Issue #1159: Trainer in the Game modes menu starts wave 1, one bot marble against the player's 14. A won wave shows
+// Issue #1159: The Trainer starts at wave 1, one bot marble against the player's 14. A won wave shows
 // its card, Next wave brings one more marble, and the test hook loads wave 5 directly. ?bot=off plays both sides by hand.
 test('Trainer starts at wave 1, a won wave shows its card and Next wave adds a marble, the hook loads wave 5', async ({ page }) => {
   await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
-  await openModes(page);
-  await page.getByRole('button', { name: 'Trainer' }).click();
+  await startMode(page, 'trainer');
   await expect(page.locator('#hud')).toContainText('Trainer · wave 1 · best 0 · Marbles left 6/6');
   const whites = (): Promise<number> => page.evaluate(() => (window as any).__board().filter((c: number) => c === 2).length);
   expect(await whites()).toBe(1);
   await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Game modes' })).toHaveAttribute('aria-expanded', 'false');
 
   await page.evaluate((moves) => (window as any).__playMoves(moves), WAVE_1_WIN);
   const card = page.locator('#trainer-card');

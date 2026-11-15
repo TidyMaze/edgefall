@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
 import { BLACK_WINS } from './end-games';
 import { shot } from './shot';
 
@@ -18,7 +17,6 @@ test('Replay steps through an imported game, view only, and Live returns to the 
     .locator('#import-file')
     .setInputFiles({ name: 'game.json', mimeType: 'application/json', buffer: Buffer.from(save(BLACK_WINS)) });
   await expect(page.locator('body')).toHaveAttribute('data-over', 'win');
-  await openModes(page); // Replay and Reset view sit in the Game modes menu (#1612)
   await page.getByRole('button', { name: 'Replay', exact: true }).click();
   const total = BLACK_WINS.length;
   await expect(page.locator('#replay-label')).toHaveText(`Move ${total} of ${total} (live)`);
@@ -53,7 +51,6 @@ test('a replay at the start shows the start position evaluated, not the result o
     .locator('#import-file')
     .setInputFiles({ name: 'game.json', mimeType: 'application/json', buffer: Buffer.from(save(BLACK_WINS)) });
   await expect(page.locator('body')).toHaveAttribute('data-over', 'win');
-  await openModes(page); // Replay and Reset view sit in the Game modes menu (#1612)
   await page.getByRole('button', { name: 'Replay', exact: true }).click();
   await page.locator('#replay-first').click();
   await expect(page.locator('#replay-label')).toHaveText(`Move 0 of ${BLACK_WINS.length}`);

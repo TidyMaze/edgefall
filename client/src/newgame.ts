@@ -16,6 +16,3 @@ export function pressNewGame(confirm: Confirm, now: number, plies: number): { st
 
 /** The button label: it asks for the confirmation while one is pending. */
 export const newGameLabel = (confirm: Confirm): string => (confirm === null ? 'New game' : 'Confirm new game');
-
-/** Quick game (#1612) is hidden in a fight, boss or wild: it would drop the fight, which New game does not do either (the fight's own exit asks). */
-export const quickGameHidden = (boss: boolean, wild: boolean): boolean => boss || wild;

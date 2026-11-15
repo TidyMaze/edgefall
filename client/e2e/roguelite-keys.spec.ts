@@ -57,7 +57,7 @@ test('with the three keys the third boss leads to act 4: an elite, then the fina
   await expect(panel.locator('button[data-node="30"]')).toBeEnabled();
   await panel.evaluate((el) => (el.scrollTop = el.scrollHeight)); // the plate scrolls inside itself: act 4 is its last two rows
   await expect(panel.getByRole('button', { name: 'Act 4, boss' })).toBeInViewport({ ratio: 1 });
-  const [plate, dock] = await Promise.all([panel.boundingBox(), page.getByRole('button', { name: 'Modes' }).boundingBox()]);
+  const [plate, dock] = await Promise.all([panel.boundingBox(), page.locator('#exit').boundingBox()]);
   // The plate never covers the dock, so the boss can be pressed: above it on a desktop or held upright, beside it on a short window where the dock is a column at the side.
   expect(plate!.y + plate!.height <= dock!.y || plate!.x + plate!.width <= dock!.x || dock!.x + dock!.width <= plate!.x).toBe(true);
   await freshDraw(page);

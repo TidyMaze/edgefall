@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // Bug #957: the board's centre sits in the middle of the window on every view a fight opens on and on Reset view, the
 // HUD plate does not push it aside (#695 is gone): the player folds the plate instead. The Dual Room's two rooms lie
@@ -22,9 +22,7 @@ function windowOf(width: number, height: number): void {
 
 /** Starts the fight against `boss` from the mode menu. */
 function fight(game: Game, boss: string): void {
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === boss)!.click();
+  startBoss(boss);
 }
 
 /** Where the axial point (q, r) is drawn in the window. */
@@ -43,7 +41,7 @@ describe('main.ts the board centred in the window (#957)', () => {
         expect(drawn(game, 0, 0).x).toBeCloseTo(width / 2, 3);
         expect(drawn(game, 0, 0).y).toBeCloseTo(centreY, 3);
         document.querySelector('canvas')!.dispatchEvent(new WheelEvent('wheel', { deltaY: -300 }));
-        byId('reset-view').click();
+        byId('view-reset').click();
         expect(drawn(game, 0, 0).x).toBeCloseTo(width / 2, 3);
         expect(drawn(game, 0, 0).y).toBeCloseTo(centreY, 3);
       }

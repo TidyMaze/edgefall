@@ -7,7 +7,6 @@ import { boot, type Game } from './test/harness';
 
 const byId = (id: string): HTMLElement => document.getElementById(id)!;
 function ship(game: Game): void {
-  game.openModes();
   byId('ship').click();
 }
 /** The Cutaway class of the page just booted (the harness resets the modules at each boot). */

@@ -40,7 +40,7 @@ describe('menus and buttons answer touch (#1094)', () => {
   });
 
   it('opens every sheet on the base token with the out easing', () => {
-    for (const id of ['mode-menu', 'goal-sheet', 'daily-card', 'lobby-sheet']) expect(block).toContain(`#dock-wrap #${id}`);
+    for (const id of ['goal-sheet', 'daily-card', 'lobby-sheet']) expect(block).toContain(`#dock-wrap #${id}`);
     expect(block).toMatch(/animation: sheet-in var\(--motion-base\) var\(--ease-out\)/);
     expect(block).toMatch(/@keyframes sheet-in \{ from \{ opacity: 0; transform: translateY\(8px\); \} \}/);
   });

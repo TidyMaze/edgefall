@@ -3,7 +3,7 @@ import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
 import { ACCENTS } from './marbles';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The boss accents of main.ts (#507): in boss mode the shells of the boss side wear their boss's accent (marbles.ts), a
 // child mesh kept upright on the shell whatever its turn, through every palette, safe mode and clear board. The scene
@@ -27,9 +27,7 @@ function catchScene(): () => THREE.Scene {
 
 /** Starts the fight against `name` from the mode menu. */
 function fightBoss(game: Game, name: string): void {
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
+  startBoss(name);
 }
 
 /** The accent meshes drawn in the scene. */

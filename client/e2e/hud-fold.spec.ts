@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
 
 // #957: the fold button folds the HUD plate to a tab, the button alone, a 44 px touch target (#922); the plate leaves the
 // screen, about a pixel, but stays in the page. The Open world mode hides the tab with the plate.

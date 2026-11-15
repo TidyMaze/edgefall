@@ -10,7 +10,7 @@ import { parseRecorded } from './test/chaplain-game';
 import echoWin from '../../crates/edgefall-core/tests/fixtures/echo.txt?raw';
 import { BOSS_BLURBS } from './lorelogs';
 import { SLIDE_MS } from './slide';
-import { boot, slowKeys, type Game } from './test/harness';
+import { boot, slowKeys, type Game, startBoss } from './test/harness';
 
 // Boss fights and the daily challenge on the harness (decision #445, task #454): the boss list, Retry, the Goal control,
 // the daily challenge and its result card, the boss block of the HUD, and The Hull, The Chaplain and The Choir drawn on
@@ -27,12 +27,10 @@ const drawSeed = (seed: number): void =>
     (a as Uint32Array).fill(seed);
     return a;
   });
-/** Starts the fight against `name` from the mode menu, with `seed` as the random fight seed. */
+/** Starts the fight against `name` through the test hook, with `seed` as the random fight seed. */
 function fightBoss(game: Game, name: string, seed = 1): void {
   drawSeed(seed);
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.startsWith(name))!.click(); // a beaten boss carries its medal (#791)
+  startBoss(name); // a beaten boss carries its medal (#791)
 }
 /** Plays `mv` by two clicks: its marble, then the cell it goes to. */
 function play(game: Game, mv: Move): void {
@@ -90,41 +88,8 @@ const NEXT_DAY = Date.parse('2027-03-31T08:00:00Z');
 describe('main.ts boss fights', () => {
   it("gives each boss of the list its blurb as its title, the tower's one line of the story (#1544)", async () => {
     await boot('?bot=off');
-    const buttons = [...byId('boss-list').querySelectorAll('button')];
-    expect(buttons.map((b) => b.title)).toEqual(BOSS_BLURBS.map((b) => b.blurb));
-    const together = [...byId('coop-list').querySelectorAll('button')]; // the same list of Fight together and Boss duel
+    const together = [...byId('coop-list').querySelectorAll('button')]; // the list of Fight together and Boss duel
     expect(together.map((b) => b.title)).toEqual(BOSS_BLURBS.map((b) => b.blurb));
-  });
-
-  it('lists the bosses behind Boss fight, the button opens and closes the list', async () => {
-    await boot('?bot=off');
-    const button = byId('boss-fight');
-    const list = byId('boss-list');
-    expect((button as HTMLButtonElement).disabled).toBe(false);
-    expect([...list.querySelectorAll('button')].map((b) => b.textContent)).toEqual([
-      'The Echo',
-      'The Hull',
-      'The Choir',
-      'The Chaplain',
-      'The Ballast Mind',
-      'The Alien',
-      'The Rail Yard',
-      'The Magnetizer',
-      'The Pulsar',
-      'The Overseer',
-      'The Assembly Line',
-      'The Unstable Core',
-      'The Dual Room',
-      'The Stalker',
-      'The Swarm',
-    ]);
-    expect(list.hidden).toBe(true);
-    button.click();
-    expect(list.hidden).toBe(false);
-    expect(button.getAttribute('aria-expanded')).toBe('true');
-    button.click();
-    expect(list.hidden).toBe(true);
-    expect(button.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('a picked boss switches the page to its fight: the boss block, the goal, Retry, no local controls', async () => {
@@ -132,10 +97,6 @@ describe('main.ts boss fights', () => {
     fightBoss(game, 'The Echo', 42);
     expect(game.hook('__fight')).toEqual({ id: 'echo', seed: 42, mirror: false });
     expect(body().boss).toBe('echo');
-    expect(byId('mode-menu').hidden).toBe(true); // picking a mode closes the menu
-    expect(byId('modes').getAttribute('aria-expanded')).toBe('false');
-    expect(byId('boss-list').hidden).toBe(true);
-    expect(byId('boss-fight').getAttribute('aria-expanded')).toBe('false');
     expect(byId('boss-retry').hidden).toBe(false);
     expect(byId('new-game').hidden).toBe(true);
     expect(byId('hint').hidden).toBe(true); // fair play: no hint, no evaluation bar (#164)
@@ -185,7 +146,6 @@ describe('main.ts boss fights', () => {
     for (const mode of ['ship', 'battle-royale']) {
       fightBoss(game, 'The Echo');
       expect(byId('boss-bar').hidden).toBe(false);
-      game.openModes();
       byId(mode).click();
       expect(byId('boss-bar').hidden).toBe(true);
     }
@@ -301,20 +261,13 @@ describe('main.ts boss fights', () => {
       vi.spyOn(Encounter.prototype, 'status').mockImplementation(won);
       play(game, forward(game));
     }
-    const menuEntry = (name: string): string =>
-      [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.startsWith(name))!.textContent!;
-
-    it('the first win earns the medal, the banner says so and the boss menu shows it', async () => {
+    it('the first win earns the medal, the banner says so', async () => {
       const game = await boot('?bot=off', { reducedMotion: true });
-      expect(menuEntry('The Hull')).toBe('The Hull');
       await winHull(game);
       expect(medals()).toEqual({ hull: 1 });
       expect(game.hud()).toContain('Medal earned: 1 turn.');
       byId('boss-goal').click(); // the HUD draws again: the fight earns its medal once, the line stays
       expect(game.hud()).toContain('Medal earned: 1 turn.');
-      byId('boss-fight').click();
-      expect(menuEntry('The Hull')).toBe('The Hull Medal: 1 turn');
-      expect(menuEntry('The Echo')).toBe('The Echo'); // an unbeaten boss has no medal
     });
 
     it('a faster win is called out as a new record, a slower one keeps the best', async () => {
@@ -462,13 +415,11 @@ describe('main.ts boss fights', () => {
     expect(game.hud()).toContain('Tell: Next army: Alto');
   });
 
-  it('online, Boss fight and Daily challenge start nothing', async () => {
+  it('online, the Daily challenge starts nothing', async () => {
     slowKeys();
     const game = await boot('?bot=off#room=boss-test');
     await game.online(); // the invite link joins the room
     expect(game.room()).toBe('boss-test');
-    byId('boss-fight').click();
-    expect(byId('boss-list').hidden).toBe(true);
     byId('daily').click();
     expect(game.hook('__fight')).toBeNull();
     expect(body().boss).toBeUndefined();
@@ -484,9 +435,7 @@ describe('main.ts daily challenge', () => {
     expect(daily.textContent).toBe('Daily challenge 2027-03-30: The Echo');
     expect(daily.querySelector('span')!.textContent).toBe('The Echo'); // held upright it takes a line of its own (#575)
     expect(daily.title).toBe('Daily challenge 2027-03-30: The Echo'); // the whole name when a phone cuts the label (#1000)
-    game.openModes();
     daily.click();
-    expect(byId('mode-menu').hidden).toBe(true);
     expect(game.hook('__fight')).toMatchObject({ id: 'echo', daily: { day: '2027-03-30', attempt: 1 } });
     expect(byId('hud').querySelector('.boss .daily')!.textContent).toBe('Daily challenge 2027-03-30 · attempt 1');
     expect(localStorage.getItem('ab-alone.daily')).toBe('2027-03-30 1');
@@ -503,7 +452,7 @@ describe('main.ts daily challenge', () => {
   it('names every boss of the list on a day it is the daily boss', async () => {
     const now = vi.spyOn(Date, 'now').mockReturnValue(DAY);
     const game = await boot('?bot=off');
-    const names = [...byId('boss-list').querySelectorAll('button')].map((b) => b.textContent!); // in the order of boss_ids()
+    const names = [...byId('coop-list').querySelectorAll('button')].map((b) => b.textContent!); // in the order of boss_ids()
     expect(names.length).toBeGreaterThan(1);
     for (const name of names) {
       let ms = DAY;
@@ -519,7 +468,7 @@ describe('main.ts daily challenge', () => {
     vi.spyOn(Date, 'now').mockReturnValue(DAY);
     const game = await boot('?bot=off', { reducedMotion: true });
     byId('daily').click();
-    byId('reset-view').focus(); // the focus the card returns to
+    byId('view-reset').focus(); // the focus the card returns to
     loseByRepetition(game);
     const card = byId('daily-card');
     expect(card.hidden).toBe(false);
@@ -529,7 +478,7 @@ describe('main.ts daily challenge', () => {
     expect(card.hidden).toBe(false);
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); // a tap outside closes it
     expect(card.hidden).toBe(true);
-    expect(document.activeElement).toBe(byId('reset-view'));
+    expect(document.activeElement).toBe(byId('view-reset'));
     game.hud(); // closed, it stays closed while its text is the same
     expect(card.hidden).toBe(true);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); // closed already: nothing happens
@@ -964,73 +913,8 @@ describe('main.ts boss tells', () => {
     fightBoss(game, 'The Ballast Mind');
     const v = game.hook<{ distance: number }>('__view');
     expect(v.distance).toBeCloseTo((5 / 4) * Math.hypot(11, 8));
-    byId('reset-view').click();
+    byId('view-reset').click();
     const vReset = game.hook<{ distance: number }>('__view');
     expect(vReset.distance).toBeCloseTo((5 / 4) * Math.hypot(11, 8));
-  });
-});
-
-// The boss menu follows the Hub's lifts (#1527): a boss the Hub would not let the player reach is locked, with its reason. A player's browser
-// (no automation) or `?locks` has the lock; the automated pages of the other specs, and the links, keep the menu open.
-describe('the boss menu locks the bosses the Hub would not reach (#1527)', () => {
-  const entries = (): HTMLButtonElement[] => [...byId('boss-list').querySelectorAll('button')];
-  const entry = (name: string): HTMLButtonElement => entries().find((b) => b.textContent!.startsWith(name))!;
-  const open = (game: Game): void => {
-    game.openModes();
-    byId('boss-fight').click();
-  };
-  const progress = (...beaten: string[]) => ({ 'ab-alone.progress': JSON.stringify({ version: 1, deck: 'mess', cell: [0, 0], beaten }) });
-
-  it('shows the bosses above the progress locked with the boss to beat, and starts none of them', async () => {
-    const game = await boot('?bot=off&unlock', { webdriver: false });
-    open(game);
-    expect(entry('The Echo').getAttribute('aria-disabled')).toBeNull();
-    expect(entry('The Dual Room').getAttribute('aria-disabled')).toBeNull();
-    expect(entries().filter((b) => b.getAttribute('aria-disabled') === 'true')).toHaveLength(13);
-    const choir = entry('The Choir');
-    expect(choir.getAttribute('aria-disabled')).toBe('true');
-    expect(choir.dataset.locked).toBe('Beat The Hull first');
-    expect(choir.querySelector('.lock')!.textContent).toBe('Beat The Hull first');
-    expect(entry('The Hull').querySelector('.lock')!.textContent).toBe('Beat The Echo first');
-    drawSeed(1);
-    choir.click();
-    entry('The Ballast Mind').click();
-    expect(body().boss).toBeUndefined(); // no fight started
-    expect(byId('boss-list').hidden).toBe(false); // the menu stays open
-    entry('The Echo').click();
-    expect(body().boss).toBe('echo');
-  });
-
-  it('opens a deck as its lift opens, and keeps open the bosses already beaten of an older save', async () => {
-    const game = await boot('?bot=off', { webdriver: false, storage: progress('echo', 'pulsar') });
-    open(game);
-    for (const name of ['The Hull', 'The Alien', 'The Swarm']) expect(entry(name).getAttribute('aria-disabled'), name).toBeNull();
-    expect(entry('The Choir').getAttribute('aria-disabled')).toBe('true');
-    expect(entry('The Pulsar').getAttribute('aria-disabled')).toBeNull(); // beaten, whatever its deck
-    expect(entry('The Pulsar').querySelector('.lock')).toBeNull();
-    drawSeed(1);
-    entry('The Hull').click();
-    expect(body().boss).toBe('hull');
-  });
-
-  it('reads the progress each time the menu opens, and drops a lock that no longer holds', async () => {
-    const game = await boot('?bot=off&unlock', { webdriver: false });
-    open(game);
-    expect(entry('The Hull').getAttribute('aria-disabled')).toBe('true');
-    byId('boss-fight').click(); // closed
-    localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [0, 0], beaten: ['echo'] }));
-    byId('boss-fight').click();
-    expect(entry('The Hull').getAttribute('aria-disabled')).toBeNull();
-    expect(entry('The Hull').dataset.locked).toBeUndefined();
-    expect(entry('The Hull').querySelector('.lock')).toBeNull();
-  });
-
-  it('is open on an automated page, and locked there with ?locks', async () => {
-    const open_ = await boot('?bot=off');
-    open(open_);
-    expect(entries().filter((b) => b.getAttribute('aria-disabled') === 'true')).toHaveLength(0);
-    const locked = await boot('?bot=off&locks');
-    open(locked);
-    expect(entries().filter((b) => b.getAttribute('aria-disabled') === 'true')).toHaveLength(13);
   });
 });

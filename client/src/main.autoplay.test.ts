@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AUTO_DELAY_MS } from './autoplay';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // Auto-play on the harness (#792): the toggle of the fight HUD, the bot playing the player's side after a short delay
 // in a bot game, at the hot-seat table, in a boss fight with its medal and in the offline battle royale.
@@ -19,9 +19,7 @@ async function move(game: Game): Promise<void> {
   await vi.advanceTimersByTimeAsync(0);
 }
 function fightBoss(game: Game, name: string): void {
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.startsWith(name))!.click();
+  startBoss(name);
 }
 const medal = (id: string): void => localStorage.setItem('ab-alone.medals', JSON.stringify({ [id]: 7 }));
 
@@ -80,10 +78,8 @@ describe('main.ts, auto-play, #792', () => {
 
   it('plays both sides of the hot-seat table, either side', async () => {
     const game = await boot('?nodes=50');
-    game.openModes();
     byId('ship').click();
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [-1, 0], beaten: [] }));
-    game.openModes();
     byId('ship').click();
     game.click(-1, -1); // hot-seat
     timers();
@@ -100,7 +96,6 @@ describe('main.ts, auto-play, #792', () => {
     byId('new-game').click(); // confirmed: a new game
     expect(auto().getAttribute('aria-pressed')).toBe('false');
     expect(game.hud()).not.toBe('');
-    game.openModes();
     byId('play-online').click();
     await game.online();
     expect(auto().hidden).toBe(true);
@@ -108,7 +103,6 @@ describe('main.ts, auto-play, #792', () => {
 
   it('is hidden in the hub, and with ?bot=off: no bot to play', async () => {
     const game = await boot('?nodes=50');
-    game.openModes();
     byId('ship').click();
     expect(auto().hidden).toBe(true);
     await boot('?bot=off');
@@ -135,7 +129,6 @@ describe('main.ts, auto-play, #792', () => {
 
   it('plays the player rounds of the offline battle royale', async () => {
     const game = await boot('?nodes=50');
-    game.openModes();
     byId('battle-royale').click();
     expect(auto().disabled).toBe(false);
     const round = (): string => game.turn();

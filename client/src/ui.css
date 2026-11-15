@@ -191,30 +191,21 @@ body[data-openworld] #settings-menu { --settings-clear: 68px; } /* the exit is a
    button, closed at the start. Its button is the last of the column and the open menu lies under it, so opening or
    closing it moves no other button: a press that closes it lands where it was aimed. Held upright, its items are side
    by side. */
-#mode-menu { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-end; }
-#mode-menu[hidden] { display: none; }
-#modes[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
-@media (max-width: 600px), (pointer: coarse) { #mode-menu button { min-height: 2.75rem; } }
-#update, #bay-sheet > button, #reset-view, #invite-copy, #lobby-bot, #room-switch, #hint, #undo, #replay, #auto-play, #new-game, #modes, #play-online, #fight-together, #boss-duel, #ranked, #rematch, #boss-fight, #daily, #roguelite, #trainer, #trainer-next, #openworld, #ship, #boss-retry, #wild-flee, #exit, #boss-goal, #leaderboard, #console-entry, #boss-list button, #coop-list button, #copy-diagnostics {
+#update, #bay-sheet > button, #invite-copy, #lobby-bot, #room-switch, #hint, #undo, #replay, #auto-play, #new-game, #play-online, #fight-together, #boss-duel, #ranked, #rematch, #daily, #roguelite, #trainer, #trainer-next, #openworld, #ship, #boss-retry, #wild-flee, #exit, #boss-goal, #leaderboard, #console-entry, #coop-list button, #copy-diagnostics {
   padding: 0.5rem 0.75rem; cursor: pointer; color: var(--text); background: var(--panel);
   border: 1px solid var(--edge); border-radius: 2px; font: 0.875rem/1.2 var(--ui);
 }
-#update:focus-visible, #bay-sheet > button:focus-visible, #reset-view:focus-visible, #invite-copy:focus-visible, #lobby-bot:focus-visible, #room-switch:focus-visible, #hint:focus-visible, #undo:focus-visible, #replay:focus-visible, #replay-bar button:focus-visible, #auto-play:focus-visible, #new-game:focus-visible, #modes:focus-visible, #play-online:focus-visible, #fight-together:focus-visible, #boss-duel:focus-visible, #ranked:focus-visible, #rematch:focus-visible, #boss-fight:focus-visible, #daily:focus-visible, #roguelite:focus-visible, #trainer:focus-visible, #trainer-next:focus-visible, #openworld:focus-visible, #ship:focus-visible, #boss-retry:focus-visible, #wild-flee:focus-visible, #exit:focus-visible, #boss-goal:focus-visible, #leaderboard:focus-visible, #console-entry:focus-visible, #boss-list button:focus-visible, #coop-list button:focus-visible, #copy-diagnostics:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-#boss-list, #coop-list { display: flex; flex-direction: column; gap: 0.25rem; align-items: stretch; }
-#boss-list [aria-disabled='true'] { opacity: 0.75; cursor: not-allowed; }
-#boss-list .lock { display: block; font-size: 0.75em; font-weight: 700; line-height: 1.1; }
-#boss-list .medal { display: block; font-size: 0.7em; font-weight: 700; line-height: 1; white-space: nowrap; }
+#update:focus-visible, #bay-sheet > button:focus-visible, #invite-copy:focus-visible, #lobby-bot:focus-visible, #room-switch:focus-visible, #hint:focus-visible, #undo:focus-visible, #replay:focus-visible, #replay-bar button:focus-visible, #auto-play:focus-visible, #new-game:focus-visible, #play-online:focus-visible, #fight-together:focus-visible, #boss-duel:focus-visible, #ranked:focus-visible, #rematch:focus-visible, #daily:focus-visible, #roguelite:focus-visible, #trainer:focus-visible, #trainer-next:focus-visible, #openworld:focus-visible, #ship:focus-visible, #boss-retry:focus-visible, #wild-flee:focus-visible, #exit:focus-visible, #boss-goal:focus-visible, #leaderboard:focus-visible, #console-entry:focus-visible, #coop-list button:focus-visible, #copy-diagnostics:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#coop-list { display: flex; flex-direction: column; gap: 0.25rem; align-items: stretch; }
 /* Bug #653: in a desktop window an open boss list holds two bosses a row, each row compact, so every boss and Daily
    challenge fit the window without a scroll, with room for more bosses. A touch screen keeps its 44 px items. #635:
    with 10 bosses the rows are closer still, so the list keeps off a scroll in a 1280x720 window. #699: the items of the
    mode menu sit side by side when they fit and an open boss list takes a row of its own as wide as the column, so 12
    bosses and more fit a 1280x720 window. */
 @media (orientation: landscape) and (min-width: 1101px) and (pointer: fine) {
-  #mode-menu { flex-flow: row wrap; justify-content: flex-end; }
-  #boss-list, #coop-list { display: grid; grid-template-columns: 1fr 1fr; flex: 1 0 100%; }
-  #boss-list button, #coop-list button { padding-block: 0.125rem; }
+  #coop-list { display: grid; grid-template-columns: 1fr 1fr; flex: 1 0 100%; }
 }
-#boss-list[hidden], #coop-list[hidden], #boss-retry[hidden], #wild-flee[hidden], #exit[hidden], #boss-goal[hidden], #rematch[hidden], #update[hidden], #hint[hidden], #undo[hidden], #replay[hidden], #auto-play[hidden], #auto-reason[hidden], #new-game[hidden] { display: none; }
+#coop-list[hidden], #boss-retry[hidden], #wild-flee[hidden], #exit[hidden], #boss-goal[hidden], #rematch[hidden], #update[hidden], #hint[hidden], #undo[hidden], #replay[hidden], #auto-play[hidden], #auto-reason[hidden], #new-game[hidden] { display: none; }
 /* Goal (#248): open, it is lit like Hint; a phone-sized touch target on a small or touch screen. */
 #boss-goal[aria-expanded='true'] { border-color: var(--accent); color: var(--accent); }
 #boss-goal:disabled { cursor: default; }
@@ -233,7 +224,7 @@ body[data-openworld] #settings-menu { --settings-clear: 68px; } /* the exit is a
 #exit.confirm { border-color: var(--hazard); color: var(--hazard); }
 /* New game, Game modes and Copy diagnostics show their icon only, the name is their aria-label (#297, #357). A square
    of at least 44 px, a touch target on a phone. Play online shows its name, as the other items of the mode menu (#839). */
-#new-game, #modes, #copy-diagnostics { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; padding: 0.5rem; }
+#new-game, #copy-diagnostics { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; min-height: 2.75rem; padding: 0.5rem; }
 /* Rematch is the next step of a finished online game, greyed once we asked. New version: a reload runs the update. */
 #rematch, #update { border-color: var(--accent); }
 #rematch:disabled { cursor: default; color: var(--muted); border-color: var(--edge); }
@@ -362,11 +353,7 @@ body[data-opponent='waiting'] #invite { border-color: var(--accent); }
   /* The open mode menu starts a new row. #666: an open boss list is one row of its own under Boss fight (or Fight
      together) that scrolls sideways, so a new boss adds no row over the board: the menu is no wider than the
      window (min-width), the padding keeps the focus outlines inside the scroll box. */
-  #mode-menu { flex: 1 0 100%; min-width: 0; flex-flow: row wrap; gap: 0.5rem; }
-  #boss-list:not([hidden]), #coop-list:not([hidden]) { flex: 1 0 100%; flex-flow: row nowrap; overflow-x: auto; margin: -4px; padding: 4px; }
-  #boss-list button, #coop-list button { flex: none; }
   #ranked { order: 1; }
-  #mode-menu:has(#coop-list:not([hidden])) #ranked { order: -1; }
 }
 /* Bug #575: on a phone held upright the boss name of the Daily challenge label takes a second line of the 44 px tall
    button, so a long boss name makes the label no wider and pushes no item onto a row over the board. Bugs #603, #606:
@@ -378,11 +365,10 @@ body[data-opponent='waiting'] #invite { border-color: var(--accent); }
    wide as the window: its first line no longer wraps and the card stays under the board. #645: with 8 bosses the items
    of the open mode menu take a 12 px label and closer sides, so their rows still keep off the board. */
 @media (orientation: portrait) and (max-width: 600px), (orientation: portrait) and (pointer: coarse) {
-  #chrome, #online, #mode-menu { gap: 0.25rem; }
+  #chrome, #online { gap: 0.25rem; }
   #boss-bar { margin-bottom: 0.25rem; } /* #929: the bar ends 8 px above the plate, as in a window, not 4 */
   #daily-copy { min-height: 2.75rem; }
   #daily-result { max-width: calc(100vw - 32px); }
-  #mode-menu button { padding-inline: 0.25rem; min-width: 2.75rem; font-size: 0.75rem; }
   /* #1000: the label is cut to 104 px (its whole name stays in the title and the accessible name), so the Open world
      entry fits the row of Rogue-lite and Hub instead of a row of its own over the board. */
   #daily { padding-block: 0.25rem; max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1059,7 +1045,7 @@ body[data-openworld]::before { display: none; }
 
 /* The thumb dock (#1032, docs/specs/thumb-dock.md): the main controls at the bottom of the window, one row of 44 px
    buttons on a phone held upright, a right-hand column held sideways, a centred bar on a desktop. The buttons are the
-   page's own (#new-game, #reset-view, #hint, #replay, #modes, #auto-play, ...), moved here; each short label is the
+   page's own (#new-game, #hint, #replay, #auto-play, ...), moved here; each short label is the
    button's data-label, its name stays the accessible name. The sheets (Game modes, Goal, the daily result) open above
    the dock, one at a time. The dock does not grow with --ui-scale: its targets stay 44 px. */
 #dock-wrap { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 2; pointer-events: none; }
@@ -1086,19 +1072,14 @@ body[data-openworld]::before { display: none; }
 #dock > button::after { content: attr(data-label); font: 500 0.6875rem/1 var(--ui); overflow: hidden; text-overflow: clip; }
 #dock > button[hidden], #dock-replay[hidden] { display: none; }
 #dock #new-game.confirm::after { content: 'Confirm'; }
-#dock #quick-game.confirm::after { content: 'Confirm'; }
-#quick-game.confirm { color: var(--hazard); }
 #dock > button:disabled { cursor: default; color: var(--muted); }
 #dock > button[aria-pressed='true'], #dock > button[aria-expanded='true'] { background: var(--active-fill); color: var(--active-ink); }
-#dock #rematch, #dock #boss-retry, #dock #wild-flee, #dock #exit { box-shadow: inset 0 0 0 2px var(--accent); }
+#dock #rematch, #dock #boss-retry, #dock #wild-flee { box-shadow: inset 0 0 0 2px var(--accent); }
 #dock > button:focus-visible, #dock-replay button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The dock's icons (#1136): 24 px, 1.75 px rounded strokes, masks that take the button's colour. */
 #dock #new-game { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E"); }
 #dock #hint { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z'/%3E%3C/svg%3E"); }
 #dock #replay { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12a8 8 0 1 0 3-6.2M4 4v4h4M12 8v4l3 2'/%3E%3C/svg%3E"); }
-#dock #open-world-entry { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M3 12h18M12 3c-3 3.5-3 14.5 0 18M12 3c3 3.5 3 14.5 0 18'/%3E%3C/svg%3E"); }
-#dock #quick-game { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 3L5 14h6l-1 7 8-11h-6z'/%3E%3C/svg%3E"); }
-#dock #modes { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'/%3E%3C/svg%3E"); }
 #dock #auto-play { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 5v14l11-7z'/%3E%3C/svg%3E"); }
 #dock #wild-flee, #dock #exit { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 5H5v14h5M14 8l4 4-4 4M18 12H9'/%3E%3C/svg%3E"); }
 #dock #boss-retry { --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12a8 8 0 1 0 3-6.2M4 4v4h4'/%3E%3C/svg%3E"); }
@@ -1115,47 +1096,21 @@ body:has(#replay-bar:not([hidden])) #dock > button { display: none; }
 #dock-replay #replay-live { background: var(--active-fill); color: var(--active-ink); font-size: 0.8125rem; }
 /* The update banner is a dot on the cog; its row is the first of Settings (#1693). */
 body:has(#update:not([hidden])) #settings { background-image: radial-gradient(circle at calc(100% - 8px) 8px, var(--accent) 4px, var(--panel) 4px, var(--panel) 5px, transparent 5px); }
-#dock #modes { position: relative; }
 /* A lobby waits (#1044): Lobby takes the accent and a dot on its corner, steady, never a flash. */
 #dock #lobby { position: relative; }
 #dock #lobby[data-waiting='true'] { background-image: radial-gradient(circle at calc(100% - 8px) 8px, var(--accent) 4px, var(--panel) 4px, var(--panel) 5px, transparent 5px); }
 /* The sheets: above the dock, 8 px over it, as wide as the window less 16 px a side, scrolling when taller than 60 %. */
-#dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet {
+#dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet {
   position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); box-sizing: border-box; max-height: 60dvh; overflow-y: auto;
   padding: 8px; background: var(--panel); border: 1px solid var(--edge); border-radius: 2px;
 }
-#dock-wrap #mode-menu[hidden], #dock-wrap #goal-sheet[hidden], #dock-wrap #lore[hidden], #dock-wrap #daily-card[hidden], #dock-wrap #trainer-card[hidden], #dock-wrap #lobby-sheet[hidden] { display: none; }
-/* #1565: a menu taller than its sheet fades at the edge that has more behind it, with no script: the fades at the edges
-   are painted on the sheet (scroll), a panel-coloured cover at each end of the content (local) hides them at the end of the list. Daily is a full row like its siblings (#1000 cut it to 104 px). */
-#dock-wrap #mode-menu {
-  --fade: color-mix(in srgb, var(--text) 40%, transparent);
-  background:
-    linear-gradient(var(--panel), var(--panel)) top / 100% 1.5rem no-repeat local,
-    linear-gradient(var(--panel), var(--panel)) bottom / 100% 1.5rem no-repeat local,
-    linear-gradient(var(--fade), transparent) top / 100% 1.5rem no-repeat scroll,
-    linear-gradient(transparent, var(--fade)) bottom / 100% 1.5rem no-repeat scroll,
-    var(--panel);
-}
-#dock-wrap #mode-menu #daily { max-width: none; overflow: visible; }
-/* #1665: a locked Daily keeps one line for its name, cut with an ellipsis (the whole name stays in the title), so it is as tall as every other locked row. */
-#dock-wrap #mode-menu #daily[data-locked] { padding-block: 0.25rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#dock-wrap #mode-menu #daily[data-locked] span { display: inline; }
+#dock-wrap #goal-sheet[hidden], #dock-wrap #lore[hidden], #dock-wrap #daily-card[hidden], #dock-wrap #trainer-card[hidden], #dock-wrap #lobby-sheet[hidden] { display: none; }
 /* Trainer result card (#1159): the wave and the scores, Next wave under them (Retry is in the dock). */
 #dock-wrap #trainer-card { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 #dock-wrap #trainer-card[hidden] { display: none; }
 #trainer-text p { margin: 0; }
 #trainer-card #trainer-next[hidden] { display: none; }
 #dock-wrap #trainer-card button { min-height: 44px; min-width: 44px; }
-#dock-wrap #mode-menu { display: flex; flex-direction: column; flex-flow: column nowrap; justify-content: flex-start; gap: 4px; align-items: stretch; min-width: 0; }
-#dock-wrap #mode-menu #menu-view { display: grid; grid-template-columns: 1fr; gap: 4px; } /* Reset view, alone since Replay went to the dock (#1693) */
-#dock-wrap #mode-menu > button, #dock-wrap #mode-menu #boss-list button, #dock-wrap #mode-menu #coop-list button { min-height: 44px; min-width: 44px; }
-#dock-wrap #mode-menu #boss-list:not([hidden]), #dock-wrap #mode-menu #coop-list:not([hidden]) { flex: none; width: 100%; overflow-x: auto; margin: 0; padding: 0; }
-/* A desktop window (a fine pointer, 1101 px and wider) has room for the growing roster: the boss lists run three to a row and every item is 28 px high and the sheet may take 80 % of the height, so every boss and Daily challenge show without a scroll at 1280x720 (#1069). */
-@media (orientation: landscape) and (min-width: 1101px) and (pointer: fine) {
-  #dock-wrap #mode-menu { max-height: calc(100dvh - 8rem); }
-  #dock-wrap #mode-menu #boss-list:not([hidden]), #dock-wrap #mode-menu #coop-list:not([hidden]) { display: grid; grid-template-columns: repeat(3, 1fr); }
-  #dock-wrap #mode-menu > button, #dock-wrap #mode-menu #boss-list button, #dock-wrap #mode-menu #coop-list button { min-height: 24px; }
-}
 #dock-wrap :is(#goal-sheet, #trainer-card) { font: 0.875rem/1.4 var(--ui); color: var(--text); }
 #dock-wrap #goal-sheet p { margin: 0; }
 #dock-wrap #daily-card { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
@@ -1196,18 +1151,18 @@ body[data-reading] #lore { display: none; }
   #dock > button::after { font-size: 0.625rem; }
   #dock-replay { flex-direction: column; flex: none; }
   #support { right: 68px; bottom: 16px; }
-  #dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet {
+  #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet {
     left: auto; right: calc(100% + 8px); bottom: 0; width: min(22rem, calc(100vw - 120px)); max-height: calc(100dvh - 32px);
   }
 }
 /* A desktop window: the dock is a centred bar at the bottom, its width that of its buttons, its sheets centred above it. */
 @media (orientation: landscape) and (min-height: 661px) {
   #dock-wrap { left: 50%; right: auto; transform: translateX(-50%); width: max-content; }
-  #dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet { left: 50%; right: auto; transform: translateX(-50%); width: min(24rem, calc(100vw - 32px)); }
+  #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet { left: 50%; right: auto; transform: translateX(-50%); width: min(24rem, calc(100vw - 32px)); }
   #dock > button, #dock-replay button { width: 5.5rem; flex: none; }
 }
 /* A sheet over the dock hides the evaluation plate and the diagnostics box, which sit above the dock (#1032). */
-body:has(#dock-wrap :is(#mode-menu, #daily-card, #lobby-sheet, #bay-sheet):not([hidden])) #support { display: none; }
+body:has(#dock-wrap :is(#daily-card, #lobby-sheet, #bay-sheet):not([hidden])) #support { display: none; }
 /* Held sideways the settings menu lies left of the dock column, not over it (#1032), and the score bar lies at its left, bottom 16 px: the menu ends above it. */
 @media (orientation: landscape) and (max-height: 660px) {
   #settings-menu { --settings-clear: 68px; }
@@ -1215,22 +1170,13 @@ body:has(#dock-wrap :is(#mode-menu, #daily-card, #lobby-sheet, #bay-sheet):not([
 }
 /* The Game modes sheet, the boss list and the settings menu (#1136): the theme's look, refined. Rows are 6 px cards on an 8 px
    grid (48 px high on a touch screen), a pressed item is filled, the accent is amber in the default palette. */
-:root[data-palette='default'] :is(#dock-wrap :is(#mode-menu, #goal-sheet), #settings-menu) { --accent: var(--plate-accent); }
-#dock-wrap :is(#mode-menu, #goal-sheet) { gap: var(--space); border-radius: var(--r-card); }
-:is(#mode-menu, #settings-menu) button { border-radius: var(--r-button); }
-#dock-wrap #mode-menu :is(#boss-list, #coop-list) { gap: var(--space); }
+:root[data-palette='default'] :is(#dock-wrap #goal-sheet, #settings-menu) { --accent: var(--plate-accent); }
+#dock-wrap #goal-sheet { gap: var(--space); border-radius: var(--r-card); }
+#settings-menu button { border-radius: var(--r-button); }
 #settings-menu :is(.setting-volume, .setting-lights, .setting-archive:not(:has(button))) { border-radius: var(--r-button); }
-/* A desktop window keeps its compact sheet (#1069): the 4 px gaps, so every boss shows without a scroll at 1280x720. */
-@media (orientation: landscape) and (min-width: 1101px) and (pointer: fine) {
-  #dock-wrap :is(#mode-menu, #goal-sheet), #dock-wrap #mode-menu :is(#boss-list, #coop-list) { gap: 4px; }
-  #dock-wrap #mode-menu, #dock-wrap #mode-menu :is(#boss-list, #coop-list) { gap: 2px; } /* the Boss duel and Leaderboard entries need the room (#1316) */
-}
-@media (pointer: coarse) {
-  #dock-wrap #mode-menu > button, #dock-wrap #mode-menu #boss-list button, #dock-wrap #mode-menu #coop-list button { min-height: var(--target); }
-}
-#settings-menu button[aria-pressed='true'], #dock-wrap #mode-menu button[aria-expanded='true'] { background: var(--active-fill); border-color: var(--active-fill); color: var(--active-ink); }
+#settings-menu button[aria-pressed='true'] { background: var(--active-fill); border-color: var(--active-fill); color: var(--active-ink); }
 /* The exit takes a slot (#1517): held upright, a seventh button (Auto-play at a bot's table) still fits a 360 px window, the gaps shrinking from 8 px to what is left. */
-@media (orientation: portrait) { #dock:has(> #exit:not([hidden])) { gap: clamp(0px, calc((100vw - 350px) / 6), 8px); padding: 4px; } }
+@media (orientation: portrait) { #dock:has(> #exit:not([hidden])):has(> :nth-child(6 of button:not([hidden]))) { gap: clamp(0px, calc((100vw - 350px) / 6), 8px); padding: 4px; } }
 /* The Open world's screen has the dock's first slot alone (#1517): the exit, at the bottom right whatever the window, away from the stick (left half)
    and the HUD plate (bottom left), above the peers arrows (z-index 2 over their 1). Its HUD and joystick are the rest (#962, #1025). */
 body[data-openworld] #dock-wrap { left: auto; right: 16px; top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); transform: none; width: max-content; }
@@ -1253,7 +1199,7 @@ body[data-openworld] #dock-wrap > :not(#dock), body[data-openworld] #dock > :not
 #dock-wrap button { transition: transform var(--motion-instant) var(--ease-out); }
 #dock-wrap button:active:not(:disabled) { transform: scale(0.96); }
 @keyframes sheet-in { from { opacity: 0; transform: translateY(8px); } }
-#dock-wrap #mode-menu, #dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet { animation: sheet-in var(--motion-base) var(--ease-out); }
+#dock-wrap #goal-sheet, #dock-wrap #lore, #dock-wrap #daily-card, #dock-wrap #trainer-card, #dock-wrap #lobby-sheet, #dock-wrap #bay-sheet { animation: sheet-in var(--motion-base) var(--ease-out); }
 
 /* HUD tally motion (#1095, docs/specs/motion.md story 5): a pip that has just gone out grows back to size on --motion-base, so a change
    in the count catches the eye. The pip and the score text already carry the number; reduced motion cuts the animation (rule above). */
@@ -1440,13 +1386,6 @@ body[data-look='neon'] .hub-label[data-kind='boss'] { --k: #b79cff; }
 #unlock-dismiss { margin-left: auto; }
 /* The first-win lock (#1665, unlock.ts, ui.md 4.10): a locked entry of the mode menu stays in sight and focusable: a dashed edge, a padlock before its name and the line that
    opens it under it (the short form under 600 px), 12 px in the text colour, never fainter. A banner above names the first move, a note below says more opens. */
-#mode-menu > [data-locked] { cursor: not-allowed; border-style: dashed; color: var(--muted); }
-#mode-menu > [data-locked='Win your first game to unlock']::before { content: '\1F512\00a0'; }
-#mode-menu > [data-locked='Win your first game to unlock']::after { content: attr(data-locked); display: block; font-size: 0.75rem; font-weight: 600; line-height: 1.1; color: var(--text); }
-@media (max-width: 600px) { #mode-menu > [data-locked='Win your first game to unlock']::after { content: attr(data-lock-short); } }
-#lock-banner { margin: 0; padding: 0.5rem 0.75rem; min-height: 44px; box-sizing: border-box; display: flex; align-items: center; color: #1a1300; background: var(--amber); border-radius: var(--r-button); font: 700 0.875rem/1.2 var(--ui); }
-#lock-note { margin: 0; padding: 0.25rem 0.5rem; color: var(--text); font: 500 0.75rem/1.2 var(--ui); }
-#lock-banner[hidden], #lock-note[hidden] { display: none; }
 #unlock #unlock-world { color: var(--active-ink); background: var(--active-fill); border-color: var(--active-fill); }
 #guide-count { margin: 0; color: var(--muted); font: 600 0.75rem/1 var(--display); letter-spacing: 0.12em; }
 #guide-art svg { display: block; width: 100%; height: auto; animation: guide-in var(--motion-base) var(--ease-out); }
@@ -1785,6 +1724,8 @@ body:not([data-hub-cutaway='true']) :is(#ship-goal-line, #ship-gocard) { display
 @media (orientation: landscape) and (min-width: 1101px) and (pointer: fine) {
   #dock-wrap #bay-sheet #coop-list:not([hidden]) { display: grid; grid-template-columns: repeat(3, 1fr); }
 }
+/* The Hub at home has no dock (#1697): with no button to show, the bar is not drawn, except for the review's steps. */
+body:not(:has(#replay-bar:not([hidden]))) #dock:not(:has(> button:not([hidden]))) { display: none; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */
@@ -1803,9 +1744,7 @@ body[data-openworld] #openworld-hud { animation: sheet-in var(--motion-base) var
 /* Neon glow on the screens (#1424): one cyan accent, a soft box-shadow on panel and button edges and a slow breathing on the
    open menu button. Borders, text and fills keep their colours (contrast untouched). The low tier draws no glow; reduced motion stops the breathing. */
 body[data-look='neon'] { --glow: 0 0 14px rgba(25, 230, 255, 0.55), 0 0 28px rgba(154, 107, 255, 0.3), inset 0 0 12px rgba(25, 230, 255, 0.2); }
-body[data-look='neon']:not([data-tier='low']) :is(#hud, #eval, #hub-rail, #hub-pips, #mode-menu, #dock, .hub-label:not([data-here])) { box-shadow: var(--glow); }
-body[data-look='neon']:not([data-tier='low']) #mode-menu button { box-shadow: 0 0 6px rgba(25, 230, 255, 0.35), inset 0 0 6px rgba(25, 230, 255, 0.12); }
-body[data-look='neon']:not([data-tier='low']) :is(#modes, #new-game, #hint, #undo, #openworld, #ship, #daily, #roguelite, #trainer, #boss-fight, #play-online, #boss-list button, #coop-list button):is(:hover, :focus-visible) { box-shadow: 0 0 10px rgba(25, 230, 255, 0.6); }
-body[data-look='neon']:not([data-tier='low']) #modes[aria-expanded='true'] { box-shadow: 0 0 10px rgba(25, 230, 255, 0.55); animation: neon-breathe 4s ease-in-out infinite; }
+body[data-look='neon']:not([data-tier='low']) :is(#hud, #eval, #hub-rail, #hub-pips, #dock, .hub-label:not([data-here])) { box-shadow: var(--glow); }
+body[data-look='neon']:not([data-tier='low']) :is(#new-game, #hint, #undo, #coop-list button):is(:hover, :focus-visible) { box-shadow: 0 0 10px rgba(25, 230, 255, 0.6); }
 @keyframes neon-breathe { 50% { box-shadow: 0 0 5px rgba(25, 230, 255, 0.3); } }
 

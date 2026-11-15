@@ -16,7 +16,7 @@ A-light Explore (#720 to #725), which it does not touch.
 
 ## 1. The mode
 
-- **Entry**: "Open world" in the mode menu, locked until the first win against the bot (#1665, `ui.md` section 4.10; it no longer leads the menu of a new player), then for everyone, no flag (#1000). A click opens the public
+- **Entry**: the Airlock bay of the ship (the Modes menu and the dock's World button are gone, #1697), locked until the first win against the bot (#1665, `ui.md` section 4.10), then for everyone, no flag (#1000). A click opens the public
   world, seed 1305 (owner's choice, #1361: a player cannot change the seed for now); any `?openworld=...` link opens it at the
   load, the online notice first. The seed of the URL is read only under automation (tests). Leave returns to where the player
   came from.
@@ -563,7 +563,7 @@ plan as the game.
 
 | Mode today | Place in the world | Enter | Leave | State |
 |---|---|---|---|---|
-| Open world (walk, troop, fights) | The whole hexagon, spawn `(0, 0)` | "Open world" in the mode menu (first for a fresh profile), `#openworld` link, the dock's World button `#open-world-entry` (fresh profile only, #1612) | The exit of the dock, Hub (Esc presses it, #1605) | Built |
+| Open world (walk, troop, fights) | The whole hexagon, spawn `(0, 0)` | the Airlock bay of the ship (#1697), `#openworld` link | The exit of the dock, Hub (Esc presses it, #1605) | Built |
 | Hub, bot, hot-seat, Medal room, terminals, Daily | **Spawn town**: the clearing of radius 3 round `(0, 0)`, the crash site | Walk into the clearing (the hero starts in it) | Walk out of it | Place, map icon and entrance built (#1593): rolling onto the town opens the Hub scene, the front door. Moving its stations into the town is planned |
 | Training yard (Trainer, Stalker), a bot table, a hot-seat table, a notice board | **The four other towns**, one per biome but the meadow and the archipelago (forest, tundra, desert, badlands), 40 to 120 ground units out | Walk in | Walk out | Place, map icon and entrance built (#1593): every town opens the same Hub for now. Their own stations are planned, five towns sharing out the Hub's stations, one per deck |
 | Online, Ranked, Leaderboard, Royale, co-op, boss duel | **Arena town**: one of the four other towns, chosen when it is built. An invite link `#room=` still opens the table at once | Walk in | Walk out | Planned (the town exists on the map, the table does not) |
@@ -572,7 +572,7 @@ plan as the game.
 | Teleporters | Pads in the clearing and in the open ground, one a square of 8 x 8 chunks (section 10) | Roll onto a pad, Teleport button | Pick another pad | Built. Pads inside towns and gate clearings are planned |
 | Console | Leaves the player's UI | n/a | n/a | Planned |
 | Boss fight menu | Fast travel to the towers already found | Menu entry | n/a | Planned; unchanged by the Cutaway, where a tower opens the ship on its boss bay (#1698) |
-| Quick game (bot, hot-seat, online) | Outside the world: a permanent button that skips it | The button (dock, and the Open world plate) | Back to the menu | Bot built (#1612): the dock and the plate start a bot game, an unfinished game asks first. Hot-seat and online are planned |
+| Quick game (bot, hot-seat, online) | Gone (#1697): the House table of the ship is a bot game, two taps from the world (the exit, then the bay) | | | Removed |
 
 - **Rule for every place**: it is entered by walking or rolling onto it, and every exit returns the hero to the entrance cell, as a
   lair does (section 7). No place moves the hero anywhere else.

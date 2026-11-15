@@ -52,7 +52,6 @@ const hooks = () => window as unknown as Hooks;
 describe('the Open world mode', () => {
   it('the troop pushes the enemy in front of it after a step, through the engine: the hero, the troop and the enemy move, #967', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     hooks().__openworldFixture!({ hero: [0, 0], troop: [[-1, 0], [-2, 0]], enemies: [[2, 0]] });
@@ -66,7 +65,6 @@ describe('the Open world mode', () => {
   it('the fresh hook opens the world again from the spawn, reads no save and unfolds the plate, so a spec can share one page (#1481)', async () => {
     const game = await boot('?bot=off&openworld=7');
     const fresh = (): Promise<void> => (window as unknown as { __openworldFresh: () => Promise<void> }).__openworldFresh();
-    game.openModes();
     byId('openworld').click();
     await settle();
     hooks().__openworldFixture!({ hero: [0, 0], troop: [[-1, 0], [-2, 0]], enemies: [[2, 0]] });
@@ -93,7 +91,6 @@ describe('the Open world mode', () => {
 
   it('reads the frames the world has drawn since the open through a test hook: none in a page that has not drawn it, #1601', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect((window as unknown as { __openworldDrawn: () => number }).__openworldDrawn()).toBe(0); // jsdom has no WebGL: the mode counts the draws (openworldmodewander.test.ts)
@@ -102,7 +99,6 @@ describe('the Open world mode', () => {
   it('builds the world programs behind the veil before its first frame, then draws it and lifts the veil, #1582', async () => {
     let compiled = (): void => {};
     const game = await boot('?bot=off&openworld=7', { compile: () => new Promise<void>((done) => (compiled = done)) });
-    game.openModes();
     byId('openworld').click();
     await settle();
     await game.settle();
@@ -122,7 +118,6 @@ describe('the Open world mode', () => {
 
   it('reads what the camera draws through a test hook, at rest: the shake is 0, #1103', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const camera = hooks().__openworldCamera!();
@@ -135,7 +130,6 @@ describe('the Open world mode', () => {
   it('reads a scene mesh\'s look through a test hook: an instanced mesh with its colours, a plain one without, #1558', async () => {
     const game = await boot('?bot=off&openworld=7');
     const mesh = (window as unknown as { __openworldMesh: (name: string) => { count: number; instance: number[] | null } }).__openworldMesh;
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(mesh('enemies').instance).toHaveLength(3); // an instanced mesh: its first colour, r g b
@@ -147,7 +141,6 @@ describe('the Open world mode', () => {
     const game = await boot('?bot=off&openworld=7&scene=room');
     const cost = () => (window as unknown as { __renderCost: { pointLights: number } }).__renderCost;
     expect(cost().pointLights).toBeGreaterThan(OPEN_WORLD_POINT_LIGHTS);
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(cost().pointLights).toBeLessThanOrEqual(NEON_OPEN_WORLD_POINT_LIGHTS); // the default neon look's two accents, lit since the open builds its programs with them (#1582)
@@ -163,7 +156,6 @@ describe('the Open world mode', () => {
     const game = await boot('?bot=off');
     expect(byId('openworld').hidden).toBe(false);
     expect(press('Escape').defaultPrevented).toBe(false); // not on: the keys are the page's
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworld).toBe(String(PUBLIC_SEED));
@@ -173,7 +165,6 @@ describe('the Open world mode', () => {
   it('enters a world by its seed, rolls the hero by the arrow keys, and leaves on Escape', async () => {
     const game = await boot('?bot=off&openworld=7');
     expect(byId('openworld').hidden).toBe(false);
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworld).toBe('7');
@@ -197,7 +188,6 @@ describe('the Open world mode', () => {
   it('Escape closes the terminal reader opened from the log archive in the world, then the sheets of the page, and only then leaves it, #1591', async () => {
     const game = await boot('?bot=off&openworld=7');
     localStorage.setItem('ab-alone.lore-read', 'cargo-assay');
-    game.openModes();
     byId('openworld').click();
     await settle();
     await game.settle();
@@ -218,18 +208,12 @@ describe('the Open world mode', () => {
     press('Escape');
     expect(byId('settings').getAttribute('aria-expanded')).toBe('false');
     expect(data().openworld).toBe('7');
-    game.openModes(); // and the Game modes menu
-    expect(byId('modes').getAttribute('aria-expanded')).toBe('true');
-    press('Escape');
-    expect(byId('modes').getAttribute('aria-expanded')).toBe('false');
-    expect(data().openworld).toBe('7');
     press('Escape'); // no sheet open: the world is left
     expect(data().openworld).toBeUndefined();
   });
 
   it('rolls the hero by a press on the screen, and keeps the board out of it', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     document.querySelector('canvas')!.dispatchEvent(new MouseEvent('pointerdown', { clientX: innerWidth / 2, clientY: innerHeight / 2, bubbles: true }));
@@ -238,10 +222,8 @@ describe('the Open world mode', () => {
 
   it('takes a world of its own when no seed is given, and keeps the hub keys out while it is on', async () => {
     const game = await boot('?bot=off&openworld');
-    game.openModes();
     byId('ship').click();
     const hub = data().hub;
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(Number(data().openworld)).toBeGreaterThan(0);
@@ -252,7 +234,6 @@ describe('the Open world mode', () => {
 
   it('rolls the hero on the diagonal while a vertical and a horizontal arrow are held, and lets go on keyup or blur, #977', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     press('ArrowLeft'); // (0, -1), up-left (#1273)
@@ -269,7 +250,6 @@ describe('the Open world mode', () => {
 
   it('steps an arrow at its keydown, ignores the key repeat, and walks on the frames while it is held, #1059', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     await game.settle();
@@ -292,7 +272,6 @@ describe('the Open world mode', () => {
     const menu = new MouseEvent('contextmenu', { cancelable: true, bubbles: true });
     canvas.dispatchEvent(menu);
     expect(menu.defaultPrevented).toBe(false); // not the Open world: the board keeps its menu
-    game.openModes();
     byId('openworld').click();
     await settle();
     const at = (type: string, id: number, x: number, y: number, button = 0) => {
@@ -324,7 +303,6 @@ describe('the Open world mode', () => {
 
   it('the camera turn is saved when the world is left and resumes when it is entered again, #1026', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworldYaw).toBe('-30');
@@ -332,7 +310,6 @@ describe('the Open world mode', () => {
     expect(data().openworldYaw).toBe('30');
     press('Escape'); // leaving saves the world with its turn
     await settle();
-    game.openModes();
     byId('openworld').click(); // the saved world is read
     await settle();
     expect(data().openworldYaw).toBe('30');
@@ -340,7 +317,6 @@ describe('the Open world mode', () => {
 
   it('zooms the Open world out with the wheel and with a pinch, #976', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const canvas = document.querySelector('canvas')!;
@@ -371,7 +347,6 @@ describe('the Open world mode', () => {
   // The save of the Open world (#968): the menu resumes the last world played, a seed in the URL resumes its own, `new` starts afresh.
   const openFrom = async (url: string, indexedDB: IDBFactory) => {
     const game = await boot(url, { indexedDB });
-    game.openModes();
     byId('openworld').click();
     await settle();
     return game;
@@ -410,7 +385,6 @@ describe('the Open world mode', () => {
     await settle();
     expect(data().openworldSaved).toBe('1');
     await boot('?bot=off', { indexedDB: idb });
-    expect(byId('open-world-entry').hidden).toBe(true);
   });
 
   it('a seed in the URL resumes its own save', async () => {
@@ -439,7 +413,6 @@ describe('the Open world mode', () => {
   it('counts the frames really drawn in its FPS readout: 50 FPS at 20 ms a frame, #1064', async () => {
     const game = await boot('?bot=off&openworld=7');
     byId('setting-fps').click();
-    game.openModes();
     byId('openworld').click();
     await settle();
     await game.settle();
@@ -452,7 +425,6 @@ describe('the Open world mode', () => {
 
   it('moves the Open world on the time of the animation frame, not the moment its callback runs, #1333', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const { OpenWorldMode } = await import('./openworldmode'); // the page's own module: the harness loads a fresh one at each boot
@@ -465,7 +437,6 @@ describe('the Open world mode', () => {
   it('reads idle in its FPS readout when a still scene draws nothing, and the diagnostics follow, #1064', async () => {
     const game = await boot('?bot=off&openworld=7', { reducedMotion: true }); // no water to animate: a still scene draws once
     byId('setting-fps').click();
-    game.openModes();
     byId('openworld').click();
     await settle();
     await game.settle();
@@ -498,7 +469,6 @@ describe('the board keys in the Open world, #1063', () => {
     }
   };
   const enterWorld = async (game: Game): Promise<void> => {
-    game.openModes();
     byId('openworld').click();
     await settle();
     await game.settle();
@@ -559,7 +529,6 @@ describe('the board keys in the Open world, #1063', () => {
 
   it('the Steering setting is on by default, names the mode in the HUD, and flips, #1137', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const row = byId('setting-steering');
@@ -574,7 +543,6 @@ describe('the board keys in the Open world, #1063', () => {
 
   it('a drag of the camera ends a walk to a far cell without error, #1137', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const canvas = document.querySelector('canvas')!;
@@ -596,7 +564,6 @@ describe('the public Open world online', () => {
   const peersRoot = () => byId<HTMLElement>('openworld-peers');
   const enter = async (url: string, options?: Parameters<typeof boot>[1]) => {
     const game = await boot(url, options);
-    game.openModes();
     byId('openworld').click();
     await settle();
     return game;
@@ -604,7 +571,6 @@ describe('the public Open world online', () => {
 
   it('joins its room after Accept, greets a peer, sends the step, and shows a far hero at the screen edge', async () => {
     const game = await boot('?bot=off&consent');
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(byId('consent').hidden).toBe(false); // asked first
@@ -647,7 +613,6 @@ describe('the public Open world online', () => {
 
   it('Stay solo opens the same world with no room', async () => {
     const game = await boot('?bot=off&consent');
-    game.openModes();
     byId('openworld').click();
     await settle();
     byId('consent-stay').click();
@@ -666,7 +631,6 @@ describe('the public Open world online', () => {
 
   it('asks a real browser too, and a private seed never asks nor connects', async () => {
     const real = await boot('?bot=off&unlock', { webdriver: false });
-    real.openModes();
     byId('openworld').click();
     await settle();
     expect(byId('consent').hidden).toBe(false);
@@ -681,7 +645,6 @@ describe('the public Open world online', () => {
     const w = window as unknown as Record<string, unknown>;
     const out: [number[], string | undefined][] = [];
     const game = await boot(`?bot=off&net=hook&openworld=${PUBLIC_SEED}`);
-    game.openModes();
     w.__netPeerOut = (d: Uint8Array, to?: string) => out.push([Array.from(d), to]);
     byId('openworld').click();
     await settle();
@@ -697,7 +660,6 @@ describe('the public Open world online', () => {
   // The player's controls (#1305): a public name, Hide, and the connection status, in the HUD of the public world only.
   const joined = async (): Promise<Game> => {
     const game = await boot('?bot=off&consent');
-    game.openModes();
     byId('openworld').click();
     await settle();
     byId('consent-accept').click();
@@ -732,7 +694,6 @@ describe('the public Open world online', () => {
   it('greets with the stored name and fills the field from it', async () => {
     const game = await boot('?bot=off&consent');
     localStorage.setItem('ab-alone.public-name', 'Zed'); // the boot clears the storage
-    game.openModes();
     byId('openworld').click();
     await settle();
     byId('consent-accept').click();
@@ -882,7 +843,6 @@ describe('the public Open world online', () => {
 describe('the map of the Open world (#1411)', () => {
   it('the Map button opens and closes it, and so do M and Escape; Escape with the map shut leaves the world', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const button = byId('openworld-map-button');
@@ -909,7 +869,6 @@ describe('the map of the Open world (#1411)', () => {
 describe('the teleporters of the Open world (#1412)', () => {
   it('the Teleport button shows on the spawn\'s teleporter and opens the map in the choice of a teleporter, T too; it closes it again', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const button = byId('openworld-teleport');
@@ -960,7 +919,6 @@ describe('the Open world on a machine with no GPU (#1483)', () => {
   // renderer only, a GPU page keeps its ratio.
   const slowWalk = async (software: string): Promise<string | undefined> => {
     const game = await boot(`?bot=off&openworld=7&software=${software}`);
-    game.openModes();
     byId('openworld').click();
     await settle();
     Object.defineProperty(navigator, 'webdriver', { value: false, configurable: true });

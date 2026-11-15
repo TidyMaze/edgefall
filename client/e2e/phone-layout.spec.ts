@@ -3,10 +3,8 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { parseRecorded } from '../src/test/chaplain-game';
 import { BLACK_WINS } from './end-games';
 import { loseByRepetition } from './fight-end';
-import { openModes } from './modes';
+import { startMode } from './modes';
 import { logOf } from '../src/audiologs';
-import { dailyFor, dailyTitle, utcDay } from '../src/daily';
-import { BOSS_IDS } from '../src/tally';
 import { shot } from './shot';
 import { openAdvanced } from './settings';
 
@@ -45,7 +43,7 @@ const problems = (page: Page) =>
       const box = el.getBoundingClientRect();
       if (el.id !== 'hud-fold' && !el.closest('#hud') && meets(box, hud)) found.push(`${name} covers the HUD`); // its own fold button (#957), and the legend lines of a rogue-lite fight (#1541) are on the plate
       if (!onScreen(box)) found.push(`${name} is off screen`);
-      const sheeted = el.closest('#mode-menu, #daily-card, #lobby-sheet, #lore') != null; // #1032 #1488 #1589: a sheet above the dock (the open Lobby too) may lie over the board's lower cells
+      const sheeted = el.closest('#daily-card, #lobby-sheet, #lore') != null; // #1032 #1488 #1589: a sheet above the dock (the open Lobby too) may lie over the board's lower cells
       if (!sheeted) for (const c of cells) if (meets(box, c.disc)) found.push(`${name} covers ${c.name}`);
     }
     // The plates let taps through, so they must not lie over a control either, or they hide it.
@@ -62,7 +60,7 @@ const problems = (page: Page) =>
     }
     // #1032: the Game modes sheet and the daily result card are sheets above the thumb dock; an open one may lie over
     // the board's lower cells (spec section 3), so only a cell under the sheet is let through, never off screen.
-    const sheet = (el: Element | null) => el?.closest('#mode-menu, #daily-card, #lobby-sheet') != null;
+    const sheet = (el: Element | null) => el?.closest('#daily-card, #lobby-sheet') != null;
     for (const c of cells) {
       if (!onScreen(c.disc)) found.push(`${c.name} is off screen`);
       else if (document.elementFromPoint(c.centre.x, c.centre.y)?.tagName !== 'CANVAS' && !sheet(document.elementFromPoint(c.centre.x, c.centre.y))) found.push(`a tap on ${c.name} misses the board`);
@@ -240,8 +238,7 @@ for (const viewport of [{ width: 360, height: 640 }]) {
   });
 }
 async function hubUnderCog(page: Page, viewport: { width: number; height: number }): Promise<void> {
-  await openModes(page);
-  await page.getByRole('button', { name: 'Hub' }).click();
+  await startMode(page, 'hub');
   await expect(page.locator('body')).toHaveAttribute('data-hub', /^\w+ /);
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
   const seen = await page.evaluate(() => {
@@ -269,13 +266,8 @@ for (const { name, viewport, mobile } of sizes) {
     let page: Page;
     const turnAround = () => page.setViewportSize({ width: viewport.height, height: viewport.width });
     const turnBack = () => page.setViewportSize(viewport);
-    const openBossList = async () => {
-      await openModes(page);
-      const fights = page.getByRole('button', { name: 'Boss fight' });
-      if ((await fights.getAttribute('aria-expanded')) !== 'true') await fights.click();
-    };
 
-    // The page clock is installed at the boot (page.clock, as in newgame.spec.ts): the mode menu tests move it to a day and the audio
+    // The page clock is installed at the boot (page.clock, as in newgame.spec.ts): the daily tests move it to a day and the audio
     // log pauses it, as on a page booted with it.
     test.beforeAll(async ({ browser }, testInfo) => {
       const context = await browser.newContext({ ...testInfo.project.use, viewport, isMobile: mobile, hasTouch: mobile });
@@ -307,7 +299,7 @@ for (const { name, viewport, mobile } of sizes) {
         const cog = await page.getByRole('button', { name: 'Settings' }).boundingBox();
         expect(cog!.y).toBe(16);
         expect(cog!.x + cog!.width).toBeCloseTo(width - 16, 0);
-        const boxes = await Promise.all(['New game', 'Hint', 'Game modes'].map((b) => page.getByRole('button', { name: b }).boundingBox()));
+        const boxes = await Promise.all(['New game', 'Hint'].map((b) => page.getByRole('button', { name: b }).boundingBox()));
         for (const box of boxes) expect(box!.y + box!.height).toBeCloseTo(height - 16 - 8 - 1, 0); // the bar's content row
         const centre = boxes.reduce((a, b) => a + b!.x + b!.width / 2, 0) / boxes.length;
         expect(centre).toBeGreaterThan(width / 2 - 200);
@@ -334,42 +326,8 @@ for (const { name, viewport, mobile } of sizes) {
       await expect(page.locator('#transcript')).toBeHidden();
     });
 
-    // The open mode menu (#357) with its boss list, its tallest state, covers no cell either. Bug #575: the Daily
-    // challenge button names the boss of the day, so the menu's rows change with the date. The rows only depend on the
-    // list and the widest label (bug #715): one check per boss list, on a day whose daily boss has the widest name, as
-    // drawn in the button's font; main.boss.test.ts checks that every boss is named on its day. Bug #603: the boss list
-    // of Fight together (#530) is checked too. The page clock moves to that day and the minute timer of the open page
-    // renames the button, as it does at 00:00 UTC (bug #629).
-    for (const list of ['Boss fight', 'Boss with a partner']) {
-      test(`nothing covers the board or the HUD with the mode menu and the ${list} list open, widest daily boss, bugs #227 #234 #357 #575 #603 #715`, async ({}, testInfo) => {
-        await openBossList();
-        const names = await page.locator('#boss-list button').allTextContents(); // in the order of boss_ids()
-        const widest = await page.evaluate(async (all) => {
-          await document.fonts.ready;
-          const g = document.createElement('canvas').getContext('2d')!;
-          g.font = getComputedStyle(document.querySelector('#daily span')!).font;
-          return all.reduce((a, b) => (g.measureText(b).width > g.measureText(a).width ? b : a));
-        }, names);
-        let ms = Date.UTC(2026, 9, 23);
-        while (dailyFor(utcDay(ms), names).id !== widest) ms += 86_400_000;
-        const day = utcDay(ms);
-        await page.clock.setSystemTime(new Date(`${day}T08:00:00Z`));
-        await page.clock.fastForward(60_000); // the minute timer fires once
-        await expect(page.locator('#daily')).toHaveText(dailyTitle(day, widest));
-        const button = page.getByRole('button', { name: list });
-        if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click(); // closes the other list
-        await expect(button).toHaveAttribute('aria-expanded', 'true');
-        // #666: the list holds every boss of the game (BOSS_IDS), so a new boss needs no layout change; bug #615 (one list open
-        // at a time) is main.coop.test.ts.
-        await expect(page.locator(list === 'Boss fight' ? '#boss-list' : '#coop-list').getByRole('button')).toHaveCount(BOSS_IDS.length);
-        await expect(page.locator(list === 'Boss fight' ? '#coop-list' : '#boss-list')).toBeHidden();
-        await check(page, testInfo, `with the mode menu and the ${list} list open, daily ${widest}`);
-      });
-    }
-
     test('nothing covers the board or the HUD in a boss fight, bugs #227 #234', async ({}, testInfo) => {
-      await openBossList();
-      await page.locator('#boss-list button').first().click();
+      await startMode(page, 'echo');
       await expect(page.locator('#hud')).toContainText('P1');
       await check(page, testInfo, 'in a boss fight');
     });
@@ -382,8 +340,7 @@ for (const { name, viewport, mobile } of sizes) {
         crypto.getRandomValues = ((a: Uint32Array) => a.fill(0)) as typeof crypto.getRandomValues; // the fight seed
         localStorage.setItem('ab-alone.story', JSON.stringify({ moments: [2, 3], wins: 0 })); // stage 3 reaches The Swarm's entry (#1584)
       });
-      await openBossList();
-      await page.locator('#boss-list').getByRole('button', { name: 'The Swarm' }).click();
+      await startMode(page, 'swarm');
       await page.evaluate((records) => (window as any).__playMoves(records), plies);
       await expect(page.locator('#lore')).toBeVisible();
       await expect(page.locator('body')).toHaveAttribute('data-lore', 'boss-swarm');
@@ -420,8 +377,7 @@ for (const { name, viewport, mobile } of sizes) {
       await page.emulateMedia({ reducedMotion: 'reduce' }); // the 7 moves of the defeat slide in no time: the layout is the same
       await page.clock.setSystemTime(new Date('2027-03-30T08:00:00Z'));
       await page.clock.fastForward(60_000); // the minute timer names the day's boss
-      await openModes(page);
-      await page.locator('#daily').click();
+      await startMode(page, 'daily');
       await expect(page.locator('#hud')).toContainText('Daily challenge 2027-03-30 · attempt 1');
       await loseByRepetition(page);
       await expect(page.locator('#daily-card')).toBeVisible();
@@ -436,8 +392,7 @@ for (const { name, viewport, mobile } of sizes) {
     // Last: the page stays in the online room.
     test('nothing covers the board or the HUD waiting for an opponent, turned around, bugs #227 #234', async ({}, testInfo) => {
       const hud = page.locator('#hud');
-      await openModes(page);
-      await page.getByRole('button', { name: 'Play online' }).click();
+      await startMode(page, 'online');
       await expect(hud).toContainText('Waiting for an opponent');
       // The invite link shows in the lobby sheet, open until the opponent connects (#1488, was shut: #1044).
       const lobby = page.getByRole('button', { name: 'Lobby' });
@@ -525,8 +480,7 @@ for (const { name, viewport } of [
       await page.emulateMedia({ reducedMotion: 'reduce' }); // the 7 moves of the defeat slide in no time: the layout is the same
       await page.clock.setFixedTime(new Date('2027-03-30T08:00:00Z'));
       await page.goto('./?bot=off&net=hook&hub=classic');
-      await openModes(page);
-      await page.locator('#daily').click();
+      await startMode(page, 'daily');
       await expect(hud).toContainText('Daily challenge 2027-03-30 · attempt 1');
       await loseByRepetition(page); // against the Echo's bonus mirrors (#859), e2e/fight-end.ts
       await expect(hud).toContainText('Defeat');

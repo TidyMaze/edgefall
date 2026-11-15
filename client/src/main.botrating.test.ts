@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
-import { boot } from './test/harness';
+import { boot, startBoss } from './test/harness';
 
 // The bot's estimated rating and level in the fight HUD (#1611, docs/specs/roguelite.md section 32): a plain bot game and a run fight.
 
@@ -37,7 +37,6 @@ describe('main.ts, the bot rating, #1611', () => {
 
   it('the first fight of a run is at a quarter of the bot of the medals, and no badge on the map', async () => {
     const game = await boot('?real=1', { storage: normal, indexedDB: new IDBFactory() });
-    game.openModes();
     byId('roguelite').click();
     expect(badge()).toBeNull();
     [...byId('run-map').querySelectorAll<HTMLButtonElement>('button[data-node]')].find((b) => !b.disabled)!.click();
@@ -46,23 +45,18 @@ describe('main.ts, the bot rating, #1611', () => {
 
   it('a boss fight reads Boss from its own search budget, with the same tooltip, the difficulty percent applied as the engine does', async () => {
     const game = await boot('?real=1', { storage: normal });
-    game.openModes();
-    byId('boss-fight').click();
-    byId('boss-list').querySelector('button')!.click(); // The Echo: 100 positions
+    startBoss('The Echo'); // The Echo: 100 positions
     expect(badge()!.textContent).toBe('Boss ~1000 · Easy');
     expect(badge()!.title).toMatch(/estimate/i);
     expect(document.body.dataset.botRating).toBe('1000');
     await boot('?real=1', { storage: { 'ab-alone.difficulty': 'hard' } });
-    byId('boss-fight').click();
-    byId('boss-list').querySelector('button')!.click(); // 200 positions
+    startBoss('The Echo'); // 200 positions
     expect(badge()!.textContent).toBe('Boss ~1070 · Easy');
   });
 
   it('the Choir and the Swarm read their own budgets, and a boss fight needs no bot worker', async () => {
     const game = await boot('?bot=off', { storage: normal });
-    game.openModes();
-    byId('boss-fight').click();
-    const pick = (name: string) => [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
+    const pick = (name: string) => startBoss(name);
     pick('The Swarm');
     expect(badge()!.textContent).toBe('Boss ~1260 · Easy'); // 1500 positions
     pick('The Choir');
@@ -71,7 +65,6 @@ describe('main.ts, the bot rating, #1611', () => {
 
   it('the Daily shows its boss rating too', async () => {
     const game = await boot('?real=1', { storage: normal });
-    game.openModes();
     byId('daily').click();
     expect(badge()!.textContent).toMatch(/^Boss ~\d+ · /);
   });

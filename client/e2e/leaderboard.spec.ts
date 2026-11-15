@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { startMode } from './modes';
 
 // Issue #1287: the Leaderboard entry of the mode menu shows the player among the opponents of settled 1v1 matches.
 test('the leaderboard shows my position among the opponents I met, my row highlighted', async ({ page }) => {
@@ -29,8 +30,7 @@ test('the leaderboard shows my position among the opponents I met, my row highli
     localStorage.setItem('ab-alone.ranked.board', JSON.stringify({ version: 1, rank: 1 }));
   });
   await page.goto('./?bot=off&hub=classic');
-  await page.getByRole('button', { name: 'Game modes' }).click();
-  await page.getByRole('button', { name: 'Leaderboard' }).click();
+  await startMode(page, 'leaderboard');
   const board = page.getByRole('dialog', { name: 'Ranked 1v1' });
   await expect(board).toBeVisible();
   await expect(board).toContainText('Your position: 3 of 4');

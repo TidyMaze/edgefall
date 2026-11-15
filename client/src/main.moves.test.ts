@@ -9,7 +9,7 @@ import { generateKeys } from './moverecord';
 import { OnlineSession } from './session';
 import { MOTION } from './motion';
 import { SLIDE_MS } from './slide';
-import { boot, slowKeys, type Game } from './test/harness';
+import { boot, slowKeys, type Game, startBoss } from './test/harness';
 
 // The moves, the animation and the input of main.ts on the harness (decision #445, #452): a move and its slide, the
 // ejection effect and its blood, the skip, the click and its guards, the pointer orbit, pinch and wheel, Reset view,
@@ -153,9 +153,7 @@ describe('a move and its slide', () => {
 
   it('never saves a boss fight: a reload starts a fresh local game', async () => {
     const game = await boot('?nodes=20');
-    game.openModes();
-    document.getElementById('boss-fight')!.click();
-    (document.querySelector('#boss-list button') as HTMLButtonElement).click();
+    startBoss('The Echo');
     expect(data().boss).toBeDefined();
     playOne(game);
     expect(plies(game)).toBe(1);
@@ -499,7 +497,7 @@ describe('the pointer on the board', () => {
     canvas().dispatchEvent(wheel);
     expect(wheel.defaultPrevented).toBe(true); // the page never scrolls
     expect(away(screen(game, 4, -4), centre)).toBeGreaterThan(away(corner, centre));
-    const reset = document.getElementById('reset-view') as HTMLButtonElement;
+    const reset = document.getElementById('view-reset') as HTMLButtonElement;
     expect(reset.disabled).toBe(false);
     reset.click();
     expect(screen(game, 4, -4)).toEqual(corner);

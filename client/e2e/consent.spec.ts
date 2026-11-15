@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { startMode } from './modes';
 
 // Issue #1338: nothing reaches a relay or a peer before the player accepts the online notice. `?consent` asks for the
 // dialog under Playwright (navigator.webdriver skips it, as the guide), and routeWebSocket keeps every relay unreached.
@@ -14,8 +15,7 @@ async function watch(page: Page): Promise<string[]> {
   return sockets;
 }
 async function playOnline(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Game modes' }).click();
-  await page.getByRole('button', { name: 'Play online' }).click();
+  await startMode(page, 'online');
 }
 
 test('Play online asks first, and Stay solo keeps solo play with no socket opened', async ({ page }) => {

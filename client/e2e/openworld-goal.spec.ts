@@ -98,7 +98,7 @@ const rects = (page: import('@playwright/test').Page) =>
     };
     const goal = document.getElementById('openworld-goal')!;
     return {
-      hud: rect('openworld-hud'), chip: rect('openworld-chip'), exit: rect('exit'), dungeon: rect('openworld-dungeon'), quick: rect('openworld-quick'),
+      hud: rect('openworld-hud'), chip: rect('openworld-chip'), exit: rect('exit'), dungeon: rect('openworld-dungeon'),
       goalPx: parseFloat(getComputedStyle(goal).fontSize), chipText: document.getElementById('openworld-chip')!.innerText,
     };
   });
@@ -128,7 +128,7 @@ test.describe('upright 390 by 844, the bar', () => {
     await expect(hud).not.toHaveAttribute('data-folded', '1');
     const open = await rects(page);
     expect(open.hud.y, JSON.stringify(open.hud)).toBeGreaterThan(844 / 2 + 40);
-    expect(open.quick.bottom).toBeLessThanOrEqual(open.hud.bottom);
+    expect(open.dungeon.bottom).toBeLessThanOrEqual(open.hud.bottom);
     // Tab follows the screen (WCAG 2.4.3): the plate's controls, top to bottom then left to right, are the ones Tab walks from the first.
     const shown = await page.evaluate(() =>
       [...document.querySelectorAll('#openworld-hud :is(summary, button, input)')]
@@ -137,7 +137,7 @@ test.describe('upright 390 by 844, the bar', () => {
         .sort((a, b) => a.y - b.y || a.x - b.x)
         .map((e) => e.id),
     );
-    expect(shown).toEqual(['summary', 'openworld-dungeon', 'openworld-quick']);
+    expect(shown).toEqual(['summary', 'openworld-dungeon']);
     await page.locator('#openworld-controls summary').focus();
     const tabbed = ['summary'];
     for (const _ of shown.slice(1)) {
@@ -148,7 +148,7 @@ test.describe('upright 390 by 844, the bar', () => {
     await page.setViewportSize({ width: 360, height: 640 });
     await expect.poll(async () => (await rects(page)).hud.bottom).toBe(640 - 88); // laid out at the new size, 5.5rem over the bottom
     const small = await rects(page);
-    for (const button of [small.dungeon, small.quick]) {
+    for (const button of [small.dungeon]) {
       expect(button.y, JSON.stringify(small)).toBeGreaterThanOrEqual(small.hud.y);
       expect(button.bottom, JSON.stringify(small)).toBeLessThanOrEqual(Math.min(632, small.hud.bottom)); // inside the plate, none scrolled off
     }

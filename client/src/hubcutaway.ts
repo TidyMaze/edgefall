@@ -237,7 +237,7 @@ export function cutawayFrame(box: THREE.Box3, layout: Layout, width: number, hei
   return { scale, position };
 }
 
-export const MIN_BAY = 46; // a bay is never drawn smaller than this on a phone (44 px to touch, and a pixel of margin for the rounding)
+export const MIN_BAY = 50; // a bay is never drawn smaller than this on a phone (44 px to touch, and the rounding and the margin of its button: the ship has no dock now, #1697, and 375x667 drew 42 px bays at 46)
 export const STRIP = 48; // the window height kept at the top and at the bottom of the room, for the lift's two buttons
 export interface Follow {
   top: number; // the window rect (y) where a bay is a button: a bay not whole in it is not drawn as one

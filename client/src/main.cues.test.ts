@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Axial } from './board';
 import { LEGACY_UNLOCKED } from './collector';
 import { newRun, type Run } from './roguelite';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The cues of world.md section 7 (#1570), through the jsdom harness: nobody can listen here, so the page reports each cue
 // it played (`__cues`, like `__tellCues` for the tells) and these tests read that list. No cue before the first gesture,
@@ -19,9 +19,7 @@ const plainRun = (seed: number, best: number): Run => ({ ...newRun(seed, best, L
 
 /** Starts the fight of the boss named `name` from the boss list. */
 function start(game: Game, name: string): void {
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.includes(name))!.click();
+  startBoss(name);
 }
 /** The engine's answers once a ply was played, with `over` as its status: 0 running, 1 Black wins, 2 White wins, 3 draw. */
 async function judge(game: Game, kind: 'Encounter' | 'Engine', over: { status: number }): Promise<void> {
@@ -41,17 +39,15 @@ function move(game: Game): void {
 describe('the UI click (#1570)', () => {
   it('sounds on a button once the sound is on, never before a gesture', async () => {
     const game = await boot('?bot=off', { audio: true });
-    game.openModes();
     expect(cues(game)).toEqual([]);
     gesture();
-    game.openModes();
+    game.openSettings();
     expect(cues(game)).toEqual(['click']);
   });
 
   it('is silent with the effects slider at 0', async () => {
     const game = await boot('?bot=off', { audio: true, storage: { 'ab-alone.volume.effects': '0' } });
     gesture();
-    game.openModes();
     expect(cues(game)).toEqual([]);
   });
 
@@ -67,12 +63,11 @@ describe('the UI click (#1570)', () => {
   it('does not sound on the pick of a node of the rogue-lite map, nor on Start: they have their own pick', async () => {
     const game = await boot('?nodes=50&bot=off', { audio: true });
     gesture();
-    game.openModes();
     byId('roguelite').click();
-    expect(cues(game)).toEqual(['click', 'click']); // the mode menu button and the mode
+    expect(cues(game)).toEqual(['click']); // the press on the starter
     byId('run-map').querySelector<HTMLButtonElement>('button[data-node]:not(:disabled)')!.click();
     expect(document.body.dataset.pick).toBe('pick');
-    expect(cues(game)).toEqual(['click', 'click']);
+    expect(cues(game)).toEqual(['click']);
   });
 });
 
@@ -297,7 +292,7 @@ describe('the boss intro (#1570)', () => {
     const game = await boot('?bot=off', { reducedMotion: true, audio: true });
     gesture();
     start(game, 'The Echo');
-    expect(cues(game)).toEqual(['click', 'click', 'boss-intro', 'click']); // the mode menu, the boss list, the intro (the entry starts the fight, then its click bubbles to the page's listener)
+    expect(cues(game)).toEqual(['boss-intro']); // the mode menu, the boss list, the intro (the entry starts the fight, then its click bubbles to the page's listener)
     game.openSettings();
     byId('setting-flat-hud').click();
     expect(count(game, 'boss-intro')).toBe(1);
@@ -306,7 +301,6 @@ describe('the boss intro (#1570)', () => {
   it('is silent outside a boss fight, and sounds again for the next fight', async () => {
     const game = await boot('?bot=off', { reducedMotion: true, audio: true });
     gesture();
-    game.openModes();
     expect(count(game, 'boss-intro')).toBe(0);
     start(game, 'The Echo');
     start(game, 'The Echo');

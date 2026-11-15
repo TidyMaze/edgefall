@@ -5,6 +5,7 @@ import { resetView, type View } from './camera';
 import { seatAfter } from './coop';
 import { bossSeatFromHash, coopFromHash } from './invite';
 import { generateKeys } from './moverecord';
+import { BOSS_IDS } from './tally';
 import { OnlineSession } from './session';
 import { boot, type Game } from './test/harness';
 import type { Wire } from './moverecord';
@@ -97,7 +98,6 @@ async function invited(hash: string) {
 
 /** Presses Fight together in the mode menu, then the boss called `name` in the list it opens. */
 function fightTogether(game: Game, name: string): void {
-  game.openModes();
   byId('fight-together').click();
   [...byId('coop-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
 }
@@ -119,21 +119,18 @@ async function hosted(storage: Record<string, string> = {}) {
 describe('co-op: the encounter judges the room', () => {
   it('Fight together lists the bosses, and picking one opens a co-op room: the invite carries the boss and a random seed', async () => {
     const game = await boot('?bot=off', calm);
-    game.openModes();
     const button = byId('fight-together');
     const list = byId('coop-list');
     expect(list.hidden).toBe(true);
     button.click();
     expect(list.hidden).toBe(false);
     expect(button.getAttribute('aria-expanded')).toBe('true');
-    const names = (id: string) => [...byId(id).querySelectorAll('button')].map((b) => b.textContent);
-    expect(names('coop-list')).toEqual(names('boss-list')); // the bosses of solo boss mode
+    expect([...list.querySelectorAll('button')].map((b) => b.textContent)).toHaveLength(BOSS_IDS.length); // every boss of the roster
     button.click();
     expect(list.hidden).toBe(true);
     expect(button.getAttribute('aria-expanded')).toBe('false');
     button.click();
     [...list.querySelectorAll('button')].find((b) => b.textContent === 'The Echo')!.click();
-    expect(byId('mode-menu').hidden).toBe(true); // picking a boss closes the menu, and the list for next time
     expect(list.hidden).toBe(true);
     expect(button.getAttribute('aria-expanded')).toBe('false');
     await until(game, () => data().seat === 'player'); // the link shows once the keys are made: it carries their fingerprint (#1323)
@@ -157,22 +154,6 @@ describe('co-op: the encounter judges the room', () => {
   it('a co-op boss shows its rating at its own budget, not scaled by the difficulty setting (#1611)', async () => {
     await hosted({ 'ab-alone.difficulty': 'hard' });
     expect(document.querySelector('#hud .bot-rating')?.textContent).toBe('Boss ~1000 · Easy'); // The Echo, 100 positions
-  });
-
-  it('opening one boss list closes the other, so both are never open at once (bug #615)', async () => {
-    const game = await boot('?bot=off', calm);
-    game.openModes();
-    const lists = () => ({
-      boss: [byId('boss-list').hidden, byId('boss-fight').getAttribute('aria-expanded')],
-      coop: [byId('coop-list').hidden, byId('fight-together').getAttribute('aria-expanded')],
-    });
-    byId('boss-fight').click();
-    byId('fight-together').click();
-    expect(lists()).toEqual({ boss: [true, 'false'], coop: [false, 'true'] });
-    byId('boss-fight').click();
-    expect(lists()).toEqual({ boss: [false, 'true'], coop: [true, 'false'] });
-    byId('boss-fight').click(); // closing a list opens no other
-    expect(lists()).toEqual({ boss: [true, 'false'], coop: [true, 'false'] });
   });
 
   it('disables Fight together while the browser is offline, as Play online, and enables it back online', async () => {
@@ -388,7 +369,6 @@ describe('co-op: the view of a Pulsar fight', () => {
 describe('boss duel: the joiner plays the boss (#1316)', () => {
   it('Boss duel opens the shared list as a duel and Fight together opens it back as a co-op, one list at a time', async () => {
     const game = await boot('?bot=off', calm);
-    game.openModes();
     const list = byId('coop-list');
     byId('boss-duel').click();
     expect(list.hidden).toBe(false);
@@ -412,7 +392,6 @@ describe('boss duel: the joiner plays the boss (#1316)', () => {
 
   it('the hero page asks no bot for a boss reply to its move: the boss seat answers from the room (#1485)', async () => {
     const game = await boot('?bot=off', calm);
-    game.openModes();
     byId('boss-duel').click();
     [...byId('coop-list').querySelectorAll('button')].find((b) => b.textContent === 'The Echo')!.click();
     await until(game, () => data().seat === 'player');

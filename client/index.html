@@ -105,7 +105,6 @@
           <p id="openworld-mode"></p>
         </details>
         <button id="openworld-dungeon" type="button">Nearest tower</button>
-        <button id="openworld-quick" type="button" autocomplete="off" disabled>Quick game</button>
         <p id="openworld-dungeon-note" role="status"></p>
         <div id="openworld-online" hidden>
           <p id="openworld-net" role="status"></p>
@@ -172,14 +171,10 @@
         </div>
         <button id="royale-hold" type="button" data-label="Hold" aria-label="Hold" hidden>Hold</button>
         <button id="lobby" type="button" data-label="Lobby" aria-label="Lobby" aria-expanded="false" aria-controls="lobby-sheet" hidden>Lobby</button>
-        <button autocomplete="off" id="open-world-entry" type="button" data-label="World" aria-label="Open world" title="Open world (#1612)" disabled hidden>Open world</button>
-        <button autocomplete="off" id="quick-game" type="button" data-label="Quick" aria-label="Quick game" title="Quick game: a bot game, outside the world (#1612)" disabled>Quick game</button>
-        <button autocomplete="off" id="modes" type="button" data-label="Modes" aria-label="Game modes" title="Game modes" aria-haspopup="true" aria-expanded="false" aria-controls="mode-menu" disabled></button>
         <button id="auto-play" type="button" data-label="Auto" aria-label="Auto-play" aria-pressed="false" aria-describedby="auto-reason" hidden>Auto-play</button>
       </nav>
-      <div id="mode-menu" role="group" aria-label="Game modes" hidden>
-        <p id="lock-banner" hidden>Win your first game vs the bot</p>
-        <p id="lock-note" hidden>More unlocks after your first win</p>
+      <!-- The starters (#1697): the mode buttons the ship's bays press, kept out of sight. There is no menu: a mode starts in the ship. -->
+      <div id="starters" hidden>
         <button autocomplete="off" id="play-online" type="button" title="Play a friend or a stranger over the network." disabled>Play online</button>
         <button autocomplete="off" id="fight-together" type="button" title="You and a partner against one boss, taking turns." aria-expanded="false" disabled>Boss with a partner</button>
         <div id="coop-list" hidden></div>
@@ -188,16 +183,11 @@
         <button autocomplete="off" id="ranked" type="button" title="Online games that move your rating up or down." disabled>Ranked</button>
         <button id="leaderboard" type="button">Leaderboard</button>
         <button id="console-entry" type="button" hidden>Console</button>
-        <button autocomplete="off" id="boss-fight" type="button" title="You against one boss of the ship, each with its own rule." aria-expanded="false" disabled>Solo boss fight</button>
-        <div id="boss-list" hidden></div>
         <button autocomplete="off" id="daily" type="button" disabled>Daily challenge</button>
         <button autocomplete="off" id="roguelite" type="button" title="A run of fights across a map, your army kept between them." disabled>Rogue-lite run</button>
         <button autocomplete="off" id="trainer" type="button" title="Waves of bot marbles, one more each wave, with what you have left." disabled>Trainer</button>
         <button autocomplete="off" id="openworld" type="button" title="Walk the world and find the bosses in their lairs." disabled>Open world</button>
         <button autocomplete="off" id="ship" type="button" title="Walk the ship and pick a table, a door or a boss." disabled>Hub</button>
-        <div id="menu-view">
-          <button autocomplete="off" id="reset-view" type="button" aria-label="Reset view" disabled>Reset view</button>
-        </div>
       </div>
       <div id="lobby-sheet" role="group" aria-label="Lobby" hidden>
         <button id="royale-start" type="button" hidden>Start</button>

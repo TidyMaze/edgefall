@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Axial } from './board';
 import { CLAIM_NOTE } from './openworldgoal';
 import { PLACE_LINES } from './placelines';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The boss lairs of the Open world (#1170): the hero walks onto a lair and the normal boss fight starts; a win records the medal
 // and the lair in the world's save; Back returns to the Open world with the hero on the lair's entrance.
@@ -20,7 +20,6 @@ const hooks = () => window as unknown as { __openworldFixture: (f: { hero: Axial
 /** Enters the world of seed 7 and walks onto lair `lair` from the cell west of it (the hook stands the hero there). */
 async function walkOnto(game: Game, lair: number, open = true): Promise<Axial> {
   if (open) {
-    game.openModes();
     byId('openworld').click();
     await settle();
   }
@@ -34,7 +33,6 @@ async function walkOnto(game: Game, lair: number, open = true): Promise<Axial> {
 describe('the boss lairs of the Open world (#1170)', () => {
   it('walking onto a lair leaves the world and starts a boss fight, the lair numbers choosing the boss', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworldLairs!.split(' ')).toHaveLength((await import('edgefall-wasm')).boss_ids().length); // one lair per boss of the roster (#1171)
@@ -99,9 +97,7 @@ describe('the boss lairs of the Open world (#1170)', () => {
   it('a boss picked from the menu is no lair\'s: its way out is the Hub, not the world', async () => {
     const game = await boot('?bot=off&openworld=7');
     await walkOnto(game, 0);
-    game.openModes();
-    byId('boss-fight').click();
-    (byId('boss-list').querySelector('button') as HTMLButtonElement).click();
+    startBoss('The Echo');
     vi.spyOn((await import('edgefall-wasm')).Encounter.prototype, 'status').mockImplementation(() => 2);
     byId('boss-goal').click();
     expect(byId('exit').hidden).toBe(false);
@@ -115,7 +111,6 @@ describe('the day and the night of the Open world (#1496)', () => {
 
   it('the test hook sets the time of day and the page reads the phase', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworldPhase).toBe('day');
@@ -127,7 +122,6 @@ describe('the day and the night of the Open world (#1496)', () => {
 
   it('a lair entered at night starts the fight on the night board, Retry keeps it, and Back returns to the same hour', async () => {
     const game = await boot('?bot=off&openworld=7', { reducedMotion: true });
-    game.openModes();
     byId('openworld').click();
     await settle();
     setTime(9 * MIN);
@@ -151,21 +145,17 @@ describe('the day and the night of the Open world (#1496)', () => {
 
   it('a lair entered at dusk and at day takes their boards; a boss picked from the menu keeps the ordinary board', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     await walkOnto(game, 0);
     expect(data().fightBoard).toBe('day');
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworldPhase).toBe('day'); // the first fight left the world at the start of day
     setTime(6.5 * MIN);
     await walkOnto(game, 1, false);
     expect(data().fightBoard).toBe('dusk');
-    game.openModes();
-    byId('boss-fight').click();
-    (byId('boss-list').querySelector('button') as HTMLButtonElement).click();
+    startBoss('The Echo');
     expect(data().fightBoard).toBeUndefined();
   });
 });
@@ -200,7 +190,6 @@ describe("Tally's line in the Open world (#1171)", () => {
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     await settle();
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(byId('openworld-tally').textContent).toBe('');
@@ -252,7 +241,6 @@ describe("Tally's ending and ledger lines (#1175, #1315)", () => {
     fixture([0, 1, 2]);
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     await settle();
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(byId('openworld-tally').textContent).toBe(`Seats on file: 3 of ${count}. Clamp: open.`);
@@ -266,7 +254,6 @@ describe("Tally's ending and ledger lines (#1175, #1315)", () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); // leaving the world saves it
     await settle();
     expect(data().openworldSaved).toBe('1');
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworld).toBe('7');
@@ -277,7 +264,6 @@ describe("Tally's ending and ledger lines (#1175, #1315)", () => {
 describe('the Dungeon button of the HUD (#1291)', () => {
   it('walks the hero toward the nearest tower through the wasm bridge', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const [q, r] = data().openworldLairs!.split(' ')[0]!.split(',').map(Number) as unknown as Axial;

@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Axial } from './board';
 import { IDBFactory } from 'fake-indexeddb';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Stalker as a boss (#1111, docs/specs/stalker.md): picked in the Boss fight list, fogged from the engine's getters
 // (sight, visible cells, revealed marbles), the sight on the HUD. The refusal itself is a core test; here the client
@@ -13,19 +13,14 @@ const byId = (id: string): HTMLElement => document.getElementById(id)!;
 const shown = (game: Game): Shown => game.hook<Shown>('__stalker');
 
 function pickStalker(): void {
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Stalker')!.click();
+  startBoss('The Stalker');
 }
 
 describe('main.ts The Stalker boss (#1111)', () => {
-  it('is in the Boss fight list, fogged at sight 3, with the sight on the HUD', async () => {
+  it('is a boss, fogged at sight 3, with the sight on the HUD', async () => {
     const game = await boot('/');
     expect(shown(game)).toBeNull();
-    byId('boss-fight').click();
-    const entries = [...byId('boss-list').querySelectorAll('button')];
-    expect(entries[entries.length - 2]!.textContent).toBe('The Stalker'); // before The Swarm (#1008)
     pickStalker();
-    expect(byId('boss-list').hidden).toBe(true);
     const s = shown(game)!;
     expect(s.visible).toHaveLength(41); // sight 3 of the 14 starting marbles
     expect(s.drawn).toEqual([]);
@@ -119,8 +114,7 @@ describe('main.ts The Stalker boss (#1111)', () => {
   it('does not save the other bosses', async () => {
     const indexedDB = new IDBFactory();
     const game = await boot('/', { indexedDB });
-    byId('boss-fight').click();
-    byId('boss-list').querySelector('button')!.click(); // The Echo
+    startBoss('The Echo'); // The Echo
     await game.settle();
     const again = await boot('/', { indexedDB });
     expect(shown(again)).toBeNull();

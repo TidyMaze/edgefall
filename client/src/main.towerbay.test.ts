@@ -38,7 +38,6 @@ const QUERY = '?bot=off&openworld=7&hub=cutaway';
 /** Rolls the hero onto the cell `[q, r]` from its west neighbour; the entrance cell is returned. */
 async function rollOnto(game: Game, at: () => Axial | Promise<Axial>, open = true): Promise<Axial> {
   if (open) {
-    game.openModes();
     byId('openworld').click();
     await settle();
   }

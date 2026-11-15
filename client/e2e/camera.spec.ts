@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
 import { shot } from './shot';
 
 const cellToScreen = (page: Page, q: number, r: number) =>
@@ -46,7 +45,6 @@ test('rotate and zoom, play a move at that angle, reset the view and play again'
   await expect(page.locator('#hud')).toContainText('White to move');
 
   // Reset the view: the default camera is back, so is the cell position.
-  await openModes(page); // Replay and Reset view sit in the Game modes menu (#1612)
   await page.getByRole('button', { name: 'Reset view' }).click();
   const reset = await cellToScreen(page, 4, 0);
   expect(reset.x).toBeCloseTo(start.x, 1);
@@ -78,19 +76,6 @@ test('dragging to orbit the camera rebuilds no props nor fog per move, bug #475'
   const moved = await cellToScreen(page, 4, 0);
   expect(Math.hypot(moved.x - start.x, moved.y - start.y)).toBeGreaterThan(0); // the drag orbited
   expect(await looks()).toBe(before);
-});
-
-// Bug #146: the Reset view listener comes after the top-level awaits of main.ts. Before refresh() fills
-// the HUD (it runs after every listener is wired) a click would be lost, so the button must be disabled.
-test('Reset view is disabled until its listener is attached, bug #146', async ({ page }) => {
-  await page.goto('./?bot=off', { waitUntil: 'domcontentloaded' });
-  const atLoad = await page.evaluate(() => ({
-    disabled: (document.getElementById('reset-view') as HTMLButtonElement).disabled,
-    ready: document.getElementById('hud')!.innerHTML !== '',
-  }));
-  expect(atLoad.disabled || atLoad.ready).toBe(true);
-  // Under software WebGL on a loaded runner the top-level awaits can take longer than the 5 s default (#336).
-  await expect(page.locator('#reset-view')).toBeEnabled({ timeout: 30_000 });
 });
 
 // #1681: once the camera moved, a Reset view button floats over the board (no menu), and a press brings the default view back.

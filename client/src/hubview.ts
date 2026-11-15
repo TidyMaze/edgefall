@@ -234,9 +234,3 @@ export function pipsHtml(beaten: readonly string[], medals: Readonly<Record<stri
   const pips = states.map(([deck, boss, state]) => `<span class="pip" data-state="${state}" title="${title(deck)} deck, ${boss}: ${state}"></span>`);
   return `<span class="count">Medals ${count} / ${BOSS_IDS.length}</span>${pips.join('')}`;
 }
-
-/** The reason the boss menu locks boss `id` (#1527), the boss to beat to open its deck, or '' when the menu lets the player start it (`bossOpen`). */
-export function bossLockLine(id: string, beaten: readonly string[]): string {
-  if (bossOpen(id, beaten)) return '';
-  return `Beat ${bossTitle(bossOf(DECK_NAMES[DECK_NAMES.indexOf(deckOf('boss', id)) - 1]!))} first`;
-}

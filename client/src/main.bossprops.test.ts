@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
-import { boot } from './test/harness';
+import { boot, startBoss } from './test/harness';
 import { BOSS_PROPS, bossProp } from './bossprops';
 
 // The terrace wears the kit prop of the boss in the fight (coverage.md rows 5 to 17, #1374): one mesh, off the dish, none for
@@ -22,8 +22,7 @@ function catchScene(): () => THREE.Scene {
 }
 const props = (scene: THREE.Scene): THREE.Object3D[] => scene.getObjectsByProperty('name', 'boss-prop');
 const fight = (name: string): void => {
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
+  startBoss(name);
 };
 
 describe('main.ts boss props (#1374)', () => {
@@ -38,7 +37,6 @@ describe('main.ts boss props (#1374)', () => {
         const scene = catchScene();
         const game = await boot(`?bot=off${look}`, { reducedMotion: true });
         expect(props(scene())).toHaveLength(0); // no fight, no prop
-        game.openModes();
         fight(name);
         await vi.waitFor(() => expect(document.body.dataset.scene).toBe(look ? 'room' : 'table-zero'));
         if (name === 'The Pulsar') await vi.waitFor(() => expect(scene().getObjectsByProperty('name', 'pulsar')).toHaveLength(6)); // the kit file came

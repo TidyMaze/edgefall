@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { openModes } from './modes';
 
 // #1234: the Open world is lit by no point light on any tier (the ship's are not drawn there), and the low tier still plays: a step
 // rolls the hero. (That a still low scene draws no frame is a unit test of the mode, openworldmode.test.ts.)

@@ -2,7 +2,7 @@
 import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 import css from './ui.css?raw';
 import { boss_ids } from 'edgefall-wasm';
 import './test/openworldwasm'; // inits the wasm at collection, the mode list reads it
@@ -65,7 +65,6 @@ function snapshot({ scene, intervals }: Probe) {
 
 /** The Ship entry of the mode menu, then one draw: the marbles' instances follow the draw (instancedcells.ts). */
 async function ship(game: Game): Promise<void> {
-  game.openModes();
   byId('ship').click();
   await game.settle();
   game.hook('__drawNext'); // under automation the loop draws when asked (#365)
@@ -91,7 +90,6 @@ async function move(game: Game): Promise<void> {
 
 /** A menu entry of the mode menu. */
 function pick(game: Game, id: string): void {
-  game.openModes();
   byId(id).click();
 }
 
@@ -125,11 +123,10 @@ describe('a mode switch leaves nothing of the mode behind (#1275)', () => {
   // alone, not the sum of all (#1275). The mode list is read from the wasm, so a new boss gets its test.
   type Enter = (game: Game) => Promise<void>;
   const modes: [string, Enter][] = [
-    ...boss_ids().map((id, i): [string, Enter] => [
+    ...boss_ids().map((id): [string, Enter] => [
       `the boss fight ${id}`,
       async (game) => {
-        pick(game, 'boss-fight');
-        byId('boss-list').querySelectorAll('button')[i]!.click();
+        startBoss(id);
         await play(game);
       },
     ]),

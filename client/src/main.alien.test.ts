@@ -2,7 +2,7 @@
 import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 import { SKINS } from './skins';
 import { tonalMarble } from './look';
 
@@ -37,9 +37,7 @@ function fightAlien(game: Game, seed = SEED): void {
     (a as Uint32Array).fill(seed);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Alien')!.click();
+  startBoss('The Alien');
 }
 
 const eggs = (game: Game): Egg[] => game.hook<Egg[]>('__eggs');

@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
 import { TERMINAL } from '../src/terminal';
 import { shot } from './shot';
 
@@ -90,7 +89,6 @@ test('a click on the console screen opens the reader, a click off it leaves, and
   await expect(page.locator('body')).toHaveAttribute('data-reading', 'mess-house-rule');
   await page.mouse.click(2, page.viewportSize()!.height - 20); // off the screen, near the bottom left corner of the window (700 is outside the 540 px window of CI, #1436)
   await expect(page.locator('body')).not.toHaveAttribute('data-reading');
-  await openModes(page); // Replay and Reset view sit in the Game modes menu (#1612)
   await page.getByRole('button', { name: 'Reset view' }).click();
   const cell = (q: number, r: number) =>
     page.evaluate(([cq, cr]) => (window as unknown as { __cellToScreen: (q: number, r: number) => { x: number; y: number } }).__cellToScreen(cq!, cr!), [q, r]);

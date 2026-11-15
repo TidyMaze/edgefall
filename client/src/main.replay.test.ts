@@ -5,7 +5,7 @@ import { BLACK_WINS } from '../e2e/end-games';
 import type { Axial } from './board';
 import { gameFileText } from './gamefile';
 import { SLIDE_MS } from './slide';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The replay mode of main.ts on the harness (#793): the bar, the keys, the stepped position and the view-only guard.
 
@@ -44,8 +44,7 @@ describe('the replay bar', () => {
   it('has a Replay button that waits for a first move, and a bar that opens on the live position', async () => {
     const game = await boot('?bot=off');
     expect(byId<HTMLButtonElement>('replay').disabled).toBe(true);
-    expect(byId('dock').contains(byId('replay'))).toBe(true); // a dock action, not a row of the Modes sheet (#1693)
-    expect(byId('mode-menu').contains(byId('replay'))).toBe(false);
+    expect(byId('dock').contains(byId('replay'))).toBe(true); // a dock action (#1693)
     expect(byId('replay').hidden).toBe(true); // nothing to review yet (#1693)
     expect(bar()).toBe(false);
     playOne(game);
@@ -180,9 +179,7 @@ describe('what the replay covers', () => {
 
   it('a boss fight: the boss state at each ply comes from replaying the log', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.startsWith('The Hull'))!.click();
+    startBoss('The Hull');
     expect(document.getElementById('boss-bar')!.textContent).toContain('The Hull');
     playOne(game);
     byId('replay').click();
@@ -196,7 +193,6 @@ describe('what the replay covers', () => {
   it('the Ship hides the Replay button and ends the replay', async () => {
     const game = await played(1);
     byId('replay').click();
-    game.openModes();
     byId('ship').click();
     expect(bar()).toBe(false);
     expect(byId('replay').hidden).toBe(true);

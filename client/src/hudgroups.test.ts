@@ -9,7 +9,7 @@ const doc = new DOMParser().parseFromString(page, 'text/html');
 const children = (id: string): string[] => [...doc.getElementById(id)!.children].map((el) => el.id);
 
 describe('The page controls', () => {
-  it('the thumb dock holds the game controls in order: Exit (#1517), Flee (a wild fight, #1511), Retry, Rematch, Goal, New game, Hint, Undo, Replay (#1693), the replay steps, Hold, Lobby, Open world (#1612), Quick game (#1612), Modes, Auto-play (Reset view is in the Modes menu, #1612: six dock controls fit 320 px, e2e/thumb-dock.spec.ts)', () => {
+  it('the thumb dock holds the game controls in order: Exit (#1517), Flee (a wild fight, #1511), Retry, Rematch, Goal, New game, Hint, Undo, Replay (#1693), the replay steps, Hold, Lobby, Auto-play (no World, Quick or Modes since #1697; Reset view is the button over the board)', () => {
     expect(children('dock')).toEqual([
       'exit',
       'wild-flee',
@@ -23,9 +23,6 @@ describe('The page controls', () => {
       'dock-replay',
       'royale-hold',
       'lobby',
-      'open-world-entry',
-      'quick-game',
-      'modes',
       'auto-play',
     ]);
   });
@@ -42,18 +39,18 @@ describe('The page controls', () => {
     expect(children('online')).toEqual(['settings-box', 'auto-reason', 'import-file']);
   });
 
-  it('Settings starts with the update row (#1693), the Game modes sheet with the modes', () => {
+  it('Settings starts with the update row (#1693); the page has no Modes menu, its lock lines, Quick game or World button (#1697)', () => {
     expect(children('settings-menu')[0]).toBe('update');
-    expect(children('mode-menu')).not.toContain('update');
-    expect(children('mode-menu')).toContain('play-online');
+    for (const id of ['mode-menu', 'modes', 'quick-game', 'open-world-entry', 'openworld-quick', 'lock-banner', 'lock-note', 'menu-view', 'boss-list', 'boss-fight', 'reset-view']) expect(doc.getElementById(id), id).toBeNull();
+    expect(children('starters')).toContain('play-online');
   });
 
   it('put Copy beside the invite link', () => {
     expect(children('invite-row')).toEqual(['invite', 'invite-copy']);
   });
 
-  it('gives each game mode of the Modes sheet a one-line plain description, its title (#1568); the Daily sets its own', () => {
-    const modes = ['play-online', 'fight-together', 'boss-duel', 'battle-royale', 'ranked', 'boss-fight', 'roguelite', 'trainer', 'openworld', 'ship'];
+  it('gives each starter button a one-line plain description, its title (#1568); the Daily sets its own', () => {
+    const modes = ['play-online', 'fight-together', 'boss-duel', 'battle-royale', 'ranked', 'roguelite', 'trainer', 'openworld', 'ship'];
     for (const id of modes) expect(doc.getElementById(id)!.title, id).toMatch(/^[A-Z][^.]{10,80}\.$/);
   });
 });

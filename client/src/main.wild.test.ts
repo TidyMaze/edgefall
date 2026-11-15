@@ -35,7 +35,6 @@ afterEach(() => vi.useRealTimers());
 
 async function openWorld(game: Game, url = `?openworld=${seed}`): Promise<void> {
   void url;
-  game.openModes();
   byId('openworld').click();
   await settle();
 }

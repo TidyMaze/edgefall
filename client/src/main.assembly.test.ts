@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
 import type { Belts } from './assembly';
 import { SLAM_MS } from './assembly';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Assembly Line on the harness (#744, game-design.md section 7.12): the three belts with their rollers, plates,
 // ribs, chevrons and counter, the HUD line, the marbles the belts carry and drop, the reversal, the phases, the announced
@@ -44,9 +44,7 @@ function fightAssembly(game: Game): void {
     (a as Uint32Array).fill(1);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Assembly Line')!.click();
+  startBoss('The Assembly Line');
 }
 
 /** Plays ply `k` of the fixture by two clicks. */

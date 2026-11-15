@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { BOSS_IDS } from './tally';
 import { boot } from './test/harness';
 
-// The test hook that starts any mode or boss by id (#1690): the e2e specs use it instead of pressing the Modes sheet.
+// The test hook that starts any mode or boss by id (#1690): the e2e specs use it instead of a menu: there is none (#1697).
 
 describe('__startMode (#1690)', () => {
   it.each(BOSS_IDS)('starts the boss %s with the random fight seed, locked or not', async (id) => {
@@ -25,6 +25,26 @@ describe('__startMode (#1690)', () => {
     game.hook('__startMode', id);
     await game.settle();
     expect(Boolean(document.body.dataset.boss)).toBe(boss);
+  });
+
+  it('starts the Trainer at wave 1', async () => {
+    const game = await boot('?bot=off');
+    await game.settle();
+    game.hook('__startMode', 'trainer');
+    await game.settle();
+    expect(document.body.dataset.trainer).toBeTruthy();
+  });
+
+  it('opens the Leaderboard, and starts Ranked as its bay row does', async () => {
+    const game = await boot('?bot=off&net=hook');
+    await game.settle();
+    game.hook('__startMode', 'leaderboard');
+    await game.settle();
+    expect(document.getElementById('board')!.hidden).toBe(false);
+    const pressed = vi.fn();
+    document.getElementById('ranked')!.addEventListener('click', pressed);
+    game.hook('__startMode', 'ranked');
+    expect(pressed).toHaveBeenCalledOnce();
   });
 
   it('starts the Hub', async () => {
@@ -64,6 +84,15 @@ describe('__startMode (#1690)', () => {
     game.hook('__startMode', 'coop:echo');
     await game.settle();
     expect(game.hook<{ id: string }>('__fight').id).toBe('echo');
+  });
+
+  it('starts a boss duel as the creator, who plays the hero', async () => {
+    const game = await boot('?bot=off&net=hook');
+    await game.settle();
+    game.hook('__startMode', 'duel:hull');
+    await game.settle();
+    expect(game.hook<{ id: string }>('__fight').id).toBe('hull');
+    expect(document.body.dataset.online).toBe('Black');
   });
 
   it('does not read boss as the daily', async () => {

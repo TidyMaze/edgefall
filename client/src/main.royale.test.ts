@@ -5,7 +5,7 @@ import { axialTo3D, type Axial } from './board';
 import type { View } from './camera';
 import { MARK_MS, STEP_MS } from './royale-reveal';
 import { SLIDE_MS } from './slide';
-import { boot, slowKeys, type Game } from './test/harness';
+import { boot, slowKeys, type Game, startBoss } from './test/harness';
 
 // The offline battle royale on the harness (#502): Battle royale in the mode menu starts 1 player against 5 bots on
 // the radius 8 arena, at the Furnace. The player presses a target on the arena, which locks the order, or holds; the
@@ -24,7 +24,6 @@ function tap(game: Game, q: number, r: number): void {
 }
 async function royale(): Promise<Game> {
   const game = await boot('?bot=off');
-  game.openModes();
   button('battle-royale').click();
   return game;
 }
@@ -51,7 +50,6 @@ const END = {
 describe('main.ts, the offline battle royale (#502)', () => {
   it('Battle royale starts round 1 on the arena at the Furnace, its initiative shown, Hold on and no Lock order (#611)', async () => {
     const game = await royale();
-    expect(byId('mode-menu').hidden).toBe(true); // picking a mode closes the menu
     expect(document.body.dataset.royale).toBe('1');
     expect(document.body.dataset.deck).toBe('furnace');
     expect(turn()).toBe('Battle royale · Round 1');
@@ -236,7 +234,6 @@ describe('main.ts, the offline battle royale (#502)', () => {
     game.click(-2, 3);
     expect(game.hook<Axial[]>('__rings')).toEqual([]);
     expect(turn()).toBe('You win');
-    game.openModes();
     button('ship').click();
     expect(document.body.dataset.over).toBeUndefined(); // no end light over the hub
   });
@@ -257,9 +254,7 @@ describe('main.ts, the offline battle royale (#502)', () => {
 
   it('a boss fight leaves the battle royale: the board and its frame come back', async () => {
     const game = await royale();
-    game.openModes();
-    button('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Echo')!.click();
+    startBoss('The Echo');
     expect(document.body.dataset.royale).toBeUndefined();
     expect(button('royale-hold').hidden).toBe(true);
     expect(game.hook<{ drawn: boolean }>('__frame').drawn).toBe(true);
@@ -270,7 +265,6 @@ describe('main.ts, the offline battle royale (#502)', () => {
 
   it('Ship leaves it for the hub, and Battle royale leaves the hub', async () => {
     const game = await royale();
-    game.openModes();
     button('ship').click();
     expect(document.body.dataset.royale).toBeUndefined();
     expect(document.body.dataset.hub).toBeDefined();
@@ -279,7 +273,6 @@ describe('main.ts, the offline battle royale (#502)', () => {
     drag(game, 'pointermove', -4, 7);
     drag(game, 'pointerup', -4, 7);
     expect(game.hook<Axial[]>('__rings')).toEqual([]);
-    game.openModes();
     button('battle-royale').click();
     expect(document.body.dataset.hub).toBeUndefined();
     expect(turn()).toBe('Battle royale · Round 1');
@@ -288,11 +281,9 @@ describe('main.ts, the offline battle royale (#502)', () => {
   it('Play online leaves it too, and Battle royale does nothing while online', async () => {
     const game = await royale();
     slowKeys();
-    game.openModes();
     button('play-online').click();
     await game.online();
     expect(document.body.dataset.royale).toBeUndefined();
-    game.openModes();
     button('battle-royale').click();
     expect(document.body.dataset.royale).toBeUndefined();
   });
@@ -416,7 +407,6 @@ describe('main.ts, a battle royale round plays out (#612)', () => {
   it('leaving during the reveal drops it', async () => {
     const game = await seeded(7);
     button('royale-hold').click();
-    game.openModes();
     button('ship').click();
     expect(reveal()).toBeUndefined();
     game.frame(10_000); // nothing of it plays on over the hub

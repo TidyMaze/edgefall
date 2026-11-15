@@ -1,5 +1,5 @@
 import { expect, type Page } from '@playwright/test';
-import { openModes } from './modes';
+import { startMode } from './modes';
 
 // Reaching the end of a boss fight, for the daily result card tests (#196). With ?bot=off the test
 // plays both sides by hand. The daily boss of 2027-03-30 is The Echo with 14 bosses (#1111), whose mirror
@@ -35,8 +35,7 @@ export async function startDaily(page: Page): Promise<string> {
   const daily = page.locator('#daily');
   await expect(daily).toBeEnabled();
   const name = (await daily.textContent())!.split(': ')[1]!;
-  await openModes(page);
-  await daily.click();
+  await startMode(page, 'daily');
   await expect(page.locator('#hud')).toContainText('Daily challenge 2027-03-30 · attempt 1');
   return name;
 }

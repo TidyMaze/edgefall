@@ -5,7 +5,7 @@ import { BOSS_ENDS } from './bossends';
 import { CLAMP_OPEN, EPILOGUE } from './epilogue';
 import { STORY_KEY } from './story';
 import { BOSS_IDS } from './tally';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The finale (#1546, #1588, docs/specs/world.md section 12.8): each boss has its own victory and defeat line; the win that reaches stage 7 plays
 // a short, skippable epilogue once, which the log archive rereads; the bridge console then reads the clamp open.
@@ -24,9 +24,7 @@ async function fight(game: Game, boss: string, status: 1 | 2 | 3): Promise<void>
   const over = (): number => (game.hook<number>('__plies') > 0 ? status : 0);
   vi.spyOn(wasm.Encounter.prototype, 'result').mockImplementation(over);
   vi.spyOn(wasm.Encounter.prototype, 'status').mockImplementation(over);
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.includes(NAMES[boss]!))!.click();
+  startBoss(NAMES[boss]!);
   const move = game.hook<Move[]>('__legal').find((m) => m.cells.length === 1 && (m.dir === 2 || m.dir === 4))!;
   const [q, r] = move.cells[0]!;
   game.click(q, r);
@@ -92,15 +90,11 @@ describe("The Ballast Mind's ending line is held back until stage 7 (#1588)", ()
 
   it('says its limit as the fight starts at stage 6, the old line below', async () => {
     const early = await boot('?bot=off', { reducedMotion: true });
-    early.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.includes('The Ballast Mind'))!.click();
+    startBoss('The Ballast Mind');
     expect(early.hud()).toContain('The ledger plays itself. Twelve out to balance.');
     expect(early.hud()).not.toContain('cannot push');
     const ready = await boot('?bot=off', { reducedMotion: true, storage: saved(2, 3, 4, 5) });
-    ready.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.includes('The Ballast Mind'))!.click();
+    startBoss('The Ballast Mind');
     expect(ready.hud()).toContain('I cannot push. Rule four. You can. Count carefully.');
   });
 });

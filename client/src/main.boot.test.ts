@@ -8,7 +8,7 @@ import { deckOf } from './deck';
 import { neonSkyOf } from './neonlook';
 import { encodeMove, type Move } from './board';
 import { loadProgress, saveProgress } from './progress';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 import { BOSS_IDS } from './tally';
 
 // The start of main.ts on the harness (src/test/harness.ts): the service worker's New version button, the renderer
@@ -1016,9 +1016,7 @@ describe('the sound', () => {
     const choir = async (gesture: boolean): Promise<unknown[]> => {
       const game = await boot('?bot=off', { audio: true });
       if (gesture) key('a');
-      game.openModes();
-      byId('boss-fight').click();
-      [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Choir')!.click();
+      startBoss('The Choir');
       row('flat-hud').click(); // a redraw of the same tell plays nothing new
       return game.hook('__tellCues');
     };
@@ -1065,10 +1063,7 @@ describe('the FPS readout (#426)', () => {
   });
 });
 
-describe.each([
-  { name: 'settings', button: 'settings', menu: 'settings-menu', open: (g: Game) => g.openSettings() },
-  { name: 'mode', button: 'modes', menu: 'mode-menu', open: (g: Game) => g.openModes() },
-])('the $name menu', ({ button, menu, open }) => {
+describe.each([{ name: 'settings', button: 'settings', menu: 'settings-menu', open: (g: Game) => g.openSettings() }])('the $name menu', ({ button, menu, open }) => {
   it('is enabled once ready, opened and closed by its button', async () => {
     const game = await boot('?bot=off');
     const b = byId<HTMLButtonElement>(button);
@@ -1105,18 +1100,11 @@ describe.each([
   });
 });
 
-it('shows the mode menu icon on its button', async () => {
-  await boot('?bot=off');
-  expect(byId('modes').querySelector('svg')).not.toBeNull();
-});
-
 it("draws a hovered move's ghost on a fresh game, the fight's own in a boss fight", async () => {
   const ghosts = async (boss: string | null): Promise<string | undefined> => {
     const game = await boot('?bot=off');
     if (boss) {
-      game.openModes();
-      byId('boss-fight').click();
-      [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === boss)!.click();
+      startBoss(boss);
     }
     const mv = game.hook<{ cells: [number, number][]; dir: number }[]>('__legal').find((m) => m.cells.length === 1)!;
     game.click(...mv.cells[0]!);
@@ -1242,81 +1230,18 @@ it('hides the loading plate even when the bay is missing, so the page never load
   await vi.waitFor(() => expect(byId('loading').hidden).toBe(true));
 });
 
-describe('the Open world first, and Quick game (#1612, Decision #1513)', () => {
-  const entries = (): string[] => [...byId('mode-menu').querySelectorAll('button')].map((b) => b.id).filter((id) => id !== 'update');
+describe('no Modes menu, no World and no Quick game (#1697)', () => {
+  const shown = (): string[] => [...document.querySelectorAll<HTMLElement>('#dock > button')].filter((b) => !b.hidden).map((b) => b.id);
 
-  it('leads the mode menu with the Open world on a fresh profile', async () => {
+  it('holds the exit, New and Hint in the dock of the plain table', async () => {
     await boot('?bot=off');
-    expect(entries()[0]).toBe('openworld');
-    expect(entries()).toContain('play-online');
+    expect(shown()).toEqual(['exit', 'new-game', 'hint']);
+    expect(byId('exit').dataset.label).toBe('Hub');
   });
 
-  it('keeps Play online first in the menu of a profile with a boss beaten', async () => {
-    const data = new Map<string, string>();
-    const store = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) };
-    saveProgress(store, { at: loadProgress(store).at, beaten: [BOSS_IDS[0]!] });
-    await bootWith({ 'ab-alone.progress': data.get('ab-alone.progress')! }, '?bot=off');
-    expect(entries()[0]).toBe('play-online');
-  });
-
-  it('shows a one-tap Open world button in the dock on a fresh profile, and it enters the world', async () => {
-    const game = await boot('?bot=off');
-    const entry = byId<HTMLButtonElement>('open-world-entry');
-    expect(entry.hidden).toBe(false);
-    expect(byId('dock').contains(entry)).toBe(true);
-    entry.click();
-    await game.settle();
-    expect(byId('openworld-hud').hidden).toBe(false);
-  });
-
-  it('hides that Open world button from a profile with a boss beaten', async () => {
-    const data = new Map<string, string>();
-    const store = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v) };
-    saveProgress(store, { at: loadProgress(store).at, beaten: [BOSS_IDS[0]!] });
-    await bootWith({ 'ab-alone.progress': data.get('ab-alone.progress')! }, '?bot=off');
-    expect(byId('open-world-entry').hidden).toBe(true);
-  });
-
-  it('puts a Quick game button in the dock, enabled, that starts a new game from any screen', async () => {
-    const game = await boot('?bot=off');
-    const quick = byId<HTMLButtonElement>('quick-game');
-    expect(quick.disabled).toBe(false);
-    expect(quick.hidden).toBe(false);
-    expect(byId('dock').contains(quick)).toBe(true);
-    quick.click();
-    await game.settle();
-    expect(game.hook('__plies')).toBe(0);
-  });
-
-  it('asks for a second press before Quick game drops an unfinished game, as New game does (#1612)', async () => {
-    const game = await boot('?bot=off');
-    const first = encodeMove((game.hook('__legal') as Move[])[0]!);
-    game.hook('__playMoves', [first]); // one ply: an unfinished game
-    byId<HTMLButtonElement>('quick-game').click();
-    await game.settle();
-    expect(game.hook('__plies')).toBe(1);
-    expect(byId<HTMLButtonElement>('quick-game').textContent).toMatch(/Confirm/); // the question sits on the button pressed
-    expect(byId('quick-game').classList.contains('confirm')).toBe(true); // the dock draws its label from the class (#1678: the question was invisible there)
-    byId<HTMLButtonElement>('quick-game').click();
-    await game.settle();
-    expect(game.hook('__plies')).toBe(0);
-    expect(byId('quick-game').classList.contains('confirm')).toBe(false);
-  });
-  it('opens an invite link at once on a fresh profile: the table is joined, and the menu still leads with the Open world (#1612)', async () => {
+  it('opens an invite link at once on a fresh profile: the table is joined', async () => {
     await boot('?net=hook#room=the-room');
     await vi.waitFor(() => expect(document.body.dataset.seat).toBe('pending'));
-    expect(byId('open-world-entry').hidden).toBe(false);
-  });
-  it('hides Quick game in a boss fight, and a press on it leaves the fight standing (#1612)', async () => {
-    const game = await boot('?bot=off');
-    game.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.startsWith('The Echo'))!.click();
-    expect(document.body.dataset.boss).toBeTruthy();
-    expect(byId<HTMLButtonElement>('quick-game').hidden).toBe(true);
-    byId<HTMLButtonElement>('quick-game').click();
-    await game.settle();
-    expect(document.body.dataset.boss).toBeTruthy();
   });
 });
 

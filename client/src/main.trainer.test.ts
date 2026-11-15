@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 import { WAVE_1_WIN } from './test/trainerline';
 
 // Trainer mode on the harness (#1159): Trainer in the mode menu starts wave 1, a bot with one marble against the
@@ -11,7 +11,6 @@ const card = (): string => (byId('trainer-card').hidden ? '' : byId('trainer-tex
 const whites = (game: Game): number => game.hook<number[]>('__board').filter((c) => c === 2).length;
 async function start(url = '?bot=off'): Promise<Game> {
   const game = await boot(url);
-  game.openModes();
   byId('trainer').click();
   return game;
 }
@@ -40,7 +39,6 @@ async function playOut(wave: number, left: number, want: 'win' | 'loss' | 'draw'
 describe('main.ts, Trainer mode (#1159)', () => {
   it('Trainer in the mode menu starts wave 1: one bot marble against 14, the wave and the best in the HUD', async () => {
     const game = await start();
-    expect(byId('mode-menu').hidden).toBe(true);
     expect(document.body.dataset.trainer).toBe('1');
     expect(game.hud()).toContain('Trainer · wave 1 · best 0 · Marbles left 6/6');
     expect(game.hud()).toContain('Drill: wave 1. Opponents: one. Seated.');
@@ -118,9 +116,7 @@ describe('main.ts, Trainer mode (#1159)', () => {
   it('another mode leaves the Trainer', async () => {
     const game = await start();
     game.hook('__playMoves', WAVE_1_WIN);
-    game.openModes();
-    byId('boss-fight').click();
-    byId('boss-list').querySelector('button')!.click();
+    startBoss('The Echo');
     expect(document.body.dataset.trainer).toBeUndefined();
     expect(card()).toBe('');
     expect(game.hud()).not.toContain('Trainer');

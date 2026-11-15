@@ -1,16 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 
-/** Opens the mode menu (#357), where Play online, Boss fight and Daily challenge live, unless it is open already. */
-export async function openModes(page: Page): Promise<void> {
-  const button = page.getByRole('button', { name: 'Game modes' });
-  if ((await button.getAttribute('aria-expanded')) !== 'true') await button.click();
-}
-
 /** Starts a mode (`arena`, `run`, `daily`, `world`, `hub`) or a boss by id (`echo`, `hull`...) through the test hook, with no menu pressed (#1690).
- * The menu's own specs and one spec per mode still go through the real UI. */
+ * There is no menu (#1697): a mode starts in the ship, and the bay specs press the real bays. */
 export async function startMode(page: Page, id: string): Promise<void> {
   await page.waitForFunction(() => (window as unknown as { __booted?: () => boolean }).__booted?.() === true); // set once the landing and the saved game are settled: a mode started sooner is replaced by the Hub's entry
-  await page.evaluate((mode) => (window as unknown as { __startMode: (m: string) => void }).__startMode(mode), id);
+  await page.evaluate((mode) => {
+    void (window as unknown as { __startMode: (m: string) => unknown }).__startMode(mode); // not awaited: a world that fails to load never settles
+  }, id);
 }
 
 const BOSS_OF: Record<string, string> = { 'The Echo': 'echo', 'The Hull': 'hull', 'The Choir': 'choir', 'The Chaplain': 'chaplain', 'The Ballast Mind': 'ballast', 'The Alien': 'alien', 'The Rail Yard': 'railyard', 'The Magnetizer': 'magnetizer', 'The Pulsar': 'pulsar', 'The Overseer': 'overseer', 'The Assembly Line': 'assembly', 'The Unstable Core': 'core', 'The Dual Room': 'dual', 'The Stalker': 'stalker', 'The Swarm': 'swarm' };

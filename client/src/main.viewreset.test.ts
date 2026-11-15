@@ -45,7 +45,7 @@ describe('main.ts the floating Reset view (#1681)', () => {
     await boot('?bot=off');
     wheel();
     expect(chip().hidden).toBe(false);
-    (document.getElementById('reset-view') as HTMLButtonElement).click();
+    (document.getElementById('view-reset') as HTMLButtonElement).click();
     expect(chip().hidden).toBe(true);
   });
 });

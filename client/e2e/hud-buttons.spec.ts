@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { openAdvanced } from './settings';
 
 // #839: the HUD buttons look alike. Copy is styled as Reset view, and the button that opens a private game
@@ -24,7 +24,7 @@ test('Free camera is a settings item, not a HUD button, lit while it is on, #938
   await page.goto('./?bot=off&hub=classic');
   await page.locator('canvas').waitFor();
   await expect(page.locator('#free-cam')).toHaveCount(0);
-  await expect(page.locator('#mode-menu #reset-view')).toHaveCount(1); // Reset view in the Game modes menu, not the dock (#1612: five dock controls fit 320 px)
+  await expect(page.locator('#reset-view')).toHaveCount(0); // no Modes menu to hold a Reset view row (#1697): the button over the board is the only one
   await page.locator('#settings').click();
   await openAdvanced(page); // a developer view, under Advanced (#1566)
   const item = page.getByRole('button', { name: 'Free camera' });
@@ -32,16 +32,6 @@ test('Free camera is a settings item, not a HUD button, lit while it is on, #938
   await item.click();
   await expect(item).toHaveAttribute('aria-pressed', 'true');
   expect(await page.evaluate(() => (window as unknown as { __freeCamActive: () => boolean }).__freeCamActive())).toBe(true);
-});
-
-test('Play online shows its name and is as tall as Boss with a partner, #839', async ({ page }) => {
-  await page.goto('./?bot=off&hub=classic');
-  await page.locator('canvas').waitFor();
-  await openModes(page);
-  const play = page.getByRole('button', { name: 'Play online', exact: true });
-  await expect(play).toHaveText('Play online');
-  await expect(play.locator('svg')).toHaveCount(0);
-  expect(await look(page, 'play-online')).toEqual(await look(page, 'fight-together'));
 });
 
 test('Copy looks like Reset view and is as tall as the link beside it, #839', async ({ page }) => {

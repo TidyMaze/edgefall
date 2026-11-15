@@ -79,7 +79,6 @@ function hookEnd(heard: Wire[] = []): Transport {
 
 /** Starts a battle royale from the mode menu and presses Invite. */
 function invite(game: Game): void {
-  game.openModes();
   button('battle-royale').click();
   button('royale-invite').click();
 }
@@ -108,7 +107,6 @@ describe('Battle royale online (#504)', () => {
 
   it('Invite scrolls the button column back to the top, so no button above the link is left out of reach (#839)', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     button('battle-royale').click();
     byId('online').scrollTop = 40;
     button('royale-invite').click();
@@ -118,7 +116,6 @@ describe('Battle royale online (#504)', () => {
 
   it('Invite opens a room of 6 seats: its invite link, the arena in the lobby, Start for the creator alone', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     button('battle-royale').click();
     expect(button('royale-invite').hidden).toBe(false); // in the offline game
     button('royale-invite').click();
@@ -246,7 +243,6 @@ describe('Battle royale online (#504)', () => {
     button('royale-hold').click();
     await until(game, () => data().net === 'locked');
     await other.net.play([]); // its commit and reveal are on their way to the page
-    game.openModes();
     byId('play-online').click();
     await game.settle();
     expect(old.state).toBe('closed');

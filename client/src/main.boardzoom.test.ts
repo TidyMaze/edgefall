@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // #1567: a phone held upright has a one-tap board zoom, kept per device: the whole board, or a closer view of all 61 cells.
 // Desktop, landscape and the boards with props off the 61 cells keep their views and show no button.
@@ -66,11 +66,9 @@ describe('main.ts the board zoom (#1567)', () => {
     localStorage.setItem('ab-alone.board-zoom', 'on');
     const game = await booting;
     expect(zoom().hidden).toBe(false);
-    game.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Pulsar')!.click();
+    startBoss('The Pulsar');
     expect(zoom().hidden).toBe(true);
-    byId('reset-view').click();
+    byId('view-reset').click();
     expect(zoom().hidden).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { startMode } from './modes';
 
 // Issue #1287: the shared ranked board opt-in, asked at the first ranked entry, unticked; and its read side: once joined, opening the
 // board reads the two relays and only reads (REQ and CLOSE, never an EVENT). No flag: the board is on by default.
@@ -19,8 +20,7 @@ async function watch(page: Page): Promise<{ sockets: string[]; sent: string[] }>
 test('the ranked entry asks first, joining and leaving the board are as easy, and nothing is sent', async ({ page }) => {
   const { sockets, sent } = await watch(page);
   await page.goto('./?bot=off&net=hook&hub=classic');
-  await page.getByRole('button', { name: 'Game modes' }).click();
-  await page.getByRole('button', { name: 'Ranked' }).click();
+  await startMode(page, 'ranked');
   const dialog = page.getByRole('dialog', { name: 'Shared ranked board' });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('public and permanent');
@@ -42,8 +42,7 @@ test('the ranked entry asks first, joining and leaving the board are as easy, an
   await expect(dialog).toBeHidden();
 
   expect(sockets).toEqual([]); // joined, board not opened: nothing read yet
-  await page.getByRole('button', { name: 'Game modes' }).click();
-  await page.getByRole('button', { name: 'Leaderboard' }).click();
+  await startMode(page, 'leaderboard');
   const board = page.getByRole('dialog', { name: 'Ranked 1v1' });
   await expect(board).toContainText('You are on the shared board as "A name far too l"');
   if (SHOTS) await page.screenshot({ path: `${SHOTS}-board.png` });

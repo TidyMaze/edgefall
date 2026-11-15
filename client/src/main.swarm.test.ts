@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import text from '../../crates/edgefall-core/tests/fixtures/swarm.txt?raw';
 import { EVAC_MS } from './swarm';
 import { parseRecorded } from './test/chaplain-game';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Swarm (#1008, #1266, game-design.md section 7.14) from the recorded win of the core tests (fight seed 0, ?bot=off):
 // the player starts in the centre, its wave is announced on a ring on any edge, the HUD counts the turns to the evac, a
@@ -30,17 +30,13 @@ function catchScene(): () => THREE.Scene {
   return () => scene!;
 }
 
-/** Starts the fight against The Swarm from the mode menu, on the recorded fight's seed 0. */
+/** Starts the fight against The Swarm from the test hook, on the recorded fight's seed 0. */
 function fightSwarm(game: Game): void {
   vi.spyOn(crypto, 'getRandomValues').mockImplementation((a) => {
     (a as Uint32Array).fill(0);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  const entries = [...byId('boss-list').querySelectorAll('button')];
-  expect(entries[entries.length - 1]!.textContent).toBe('The Swarm');
-  entries[entries.length - 1]!.click();
+  startBoss('The Swarm');
 }
 
 describe('main.ts The Swarm (#1008)', () => {

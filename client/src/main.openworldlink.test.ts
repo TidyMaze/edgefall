@@ -28,7 +28,6 @@ describe('the Open world link (#1361)', () => {
 
   it('the menu opens the public world even when a private world was played last', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     document.getElementById('openworld')!.click();
     await settle();
     expect(document.body.dataset.openworld).toBe('1305');

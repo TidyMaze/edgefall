@@ -44,9 +44,7 @@ describe('the stations of the Hub sound near the camera (#1577)', () => {
   it('plays none on a board game: no station there', async () => {
     const game = await boot('?bot=off', { audio: true, storage: LOUD });
     gesture();
-    game.openModes();
     byId('hotseat')?.click();
-    game.openModes();
     byId('battle-royale').click();
     expect(heard(game)).toEqual([]);
   });

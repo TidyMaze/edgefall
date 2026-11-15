@@ -4,7 +4,7 @@ import { LEGACY_UNLOCKED } from './collector';
 import { pulseRate } from './scenes';
 import { newRun } from './roguelite';
 import './test/openworldwasm';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The scene of the music (#1571, world.md section 7), through the jsdom harness: nobody can listen here, so the page reports
 // the scene it plays (`__scene`, like `__tension` for the drones) and these tests read it. The loop of the page names the scene
@@ -27,9 +27,7 @@ const LOUD = { 'ab-alone.volume.music': '100' }; // under automation the music s
 const CELL = { forest: [29, -59], desert: [-60, 30], meadow: [40, -20] } as const; // one a sextant of seed 1 (openworldambiencemode.test.ts)
 
 function start(game: Game, name: string): void {
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.includes(name))!.click();
+  startBoss(name);
 }
 
 describe('the scene of the music, per mode (#1571)', () => {
@@ -61,10 +59,8 @@ describe('the scene of the music, per mode (#1571)', () => {
   it('names the royale, and the map then the fight of a rogue-lite run', async () => {
     const game = await boot('?bot=off', { audio: true, storage: LOUD });
     gesture();
-    game.openModes();
     byId('battle-royale').click();
     expect(scene(game).id).toBe('royale');
-    game.openModes();
     byId('roguelite').click();
     expect(scene(game).id).toBe('run-map');
     await game.hook('__run', { ...newRun(1, 3, LEGACY_UNLOCKED), enemies: false, path: [0], fighting: true });
@@ -86,7 +82,6 @@ describe('the scene of the music in the Open world, by biome and hour (#1571)', 
   async function enter(): Promise<Game> {
     const game = await boot('?bot=off&openworld=1', { audio: true, storage: LOUD });
     gesture();
-    game.openModes();
     byId('openworld').click();
     await settle();
     return game;
@@ -109,9 +104,7 @@ describe('the scene of the music in the Open world, by biome and hour (#1571)', 
     const game = await enter();
     stand(CELL.meadow);
     expect(scene(game).id).toBe('world:meadow:day');
-    game.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')][0]!.click();
+    startBoss('The Echo');
     expect(scene(game).id).toMatch(/^boss:/);
   });
 });

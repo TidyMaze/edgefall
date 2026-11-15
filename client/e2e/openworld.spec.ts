@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BLACK_WINS } from './end-games';
-import { openModes, lowTierOnCi } from './modes';
+import { lowTierOnCi, startMode } from './modes';
 import { paused } from './frameclock';
 import { shot } from './shot';
 import { test as shared } from './shared-world';
@@ -227,13 +227,11 @@ test('the props near the hero are drawn detailed, the ones beyond low-poly, #989
   expect(counts['prop-tree-hi']).toBeLessThanOrEqual(217);
 });
 
-// #1000: the entry is in the mode menu for everyone, and a click enters a world with a random seed.
-test('the Open world is in the mode menu without the flag, and a click enters a random world, #1000', async ({ page }) => {
+// #1000: the entry is open to everyone, and enters a world with a random seed (the Airlock bay starts it, #1697).
+test('the Open world needs no flag, and its entry enters a random world, #1000', async ({ page }) => {
   await page.goto('./?bot=off&hub=classic');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
-  await openModes(page);
-  await expect(page.locator('#openworld')).toBeVisible();
-  await page.locator('#openworld').click();
+  await startMode(page, 'world');
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toMatch(/^\d+$/);
 });
 

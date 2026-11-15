@@ -3,7 +3,7 @@ import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
 import { FLASH_MS, SWEEP_MS, WARN_COLOR, type Charge, type Core } from './unstable';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Unstable Core on the harness (#751, game-design.md section 7.13): the glowing energy cells, the pips over the
 // charged marbles, the weighted push, the overload burst, the collapse of the core, the glowing wedge and the shockwave.
@@ -52,9 +52,7 @@ function fightCore(game: Game): void {
     (a as Uint32Array).fill(2);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Unstable Core')!.click();
+  startBoss('The Unstable Core');
 }
 
 /** Plays a move of the group `cells` in direction `dir` by clicks: the marbles, then the cell ahead of the group. */

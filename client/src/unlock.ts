@@ -46,33 +46,23 @@ export function isLocked(search: string, automated: boolean, existing: boolean):
   return !automated || query.has('newplayer');
 }
 
-/** The mode menu entries that wait for the first win. Settings, the guide, New game, Play online and an invite link never do. */
-export const LOCKED_IDS = ['openworld', 'open-world-entry', 'boss-fight', 'daily', 'roguelite', 'battle-royale', 'ranked', 'leaderboard', 'fight-together', 'boss-duel', 'ship', 'trainer'] as const;
+/** The starter buttons that wait for the first win (#1697, no menu): a press on one of them, whatever calls it (a bay, the pad's Enter, `.click()` as `?openworld=` does), starts nothing. Settings, the guide, New game, Play online and an invite link never wait. */
+const LOCKED_STARTERS: readonly string[] = ['openworld', 'daily', 'roguelite', 'battle-royale', 'ranked', 'leaderboard', 'fight-together', 'boss-duel', 'ship', 'trainer'];
+
+/** Marks (or clears) `data-locked` on the starters of `root` that wait for the first win: a press on one starts nothing (main.ts guards the page). The mark lives in the page, so a page that is gone leaves no guard behind. */
+export function markStarters(root: ParentNode, locked: boolean): void {
+  for (const id of LOCKED_STARTERS) {
+    const entry = root.querySelector<HTMLElement>(`#${id}`)!;
+    if (locked) entry.dataset.locked = LOCK_LINE;
+    else delete entry.dataset.locked;
+  }
+}
 export const LOCK_LINE = 'Win your first game to unlock';
-export const LOCK_SHORT = 'Win 1st game'; // under 600 px
-export const LOCK_BANNER = 'Win your first game vs the bot'; // the menu's first line and the Hub's goal while locked
-export const LOCK_NOTE = 'More unlocks after your first win'; // the menu's last line
+export const LOCK_BANNER = 'Win your first game vs the bot'; // the Hub's goal while locked
 
 /** The Hub's rooms that wait for the first win: the bosses and every mode room, but the tables, the online desk, the terminals and the lifts. */
 const LOCKED_DOORS: ReadonlySet<string> = new Set(['boss', 'daily', 'run', 'together', 'ranked', 'world', 'trainer', 'royale']);
 export const doorLocked = (kind: string): boolean => LOCKED_DOORS.has(kind);
-
-/** Marks (or clears) the locked entries of `root`: dimmed, `aria-disabled`, `data-locked` and `data-lock-short`, which the style sheet draws under the name. */
-export function paintLocks(root: ParentNode, locked: boolean): void {
-  for (const id of ['lock-banner', 'lock-note']) root.querySelector<HTMLElement>('#' + id)!.hidden = !locked;
-  for (const id of LOCKED_IDS) {
-    const entry = root.querySelector<HTMLElement>(`#${id}`)!;
-    if (locked) {
-      entry.dataset.locked = LOCK_LINE;
-      entry.dataset.lockShort = LOCK_SHORT;
-      entry.setAttribute('aria-disabled', 'true');
-    } else {
-      delete entry.dataset.locked;
-      delete entry.dataset.lockShort;
-      entry.removeAttribute('aria-disabled');
-    }
-  }
-}
 
 /** What a finished game is, for the first win. */
 export interface GameKind {

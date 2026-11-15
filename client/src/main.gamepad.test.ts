@@ -42,7 +42,6 @@ const settle = async (): Promise<void> => {
 };
 const data = (): DOMStringMap => document.body.dataset;
 async function openWorldOn(game: Game): Promise<void> {
-  game.openModes();
   byId('openworld').click();
   await settle();
 }

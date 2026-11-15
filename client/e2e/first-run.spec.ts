@@ -50,7 +50,6 @@ async function firstRun(page: Page): Promise<void> {
   for (const [q, r] of [[-2, -1], [-2, 0], [-2, 1], [-2, -2]]) await hookClick(page, q, r);
   await expect(page.locator('#hud')).toContainText('White ejected 1/6');
   await expect(page.locator('#coach-step')).toContainText('That is Abalone');
-  await expect(page.locator('#mode-menu')).toBeHidden(); // no menu was opened on the way
   await fits(page, '#coach');
   expect(Date.now() - started).toBeLessThan(60_000); // #1521: within 60 s
 }

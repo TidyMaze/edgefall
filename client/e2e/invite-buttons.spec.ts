@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { startMode } from './modes';
 
 // Bug #839: the invite link makes the button column taller. In a short landscape window the column scrolls, and it
 // stayed scrolled down after the player reached Play online: Settings and Reset view were scrolled out of the column
@@ -6,22 +7,15 @@ import { expect, test } from '@playwright/test';
 test.describe('a phone held sideways', () => {
   test.use({ viewport: { width: 568, height: 320 }, hasTouch: true, isMobile: true });
 
-  test('Settings and Reset view stay clickable once the invite link shows, #839', async ({ page }) => {
+  test('Settings stays clickable once the invite link shows, #839', async ({ page }) => {
     await page.goto('./?bot=off');
     await page.locator('canvas').waitFor();
-    await page.getByRole('button', { name: 'Game modes' }).click();
-    // The player scrolls the column down until Play online shows at its bottom edge, then taps it.
-    await page.evaluate(() => document.getElementById('play-online')!.scrollIntoView({ block: 'end' }));
-    const at = await page.getByRole('button', { name: 'Play online' }).evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    });
-    await page.mouse.click(at.x, at.y);
+    await startMode(page, 'online');
     await expect(page.locator('#invite')).toBeVisible();
 
-    // Reset view lives in the Modes menu since #1612, so the column check covers Settings and the Modes button.
+    // The column check covers Settings (the Modes menu is gone, #1697).
     const covered = await page.evaluate(() =>
-      ['settings', 'modes'].filter((id) => {
+      ['settings'].filter((id) => {
         const r = document.getElementById(id)!.getBoundingClientRect();
         const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
         return !document.getElementById(id)!.contains(top);

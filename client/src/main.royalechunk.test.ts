@@ -16,7 +16,6 @@ describe('the online Battle royale code, #1578', () => {
     const game = await boot('?bot=off', { warmChunks: false });
     await game.settle();
     expect(chunk.evaluated).toBe(0);
-    game.openModes();
     document.getElementById('battle-royale')!.click();
     await game.settle();
     expect(document.body.dataset.royale).toBeDefined(); // the arena is on

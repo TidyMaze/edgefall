@@ -8,7 +8,7 @@ import { ENTRANCE_MS } from './entrance';
 import { LEGACY_UNLOCKED } from './collector';
 import { newRun, parseMap, pick, type MapNode } from './roguelite';
 import { NEON_LIGHT } from './neonlook';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The entrance beat of a boss fight (#1551, motion.md story 9): the camera comes from the boss's side, the light of the space rises from
 // dark and a card names the boss and its deck, for about a second and a half. Any press or key ends it, reduced motion has none, a fight
@@ -28,8 +28,7 @@ function catchScene(): () => THREE.Scene {
 }
 const sun = (scene: THREE.Scene): THREE.DirectionalLight => scene.getObjectsByProperty('isDirectionalLight', true)[0] as THREE.DirectionalLight;
 function fight(name: string): void {
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
+  startBoss(name);
 }
 const full = (id: string): number => NEON_LIGHT.sunIntensity * BOSS_SPACE[id]!.intensity;
 
@@ -37,7 +36,6 @@ describe('main.ts boss entrance (#1551)', () => {
   it('plays when a boss is picked: the card, the dark light and the camera, then ends on its own with the light back', async () => {
     const scene = catchScene();
     const game = await boot('?bot=off&entrance');
-    game.openModes();
     fight('The Hull');
     expect(body().entrance).toBe('rise');
     expect(byId('boss-entrance').hidden).toBe(false);
@@ -57,7 +55,6 @@ describe('main.ts boss entrance (#1551)', () => {
     const scene = catchScene();
     const game = await boot('?bot=off&entrance');
     for (const press of [() => dispatchEvent(new Event('pointerdown')), () => dispatchEvent(new KeyboardEvent('keydown', { key: 'a' })), () => dispatchEvent(new Event('wheel'))]) {
-      game.openModes();
       fight('The Choir');
       expect(body().entrance).toBe('rise');
       press();
@@ -69,12 +66,10 @@ describe('main.ts boss entrance (#1551)', () => {
 
   it('has none under reduced motion, and none on a page under automation that did not ask', async () => {
     const calm = await boot('?bot=off&entrance', { reducedMotion: true });
-    calm.openModes();
     fight('The Hull');
     expect(body().entrance).toBeUndefined();
     expect(byId('boss-entrance').hidden).toBe(true);
     const plain = await boot('?bot=off');
-    plain.openModes();
     fight('The Hull');
     expect(body().entrance).toBeUndefined();
     expect(byId('boss-entrance').hidden).toBe(true);
@@ -82,15 +77,13 @@ describe('main.ts boss entrance (#1551)', () => {
 
   it('plays again on Retry, with each boss its own move, and not on a mode or a new game', async () => {
     const game = await boot('?bot=off&entrance');
-    game.openModes();
     fight('The Pulsar');
     expect(body().entrance).toBe('pull');
     game.frame(ENTRANCE_MS);
     byId('boss-retry').click();
     expect(body().entrance).toBe('pull');
     game.frame(ENTRANCE_MS);
-    game.openModes();
-    byId('boss-fight').click();
+    game.hook('__startMode', 'run');
     expect(body().entrance).toBeUndefined();
     byId('new-game').click();
     expect(body().entrance).toBeUndefined();

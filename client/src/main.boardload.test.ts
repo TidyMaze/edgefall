@@ -117,7 +117,6 @@ describe('the files of the board (#1520)', () => {
 
   it('the touch of a wild marble asks for them with the wipe, and the arena stands on the terrace once they are in', async () => {
     const game = await boot(`?bot=off&openworld=${seed}`);
-    game.openModes();
     byId('openworld').click();
     await game.settle();
     expect(boardFiles(game)).toEqual([]);
@@ -185,7 +184,6 @@ describe('the files of the board (#1520)', () => {
     expect(boardFiles(game)).toEqual([]);
     byId('ship').click();
     await game.settle();
-    game.openModes();
     byId('openworld').click();
     await game.settle();
     byId('ship').click();

@@ -5,7 +5,7 @@ import { BOSS_IDS } from './tally';
 import { boot, type Game } from './test/harness';
 
 // One home for every feature, part 1 (#1693), behind `?hub=cutaway`: the Clamp list bay opens a two-row sheet (Ranked, Leaderboard) and the Shift crew bay another (Boss with a partner,
-// Boss vs a player, whose boss list is the one of the Modes menu moved into it). The Modes menu keeps no row of theirs under the flag; with the flag off the old rows and the doors are as they were.
+// Boss vs a player, whose boss list is in the sheet). The Modes menu is gone (#1697).
 
 const byId = <T extends HTMLElement = HTMLButtonElement>(id: string): T => document.getElementById(id) as T;
 const bay = (key: string): HTMLButtonElement => document.querySelector<HTMLButtonElement>(`#ship-bays [data-bay="${key}"]`)!;
@@ -68,7 +68,7 @@ describe('the Clamp list sheet', () => {
     expect(rows()).toEqual(['Ranked', 'Leaderboard']);
   });
 
-  it('Ranked starts the ranked game of the Modes row and closes the sheet; Leaderboard opens the board', async () => {
+  it('Ranked starts the ranked game of its row and closes the sheet; Leaderboard opens the board', async () => {
     const { run } = await open();
     const ranked = vi.fn();
     byId('ranked').addEventListener('click', ranked);
@@ -105,7 +105,7 @@ describe('the Clamp list sheet', () => {
 });
 
 describe('the Shift crew sheet', () => {
-  it('opens on the bay with its two rows and the boss list of the Modes menu moved into it', async () => {
+  it('opens on the bay with its two rows and the boss list', async () => {
     const { run } = await open();
     visit(run, 'furnace:coop');
     expect(sheet().hidden).toBe(false);
@@ -113,7 +113,6 @@ describe('the Shift crew sheet', () => {
     expect(rows()).toEqual(['Boss with a partner', 'Boss vs a player']);
     expect(byId('coop-list').parentElement).toBe(sheet());
     expect(byId('coop-list').hidden).toBe(true);
-    expect(byId('mode-menu').hidden).toBe(true); // no Modes menu opened by the bay
   });
 
   it('each row opens the boss list, the second as a duel list, and a boss opens the room', async () => {
@@ -137,14 +136,10 @@ describe('the Shift crew sheet', () => {
 });
 
 describe('closing a sheet', () => {
-  it('Escape, another bay, the Modes menu and the cog close it', async () => {
+  it('Escape, another bay and the cog close it', async () => {
     const { game, run } = await open();
     visit(run, 'bridge:ranked');
     press('Escape');
-    expect(sheet().hidden).toBe(true);
-    visit(run, 'bridge:ranked');
-    expect(sheet().hidden).toBe(false);
-    game.openModes();
     expect(sheet().hidden).toBe(true);
     visit(run, 'furnace:coop');
     game.openSettings();
@@ -172,17 +167,27 @@ describe('closing a sheet', () => {
   });
 });
 
-describe('the Modes menu and the flag', () => {
-  it('under the flag the menu keeps no row for what the sheets hold', async () => {
+describe('the sheet holds the boss list (#1697)', () => {
+  it('moves the boss list of Boss with a partner and Boss vs a player into the sheet, and no menu is left', async () => {
     await open();
-    for (const id of ['ranked', 'leaderboard', 'fight-together', 'boss-duel', 'coop-list']) expect(byId(id).hidden, id).toBe(true);
-    expect(byId('battle-royale').hidden).toBe(false);
+    expect(byId('coop-list').parentElement).toBe(sheet());
+    expect(document.getElementById('mode-menu')).toBeNull();
   });
+});
 
-  it('with the flag off the rows stay in the menu and there is no sheet', async () => {
-    await open('?bot=off');
-    for (const id of ['ranked', 'leaderboard', 'fight-together', 'boss-duel']) expect(byId(id).hidden, id).toBe(false);
-    expect(byId('coop-list').parentElement).toBe(byId('mode-menu'));
-    expect(sheet().hidden).toBe(true);
+describe('the room the ship leaves for the dock (#1697)', () => {
+  it('is the dock\'s height from the bottom, 6 px over it, when the dock is drawn (a tower\'s bay holds the exit)', async () => {
+    const { run } = await open();
+    const { Cutaway } = await import('./hubcutaway');
+    const rect = Element.prototype.getBoundingClientRect;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      return this.id === 'dock' ? ({ top: 700, height: 60 } as DOMRect) : rect.call(this);
+    });
+    const sync = vi.spyOn(Cutaway.prototype, 'sync');
+    sync.mockClear(); // the spy of withBays is the same one: its calls so far are the opening's
+    window.dispatchEvent(new Event('resize'));
+    run(400);
+    const inset = sync.mock.calls.at(-1)![4] as { bottom: number };
+    expect(inset.bottom).toBeGreaterThanOrEqual(innerHeight - 700 + 6);
   });
 });

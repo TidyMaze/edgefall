@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { startMode } from './modes';
 
 // Issue #1287: the shared board is on by default (no flag). Before the player says yes to the board consent it shows a join
 // placeholder and opens no relay socket, reading included; after the yes it reads the relays.
@@ -16,8 +17,7 @@ test('the board opens no relay socket before the consent, and reads the relays a
     ws.send(JSON.stringify(['EOSE', 'ab-board']));
   });
   await page.goto('./?bot=off&net=hook&hub=classic');
-  await page.getByRole('button', { name: 'Game modes' }).click();
-  await page.getByRole('button', { name: 'Leaderboard' }).click();
+  await startMode(page, 'leaderboard');
   const board = page.getByRole('dialog', { name: 'Ranked 1v1' });
   await expect(board).toContainText('Join the board to see the shared results');
   expect(sockets).toEqual([]);

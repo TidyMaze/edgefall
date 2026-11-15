@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { encodeMove, parseMoves, type Axial, type Move } from './board';
 import { CONFIRM_MS } from './newgame';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The local game flow of main.ts on the harness (decision #445): the bot and its worker, the save and its resume, the
 // evaluation bar, the hint, New game, the export and import of a game file, and the hooks the browser checks read.
@@ -56,11 +56,6 @@ const botSearches = (): unknown[] =>
       return search;
     });
 
-/** Starts the boss of that name from the boss menu. */
-function startBoss(name: string): void {
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
-}
 
 afterEach(() => vi.useRealTimers());
 

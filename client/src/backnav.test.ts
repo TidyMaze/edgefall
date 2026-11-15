@@ -24,9 +24,9 @@ describe('needsEntry: the page asks for a history entry', () => {
 
 describe('backWay: what Back does on the screen it left', () => {
   const way = (screen: Screen, base: Screen, exit: Exit = null, forward = false) => backWay(screen, base, exit, forward);
-  it('takes a mode to the Hub', () => {
-    expect(way('mode', 'table')).toBe('hub');
-    expect(way('table', 'hub')).toBe('hub');
+  it('leaves the page from a screen with no exit that is not the Hub: only the Hub has none (#1697)', () => {
+    expect(way('mode', 'table')).toBe('leave');
+    expect(way('table', 'hub')).toBe('leave');
   });
   it('takes the Hub to the table', () => {
     expect(way('hub', 'table')).toBe('table');

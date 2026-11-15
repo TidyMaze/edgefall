@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
-import { boot } from './test/harness';
+import { boot, startBoss } from './test/harness';
 import { ACT_SPACE, BOSS_SPACE } from './bossspace';
 import { LEGACY_UNLOCKED } from './collector';
 import { newRun } from './roguelite';
@@ -23,8 +23,7 @@ function catchScene(): () => THREE.Scene {
 }
 const sun = (scene: THREE.Scene): THREE.DirectionalLight => scene.getObjectsByProperty('isDirectionalLight', true)[0] as THREE.DirectionalLight;
 const fight = (name: string): void => {
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
+  startBoss(name);
 };
 
 describe('main.ts boss spaces (#1551)', () => {
@@ -33,7 +32,6 @@ describe('main.ts boss spaces (#1551)', () => {
       const scene = catchScene();
       const game = await boot(`?bot=off${look}`, { reducedMotion: true });
       expect(sun(scene()).color.getHex()).toBe(arena);
-      game.openModes();
       fight('The Hull');
       await vi.waitFor(() => expect(document.body.dataset.boss).toBe('hull'));
       expect(sun(scene()).color.getHex()).toBe(BOSS_SPACE.hull!.sun);

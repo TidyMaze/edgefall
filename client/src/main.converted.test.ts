@@ -6,7 +6,7 @@ import { BONE } from './scene';
 import { SKINS } from './skins';
 import { CONVERTED_AT, SEED } from './test/chaplain-game';
 import { recordedGame } from './test/chaplain-fixture';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The converted look of main.ts (#508, world.md section 5): a marble The Chaplain converted is the ridged shell up to its
 // middle and the player's glass above it with a dimmed core, both halves kept upright whatever the marble's turn, under
@@ -35,9 +35,7 @@ async function convertOne(game: Game): Promise<Axial[]> {
     (a as Uint32Array).fill(SEED);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Chaplain')!.click();
+  startBoss('The Chaplain');
   expect(game.hook<number>('__playMoves', recordedGame().slice(0, CONVERTED_AT))).toBe(CONVERTED_AT);
   const cells = game.hook<Axial[]>('__converted');
   expect(cells.length).toBeGreaterThan(0);

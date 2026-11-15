@@ -6,7 +6,7 @@ import { axialTo3D, encodeMove, moveForClick, parseMoves, type Axial } from './b
 import { resetView, type View } from './camera';
 import { generateKeys } from './moverecord';
 import { OnlineSession } from './session';
-import { boot, slowKeys, type Game } from './test/harness';
+import { boot, slowKeys, type Game, startBoss } from './test/harness';
 import type { Transport } from './transport';
 
 // Walking the hub (docs/specs/game-design.md section 3.5, #521): the Hub entry of the mode menu draws the deck's map
@@ -61,7 +61,6 @@ function pickFile(text: Promise<string>): void {
   input.dispatchEvent(new Event('change'));
 }
 function ship(game: Game): void {
-  game.openModes();
   byId('ship').click();
 }
 /** Ship, with the marble saved on `cell` of the Mess. */
@@ -155,7 +154,6 @@ describe('main.ts, walking the hub (#521)', () => {
     ship(game);
     expect(hub()).toBe('mess 0,0');
     expect(document.body.dataset.deck).toBe('mess');
-    expect(byId('modes').getAttribute('aria-expanded')).toBe('false');
     expect(game.hook('__frame')).toMatchObject({ radius: 3, holes: 0 });
     expect(document.body.dataset.rim).toBe('off');
     const { discs, glass, shells, glyphs } = drawn(scene());
@@ -302,16 +300,13 @@ describe('main.ts, walking the hub (#521)', () => {
     expect(game.hook('__frame')).toMatchObject({ radius: 4 });
 
     ship(game);
-    game.openModes();
-    byId('boss-fight').click();
-    (byId('boss-list').children[1] as HTMLButtonElement).click();
+    startBoss('The Hull');
     expect(hub()).toBeUndefined();
     expect(document.body.dataset.deck).toBe('cargo');
     expect(drawn(scene()).discs).toBe(61);
 
     ship(game);
     slowKeys();
-    game.openModes();
     byId('play-online').click();
     await game.online();
     expect(hub()).toBeUndefined();
@@ -323,7 +318,6 @@ describe('main.ts, walking the hub (#521)', () => {
 
   it('returns to the Hub at any time from battle royale and daily challenge (#773)', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('battle-royale').click();
     expect(hub()).toBeUndefined();
     expect(document.body.dataset.royale).toBeDefined();
@@ -331,7 +325,6 @@ describe('main.ts, walking the hub (#521)', () => {
     expect(hub()).toBeDefined();
     expect(document.body.dataset.royale).toBeUndefined();
 
-    game.openModes();
     byId('daily').click();
     expect(hub()).toBeUndefined();
     expect(document.body.dataset.boss).toBeDefined();
@@ -528,7 +521,7 @@ describe('main.ts, the hub doors (#522)', () => {
     expect(byId('invite').hidden).toBe(true);
     expect(byId('invite-label').hidden).toBe(true);
     expect(byId('rematch').hidden).toBe(true);
-    expect(byId('new-game').hidden).toBe(false);
+    expect(byId('new-game').hidden).toBe(true); // the Hub at home has no dock (#1697)
     expect(data().online).toBeUndefined();
     expect(data().seat).toBeUndefined();
     ship(game); // a local page again: Ship opens
@@ -619,14 +612,13 @@ const END_ROYALE = {
     expect(data().openworld).toBe('7');
   });
 
-  it('the Fight together room opens the mode menu on its boss list; the marble stays on the room', async () => {
+  it('the Fight together room opens its boss list; the marble stays on the room', async () => {
     const game = await boot('?bot=off', { reducedMotion: true });
     const beaten = ['echo', 'hull'];
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'furnace', cell: [1, -3], beaten }));
     ship(game);
     game.click(0, -3);
     expect(hub()).toBe('furnace 0,-3');
-    expect(byId('mode-menu').hidden).toBe(false);
     expect(byId('coop-list').hidden).toBe(false);
     game.click(1, -3); // off the room and back: the list stays open
     game.click(0, -3);
@@ -662,11 +654,12 @@ const END_ROYALE = {
     expect(data().trainer).toBe('1');
   });
 
-  it('no way out shows after a game no room started', async () => {
+  it('the exit of a game no room started leads to the Hub (#1697)', async () => {
     const game = await boot('?nodes=100');
     await game.hook<Promise<number>>('__playTurns', 30, [4]);
     expect(data().over).toBe('loss');
-    expect(back().hidden).toBe(true);
+    expect(back().hidden).toBe(false);
+    expect(back().dataset.label).toBe('Hub');
   });
 });
 
@@ -877,7 +870,7 @@ describe('main.ts, the deck plan (#1249)', () => {
     vi.stubGlobal('innerHeight', 844);
     window.dispatchEvent(new Event('resize'));
     blender(game.hook<View>('__view'));
-    byId('reset-view').click();
+    byId('view-reset').click();
     blender(game.hook<View>('__view'));
     vi.unstubAllGlobals();
   });
@@ -912,7 +905,7 @@ describe('main.ts, the deck plan (#1249)', () => {
     expect(game.hook<View>('__view').distance).toBeCloseTo(resetView(4).distance);
     shipAt(game, [-2, 2]);
     expect(game.hook<View>('__view').distance).toBeCloseTo(resetView(3.6).distance);
-    byId('reset-view').click(); // Reset view in the hub frames the deck
+    byId('view-reset').click(); // Reset view in the hub frames the deck
     expect(game.hook<View>('__view').distance).toBeCloseTo(resetView(3.6).distance);
     vi.stubGlobal('innerWidth', 390); // a phone held upright: closer still, so the plates read
     vi.stubGlobal('innerHeight', 844);

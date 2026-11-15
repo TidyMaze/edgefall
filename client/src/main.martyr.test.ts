@@ -4,7 +4,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { BLAST_MS, BLAST_SHARDS } from './martyr';
 import { ANNOUNCED_AT, EXPLODED_AT, SEED } from './test/chaplain-game';
 import { recordedGame } from './test/chaplain-fixture';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Chaplain's martyr on the harness (#748, game-design.md section 7.3): after 4 ejections one boss marble wears a
 // steady ember ring and a tall glyph and the HUD says it explodes next boss turn; then it explodes, a flash and a ring
@@ -34,9 +34,7 @@ function fightChaplain(game: Game): void {
     (a as Uint32Array).fill(SEED);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Chaplain')!.click();
+  startBoss('The Chaplain');
 }
 
 const played = (game: Game, from: number, to: number): number => game.hook<number>('__playMoves', recordedGame().slice(from, to));

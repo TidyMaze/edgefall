@@ -27,7 +27,7 @@ const expectNoKey = async (page: Page): Promise<void> => {
   expect(bad).toEqual([]);
 };
 
-test('the board, the settings, the modes and the guide name no key', async ({ page }) => {
+test('the board, the settings and the guide name no key', async ({ page }) => {
   await page.goto('./?bot=off&guide');
   await expect(page.locator('#guide')).toBeVisible();
   for (let i = 0; i < 4; i++) {
@@ -40,10 +40,6 @@ test('the board, the settings, the modes and the guide name no key', async ({ pa
   await expectNoKey(page);
   await page.locator('#settings').tap();
   await expect(page.locator('#settings-menu')).toBeVisible();
-  await expectNoKey(page);
-  await page.locator('#settings').tap();
-  await page.locator('#modes').tap();
-  await expect(page.locator('#mode-menu')).toBeVisible();
   await expectNoKey(page);
 });
 

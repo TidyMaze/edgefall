@@ -38,7 +38,7 @@ describe('refined play screen, #1136', () => {
     expect(css).toMatch(/#dock > button \{[^}]*flex-direction: column;/);
     expect(css).toMatch(/#dock > button::before \{[^}]*mask: var\(--icon\)/);
     expect(css).toMatch(/#dock > button\[aria-pressed='true'\], #dock > button\[aria-expanded='true'\] \{[^}]*background: var\(--active-fill\);[^}]*color: var\(--active-ink\);/);
-    for (const id of ['new-game', 'hint', 'undo', 'modes', 'auto-play', 'boss-retry', 'rematch', 'boss-goal', 'royale-hold', 'lobby', 'open-world-entry', 'quick-game']) {
+    for (const id of ['new-game', 'hint', 'undo', 'auto-play', 'boss-retry', 'rematch', 'boss-goal', 'royale-hold', 'lobby']) {
       expect(css, id).toMatch(new RegExp(`#dock #${id} \\{ --icon: url\\(`));
     }
     expect(css).not.toContain('backdrop-filter');

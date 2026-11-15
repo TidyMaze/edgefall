@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
-import { boot } from './test/harness';
+import { boot, startBoss } from './test/harness';
 import { deckPropGeometry } from './deckprop';
 
 // The page draws the prop of the deck in play on the arena (#1551): the Hull's Cargo crane in its fight, the Mess's hoods at the table,
@@ -22,8 +22,7 @@ function catchScene(): () => THREE.Scene {
 const shape = (mesh: THREE.Mesh): number[] => [...mesh.geometry.attributes.position!.array];
 const prop = (scene: THREE.Scene): THREE.Mesh => scene.getObjectByName('deck-prop') as THREE.Mesh;
 const fight = (name: string): void => {
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === name)!.click();
+  startBoss(name);
 };
 
 describe('main.ts deck props (#1551)', () => {
@@ -33,7 +32,6 @@ describe('main.ts deck props (#1551)', () => {
     await vi.waitFor(() => expect(prop(scene()).visible).toBe(true));
     expect(shape(prop(scene()))).toEqual([...deckPropGeometry('mess').attributes.position!.array]);
     expect(document.body.dataset.deckProp).toBe('true');
-    game.openModes();
     fight('The Hull');
     await vi.waitFor(() => expect(shape(prop(scene()))).toEqual([...deckPropGeometry('cargo').attributes.position!.array]));
     expect(prop(scene()).visible).toBe(true);

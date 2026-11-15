@@ -56,9 +56,8 @@ export interface Game {
   /** The whole HUD plate as text, and its turn line alone. */
   hud(): string;
   turn(): string;
-  /** Presses the cog of the settings menu, or the button of the mode menu. */
+  /** Presses the cog of the settings menu. */
   openSettings(): void;
-  openModes(): void;
   /** Moves the clock `ms` on and runs one frame of the animation loop: slides and ejections advance. */
   frame(ms?: number): void;
   /** Lets the pending tasks run: the bot workers' replies, IndexedDB. */
@@ -432,7 +431,6 @@ export async function boot(url = '/', options: BootOptions = {}): Promise<Game> 
     hud: () => byId('hud').textContent ?? '',
     turn: () => byId('hud').querySelector('.turn')?.textContent ?? '',
     openSettings: () => byId('settings').click(),
-    openModes: () => byId('modes').click(),
     frame: (ms = 16) => {
       clock += ms;
       renderer?.info.autoReset && renderer.info.reset();
@@ -453,4 +451,14 @@ export async function boot(url = '/', options: BootOptions = {}): Promise<Game> 
     world: () => world,
   };
   return game;
+}
+
+const BOSS_OF: Record<string, string> = { 'The Echo': 'echo', 'The Hull': 'hull', 'The Choir': 'choir', 'The Chaplain': 'chaplain', 'The Ballast Mind': 'ballast', 'The Alien': 'alien', 'The Rail Yard': 'railyard', 'The Magnetizer': 'magnetizer', 'The Pulsar': 'pulsar', 'The Overseer': 'overseer', 'The Assembly Line': 'assembly', 'The Unstable Core': 'core', 'The Dual Room': 'dual', 'The Stalker': 'stalker', 'The Swarm': 'swarm' };
+
+/** Starts a solo boss fight through the page's test hook, by its title (`The Hull`, a start of it or a text that holds it) or its id (`hull`): the Modes menu and its boss list are gone (#1697), a bay starts a boss in the ship. */
+export function startBoss(name: string): void {
+  if (!navigator.webdriver) throw new Error('startBoss needs a page under automation (webdriver true): the hook is not there otherwise, a bay or a door starts the boss');
+  const title = Object.keys(BOSS_OF).find((k) => k === name || k.startsWith(name) || name.includes(k));
+  const id = title ? BOSS_OF[title]! : name;
+  (window as unknown as { __startMode: (id: string) => void }).__startMode(id);
 }

@@ -24,15 +24,15 @@ Dock = the bottom bar (one row, 44 px buttons). Sheet = a panel above the dock (
 
 | State | Dock (bottom bar) | Sheet | Top band |
 |---|---|---|---|
-| Normal game | New game, Hint, Open world (fresh profile only, #1612), Quick game (#1612), Game modes. Auto-play as a sixth button when allowed. Reset view and Replay moved to the Game modes menu (#1612): five dock buttons fit 320 px | Game modes: the mode list (Play online, Fight together, Battle royale, Ranked, Boss fight, Daily challenge, Rogue-lite run, Open world, Hub). Settings is its own sheet | HUD plate (`#hud`), cog `#settings` (top right) |
-| Boss fight | Retry (`#boss-retry`) or Rematch (`#rematch`, after a loss) in the first slot, Goal (`#boss-goal`), Reset view, Replay, Game modes. Hint and Auto-play only when the game allows them, as today | Goal opens the goal text as a sheet above the dock (not a new row over the board) | Boss bar (`#boss-bar`) on the top row, full width, above the HUD (#929). HUD plate below it. Cog at top right |
-| Ranked | As normal game | Ranked is a mode item in the Game modes sheet | HUD shows the rank badge (`#hud .ranked`) |
-| Fight together / Battle royale | Reset view, Game modes, Hold (Battle royale only: one tap each round, so it stays in the dock, #1044), Lobby (`#lobby`, shown only while the lobby sheet has a control) | Lobby sheet (`#lobby-sheet`): Start, Invite and Fight together's invite row (`#invite-row`). Opens only when the player taps Lobby: it never opens by itself, so it never covers the board unasked. While a lobby waits, Lobby carries a steady accent (border, text and a dot on its corner, `data-waiting`), never a flash. Hold is not in it | HUD plate with the presence line, the only status line: the sheet repeats no status, and "You are Black" stays there (#1044) |
+| Normal game | The exit (`#exit`, first slot, to the Hub), New game, Hint. Undo and Replay when there is one to take back or review; Auto-play when allowed (#1697: no World, Quick game or Game modes) | None | HUD plate (`#hud`), cog `#settings` (top right) |
+| Boss fight | The exit in the first slot, then Retry (`#boss-retry`) or Rematch (`#rematch`, after a loss), Goal (`#boss-goal`), Replay. Hint and Auto-play only when the game allows them | Goal opens the goal text as a sheet above the dock (not a new row over the board) | Boss bar (`#boss-bar`) on the top row, full width, above the HUD (#929). HUD plate below it. Cog at top right |
+| Ranked | As normal game | None: Ranked is a row of the Clamp list bay's sheet in the ship | HUD shows the rank badge (`#hud .ranked`) |
+| Fight together / Battle royale | The exit, Hold (Battle royale only: one tap each round, so it stays in the dock, #1044), Lobby (`#lobby`, shown only while the lobby sheet has a control) | Lobby sheet (`#lobby-sheet`): Start, Invite and Fight together's invite row (`#invite-row`). Opens only when the player taps Lobby: it never opens by itself, so it never covers the board unasked. While a lobby waits, Lobby carries a steady accent (border, text and a dot on its corner, `data-waiting`), never a flash. Hold is not in it | HUD plate with the presence line, the only status line: the sheet repeats no status, and "You are Black" stays there (#1044) |
 | Daily challenge | As normal game | Daily result (`#daily-card`: text and Copy result) opens as a sheet when the daily ends. Closes with Esc or a tap outside | HUD plate with the daily line |
 | Open world | The exit `#exit` alone, Hub, bottom right (#1517; the dock was hidden here, with a separate Hub button on touch). Joystick (`#joystick`, touch) sits bottom-left in the same band, 16 px from the edges | Open world panel (New world, Seed, Keep or Discard) as a sheet above the joystick band | Open world text and seed (`#openworld-hud`). Keyboard: arrows roll, Esc leaves. Free camera stays in Settings |
 | Replay review | The dock shows the replay controls, one row of five 44 px icon buttons: First (⏮), Previous (◀), Next (▶), Last (⏭), Live. Replaces the normal dock while reviewing | None | Replay slider and label (`#replay-slider`, `#replay-label`) on the top band under the HUD, full width, 44 px high |
 | Auto-play | Sixth dock button when allowed (`#auto-play`, hidden otherwise). Six buttons fit 360 px: 6×44 + 5×8 = 304 px | None | None |
-| Update banner (`#update`) | Not in the dock. Shows as a dot on Game modes, and as the first row of the Game modes sheet | First row of the Game modes sheet | None |
+| Update banner (`#update`) | Not in the dock. Shows as a dot on the cog, and as the first row of Settings (#1693) | First row of Settings | None |
 | Transcript and log (`#log`) | Not in the dock | Log archive stays in Settings | Transcript line stays under the HUD as today |
 
 Notes:
@@ -43,7 +43,7 @@ Notes:
 
 ### Once the Hub Cutaway is on (#1698)
 
-The default since #1696 (`?hub=classic` brings the old Hub back for one release); #1697 removes the old rows above. Design: `cutaway-v2.html` on the `pr-screenshots` branch. The Modes menu goes, and with it Game modes, World and Quick game in the dock. The first slot is the exit on every screen but the Hub (ui.md section 4.10).
+The default since #1696; #1697 removed the Modes menu, Quick game, the dock's World button and the old rows above (`?hub=classic` is still the off switch until the old Hub code goes). Design: `cutaway-v2.html` on the `pr-screenshots` branch. The Modes menu goes, and with it Game modes, World and Quick game in the dock. The first slot is the exit on every screen but the Hub (ui.md section 4.10).
 
 | Screen | Dock |
 |---|---|
@@ -79,7 +79,7 @@ Keyboard: the dock is a toolbar (`role="toolbar"`), DOM order = Tab order. Arrow
 
 ## 3. Sheets
 
-- Opened by the dock button (Game modes, Goal, Daily result, lobby controls) or by the cog (Settings).
+- Opened by the dock button (Goal, Daily result, lobby controls) or by the cog (Settings).
 - Position: bottom edge at dock top − 8 px (the band rule), left and right 16 px.
 - Height cap: `max-height: min(60 %, board band height)`, so a sheet never reaches the top band. Overflow: `overflow-y: auto`, scroll inside the sheet. Items keep 44 px.
 - Close: Esc, a tap outside the sheet and the dock (pointerdown), or the same trigger button.
@@ -91,12 +91,12 @@ Keyboard: the dock is a toolbar (`role="toolbar"`), DOM order = Tab order. Arrow
 ## 4. What leaves the old top column
 
 The `#online` column (ui.css:125) stops being a column of buttons in portrait:
-- Moves to the dock: New game (`#new-game`), Reset view (`#reset-view`), Hint (`#hint`), Replay (`#replay`), Auto-play (`#auto-play`), Game modes (`#modes`), Retry and Rematch, Goal (as a dock button, see section 1).
-- Moves to a sheet: the mode menu (`#mode-menu`), the daily card (`#daily-card`), the invite row (`#invite-row`), the lobby controls, the update banner (`#update`).
+- Moves to the dock: New game (`#new-game`), Reset view (`#reset-view`), Hint (`#hint`), Replay (`#replay`), Auto-play (`#auto-play`), Undo (`#undo`), Retry and Rematch, Goal (as a dock button, see section 1).
+- Moves to a sheet: the bay sheets (`#bay-sheet`, #1693; the mode menu `#mode-menu` is gone, #1697), the daily card (`#daily-card`), the invite row (`#invite-row`), the lobby controls, the update banner (`#update`).
 - Stays at the top: the cog (`#settings-box`), the HUD (`#hud-dock`), the boss bar (`#boss-bar`), the Open world text (`#openworld-hud`), the transcript (`#log`).
 - Leaves the bottom-right: the clipboard (`#copy-diagnostics`) and the replay bar (`#replay-bar`), as above.
 
-The rules that set the column's portrait layout (ui.css:301-335, the `.group` display rules at 129-131, the portrait mode-menu rules) are replaced by the dock rules. Nothing else in the column changes size.
+The rules that set the column's portrait layout (ui.css:301-335, the `.group` display rules at 129-131, the portrait rules of the former mode menu) are replaced by the dock rules. Nothing else in the column changes size.
 
 ## 5. Acceptance: probe-ready assertions
 

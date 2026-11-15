@@ -7,7 +7,7 @@ import { AUTO_DELAY_MS, RUN_AUTO_WARNING } from './autoplay';
 import { LEGACY_UNLOCKED } from './collector';
 import type { View } from './camera';
 import { cardText, GIST } from './specialhelp';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The rogue-lite run on the harness (#798, docs/specs/roguelite.md): Rogue-lite run in the mode menu shows the map of
 // a new run, a pick starts the fight of that node against the bot with the army's marbles, a reload resumes it, the
@@ -26,7 +26,6 @@ const openMore = (): void => {
 };
 async function startRun(url: string, indexedDB = new IDBFactory()): Promise<Game> {
   const game = await boot(url, { indexedDB });
-  game.openModes();
   byId('roguelite').click();
   return game;
 }
@@ -70,7 +69,6 @@ async function bossRun(id: string): Promise<{ state: Run; nodes: MapNode[] }> {
 describe('main.ts, the rogue-lite run (#798)', () => {
   it('Rogue-lite run in the mode menu shows the map of a new run, act 1 to pick', async () => {
     await startRun('?bot=off');
-    expect(byId('mode-menu').hidden).toBe(true);
     expect(map().hidden).toBe(false);
     expect(document.body.dataset.run).toBe('map');
     expect(line()).toBe('Rogue-lite run · army 14 marbles · pick a fight');
@@ -86,7 +84,6 @@ describe('main.ts, the rogue-lite run (#798)', () => {
     const indexedDB = new IDBFactory();
     await startRun('?nodes=50', indexedDB);
     await boot('?nodes=50', { indexedDB });
-    expect(byId('open-world-entry').hidden).toBe(true);
   });
 
   it('a pick starts its fight against the bot, and a reload resumes the fight with its moves', async () => {
@@ -110,7 +107,6 @@ describe('main.ts, the rogue-lite run (#798)', () => {
 
   it('a pick of a node plays the pick sound once the sound is on, and reports it for the tests (#1468)', async () => {
     const game = await boot('?nodes=50&bot=off', { audio: true });
-    game.openModes();
     byId('roguelite').click();
     expect(document.body.dataset.pick).toBeUndefined();
     dispatchEvent(new KeyboardEvent('keydown', { key: 'a' })); // a gesture starts the sound
@@ -224,10 +220,8 @@ describe('main.ts, the rogue-lite run (#798)', () => {
     const game = await boot('?bot=off', { indexedDB });
     playMove(game);
     await game.settle(); // the local game is saved
-    game.openModes();
     byId('roguelite').click();
     await game.settle();
-    game.openModes();
     byId('daily').click(); // the run is abandoned
     await game.settle();
     const again = await boot('?bot=off', { indexedDB });
@@ -237,7 +231,6 @@ describe('main.ts, the rogue-lite run (#798)', () => {
   it('another mode abandons the run: it is gone after a reload', async () => {
     const indexedDB = new IDBFactory();
     const game = await startRun('?bot=off', indexedDB);
-    game.openModes();
     byId('daily').click();
     expect(map().hidden).toBe(true);
     expect(document.body.dataset.run).toBeUndefined();
@@ -705,7 +698,6 @@ describe('main.ts, the rogue-lite run (#798)', () => {
     const indexedDB = new IDBFactory();
     const game = await boot('?bot=off', { indexedDB });
     localStorage.setItem('ab-alone.roguelite', '1'); // an act won in an earlier run
-    game.openModes();
     byId('roguelite').click();
     openMore();
     expect(armies().map((b) => b.disabled)).toEqual([false, false, true, true]);
@@ -730,7 +722,6 @@ describe('main.ts, the rogue-lite run (#798)', () => {
     expect(localStorage.getItem('ab-alone.roguelite')).toBe('1');
     expect(document.body.dataset.run).toBe('reward');
     expect(map().querySelectorAll('button[data-offer]')).toHaveLength(2); // its own unlocks: a marble or a Heavy
-    game.openModes();
     byId('daily').click(); // the run is abandoned
     expect(localStorage.getItem('ab-alone.roguelite')).toBe('1');
   });
@@ -1061,12 +1052,10 @@ describe('main.ts, the Collector between acts (#1470)', () => {
 
   it('a new run starts with the blueprints banked before it', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('roguelite').click();
     openMore();
     expect(map().textContent).toContain('Blueprints to bank: 14');
     localStorage.setItem(KEY, '[0,1]'); // two banked in earlier runs
-    game.openModes();
     byId('roguelite').click();
     openMore();
     expect(map().textContent).toContain('Blueprints to bank: 12');
@@ -1202,7 +1191,6 @@ describe('main.ts, the ascension levels of a run (#1465)', () => {
     const indexedDB = new IDBFactory();
     const game = await boot('?bot=off', { indexedDB });
     localStorage.setItem('ab-alone.roguelite.ascension', '7'); // levels 1 to 7 unlocked
-    game.openModes();
     byId('roguelite').click();
     openMore();
     expect(levels().map((b) => b.disabled)).toEqual([false, false, false, false, false, false, false, false, true, true, true]);
@@ -1328,7 +1316,6 @@ describe('main.ts the rogue-lite score, daily run, history and compendium (#1466
   it('the compendium shows what the runs held, the rest as silhouettes', async () => {
     const game = await boot('?bot=off');
     await game.hook('__run', { ...plainRun(3, 0), relics: [Relic.Jammer], path: [0] });
-    game.openModes();
     byId('roguelite').click();
     openMore();
     bookButton('compendium').click();
@@ -1353,7 +1340,6 @@ describe('main.ts, the bonus room before an act boss (#1473)', () => {
 
   it('shows the budget on the map and in a fight, and counts the moves of the fight', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('roguelite').click();
     expect(map().querySelector('.run-moves')!.textContent).toBe(`moves 0 of ${MOVE_BUDGET[0]} · bonus room open`);
     expect(game.hud()).not.toContain('moves'); // the map says it, not the HUD
@@ -1409,7 +1395,6 @@ describe('main.ts, the runes (#1476)', () => {
     const indexedDB = new IDBFactory();
     const game = await boot('?bot=off', { indexedDB });
     localStorage.setItem('ab-alone.roguelite.runes', '7');
-    game.openModes();
     byId('roguelite').click();
     expect(secrets()).toHaveLength(3);
     expect(secrets().every((b) => b.disabled)).toBe(true); // not on the first row
@@ -1590,7 +1575,6 @@ describe('main.ts, the start screen of a run (#1524)', () => {
     const game = await boot('?nodes=50&bot=off', { indexedDB });
     localStorage.setItem('ab-alone.roguelite', '1');
     localStorage.setItem('ab-alone.roguelite.ascension', '2');
-    game.openModes();
     byId('roguelite').click();
     openMore();
     map().querySelector<HTMLButtonElement>('button[data-commander="1"]')!.click();
@@ -1640,8 +1624,7 @@ describe('main.ts, the HUD of a run fight (#1540, #1541)', () => {
     await game.hook('__run', state);
     expect(hudText()).toContain('Black ejected 0/6');
     expect(hudText()).not.toContain('Army ');
-    game.openModes();
-    byId('boss-fight').click();
+    startBoss('The Echo');
     expect(hudText()).not.toContain('Army ');
   });
 

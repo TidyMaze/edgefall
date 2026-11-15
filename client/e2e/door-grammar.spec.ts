@@ -1,20 +1,19 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes, lowTierOnCi } from './modes';
+import { lowTierOnCi, startMode } from './modes';
 import { loseByRepetition } from './fight-end';
 import { shot } from './shot';
 
 lowTierOnCi();
 
-// #1517, docs/specs/ui.md section "One door grammar": every mode is entered by a door (the Hub, the mode menu or a place of the world) and left
+// #1517, docs/specs/ui.md section "One door grammar": every mode is entered by a door (the Hub or a place of the world) and left
 // by the same control, the first slot of the dock, `#exit`. Its label names where it leads: World when the player came from the world,
-// otherwise Hub. The plain table and the Hub, the home of the game, have none: their first slot stays New game.
+// otherwise Hub. Only the Hub, the home of the game, has none: it has no dock at all (#1697).
 type Hooks = { __openworldFixture: (f: object) => void; __openworldEnemies: () => [number, number][] };
 const body = (page: Page) => page.locator('body');
 const firstSlot = (page: Page) => page.locator('#dock > button:visible').first();
-const pick = async (page: Page, id: string): Promise<void> => {
-  await openModes(page);
-  await page.locator(id).click();
-};
+const pick = (page: Page, mode: string): Promise<void> => startMode(page, mode); // no menu (#1697): the mode starts through the hook
+/** The Hub at home has no dock (#1697). */
+const noDock = (page: Page) => expect(page.locator('#dock')).toBeHidden();
 const hubShown = (page: Page) => expect(body(page)).toHaveAttribute('data-hub', /.+/);
 /** The marble of the Hub stands beside the hot-seat table, so the table is one roll away. */
 const besideTheTable = (page: Page) => page.addInitScript(() => localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [-1, 0], beaten: [] })));
@@ -24,7 +23,7 @@ const rollOntoTable = async (page: Page): Promise<void> => {
   await expect(body(page)).not.toHaveAttribute('data-hub', /.*/);
 };
 const hubTable = async (page: Page): Promise<void> => {
-  await pick(page, '#ship');
+  await pick(page, 'hub');
   await hubShown(page);
   await rollOntoTable(page);
 };
@@ -59,7 +58,6 @@ async function dockFits(page: Page): Promise<string[]> {
     };
   });
   expect(dock.order[0]).toBe('exit');
-  expect(dock.order).toContain('modes');
   expect(dock.inWindow, `dock in window: ${dock.order}`).toBe(true);
   expect(dock.small, `${dock.order}`).toEqual([]);
   expect(dock.clipped, `${dock.order}`).toEqual([]);
@@ -67,44 +65,41 @@ async function dockFits(page: Page): Promise<string[]> {
   return dock.order;
 }
 
-// The modes of the mode menu, from the plain table: each one's first slot is Hub, and a press lands on the Hub.
+// The modes, from the plain table: each one's first slot is Hub, and a press lands on the Hub.
 const MENU_MODES: [string, (page: Page) => Promise<void>, (page: Page) => Promise<void>][] = [
-  ['Battle royale', (p) => pick(p, '#battle-royale'), (p) => expect(p.locator('#royale-hold')).toBeVisible()],
-  ['Rogue-lite run', (p) => pick(p, '#roguelite'), (p) => expect(p.locator('#run-map')).toBeVisible()],
-  ['Daily challenge', (p) => pick(p, '#daily'), (p) => expect(body(p)).toHaveAttribute('data-boss', /.+/)],
-  ['Trainer', (p) => pick(p, '#trainer'), (p) => expect(body(p)).toHaveAttribute('data-trainer', /.+/)],
+  ['Battle royale', (p) => pick(p, 'royale'), (p) => expect(p.locator('#royale-hold')).toBeVisible()],
+  ['Rogue-lite run', (p) => pick(p, 'run'), (p) => expect(p.locator('#run-map')).toBeVisible()],
+  ['Daily challenge', (p) => pick(p, 'daily'), (p) => expect(body(p)).toHaveAttribute('data-boss', /.+/)],
+  ['Trainer', (p) => pick(p, 'trainer'), (p) => expect(body(p)).toHaveAttribute('data-trainer', /.+/)],
   [
     'Boss fight',
-    async (p) => {
-      await pick(p, '#boss-fight');
-      await p.locator('#boss-list button').first().click();
-    },
+    (p) => pick(p, 'echo'),
     (p) => expect(body(p)).toHaveAttribute('data-boss', /.+/),
   ],
-  ['Open world', (p) => pick(p, '#openworld'), (p) => expect(body(p)).toHaveAttribute('data-openworld', /.+/)],
+  ['Open world', (p) => pick(p, 'world'), (p) => expect(body(p)).toHaveAttribute('data-openworld', /.+/)],
 ];
 
 for (const [name, enter, shown] of MENU_MODES) {
   test(`${name} is left by the first slot of the dock, labelled Hub, #1517`, async ({ page }) => {
     await page.goto('./?bot=off&net=hook&hub=classic');
     await expect(page.locator('#hud')).toContainText('Black to move');
-    await expect(firstSlot(page)).toHaveAttribute('id', 'new-game'); // the plain table has no exit
+    await exitIs(page, 'Hub'); // the plain table leaves by the exit too (#1697)
     await enter(page);
     await shown(page);
     await exitIs(page, 'Hub');
     await firstSlot(page).click();
     await hubShown(page);
     await expect(body(page)).not.toHaveAttribute('data-openworld', /.*/);
-    await expect(firstSlot(page)).toHaveAttribute('id', 'new-game'); // the Hub is the home: no exit
+    await noDock(page); // the Hub is the home: no exit, and no dock
   });
 }
 
 test('a table of a Hub door is left by the first slot, and the Hub puts the marble back on the door, #1517', async ({ page }) => {
   await besideTheTable(page);
   await page.goto('./?bot=off&net=hook&hub=classic');
-  await pick(page, '#ship');
+  await pick(page, 'hub');
   await hubShown(page);
-  await expect(firstSlot(page)).toHaveAttribute('id', 'new-game');
+  await noDock(page);
   await rollOntoTable(page);
   await exitIs(page, 'Hub');
   await firstSlot(page).click();
@@ -210,7 +205,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
     if (!sideways) test('the dock with the exit holds the seventh button, Auto-play, at the table of the bot, #1517', async ({ page }) => {
       await besideTheTable(page);
       await page.goto('./?net=hook&hub=classic'); // the bot plays: Auto-play joins
-      await pick(page, '#ship');
+      await pick(page, 'hub');
       await hubShown(page);
       await page.evaluate(() => (window as any).__click(-2, 0)); // the bot's table
       await expect(body(page)).not.toHaveAttribute('data-hub', /.*/);
@@ -240,16 +235,16 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
   });
 }
 
-for (const [from, start] of [['the plain table', async (_p: Page) => undefined], ['the Hub', async (p: Page) => { await pick(p, '#ship'); await hubShown(p); }]] as const) {
+for (const [from, start] of [['the plain table', async (_p: Page) => undefined], ['the Hub', async (p: Page) => { await pick(p, 'hub'); await hubShown(p); }]] as const) {
   test(`Escape in the Open world presses the exit and lands in the Hub, opened from ${from}, #1605`, async ({ page }) => {
     await page.goto('./?bot=off&net=hook&hub=classic');
     await expect(page.locator('#hud')).toContainText('Black to move');
     await start(page);
-    await pick(page, '#openworld');
+    await pick(page, 'world');
     await expect(body(page)).toHaveAttribute('data-openworld', /.+/);
     await page.keyboard.press('Escape');
     await hubShown(page);
     await expect(body(page)).not.toHaveAttribute('data-openworld', /.*/);
-    await expect(firstSlot(page)).toHaveAttribute('id', 'new-game'); // the Hub is the home
+    await noDock(page); // the Hub is the home: no dock
   });
 }

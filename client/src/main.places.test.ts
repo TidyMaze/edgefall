@@ -19,7 +19,6 @@ const hooks = () => window as unknown as { __openworldFixture: (f: { hero: Axial
 /** Opens the world of seed 7, stands the hero west of the first place of `kind` and rolls onto it. Returns the entrance cell. */
 async function rollOnto(game: Game, kind: 'town' | 'dungeon', open = true, nth = 0): Promise<Axial> {
   if (open) {
-    game.openModes();
     byId('openworld').click();
     await settle();
   }
@@ -66,7 +65,6 @@ describe('a town of the Open world (#1593)', () => {
     game.click(-1, -1); // the hot-seat table
     expect(data().hub).toBeUndefined();
     expect(byId('exit').dataset.label).toBe('Hub'); // a game, not the Hub: it leads to the Hub
-    game.openModes();
     byId('ship').click();
     expect(byId('exit').hidden).toBe(false);
     byId('exit').click();
@@ -76,7 +74,6 @@ describe('a town of the Open world (#1593)', () => {
 
   it('the Hub reached from the menu has no way back to a world', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('ship').click();
     expect(data().hub).toBeTruthy();
     expect(byId('exit').hidden).toBe(true);
@@ -85,10 +82,8 @@ describe('a town of the Open world (#1593)', () => {
   it('another mode picked in the Hub of a town ends the way back: it is no town\'s', async () => {
     const game = await boot('?bot=off&openworld=7');
     await rollOnto(game, 'town');
-    game.openModes();
     byId('trainer').click();
     expect(byId('exit').dataset.label).toBe('Hub');
-    game.openModes();
     byId('ship').click();
     expect(data().hub).toBeTruthy();
     expect(byId('exit').hidden).toBe(true);
@@ -98,7 +93,6 @@ describe('a town of the Open world (#1593)', () => {
     const game = await boot('?bot=off&openworld=7');
     const entrance = await rollOnto(game, 'town');
     await settle();
-    game.openModes();
     byId('openworld').click();
     await settle();
     expect(data().openworldAt).toBe(entrance.join(','));
@@ -137,7 +131,6 @@ describe('the ledger line of a town (#1516)', () => {
     expect(game.hud()).not.toContain(TOWN_LINES[0]!.line);
     byId('exit').click();
     await settle();
-    game.openModes();
     byId('ship').click();
     expect(game.hud()).not.toContain(TOWN_LINES[0]!.line);
   });
@@ -166,7 +159,6 @@ describe('a dungeon gate of the Open world (#1593)', () => {
 
   it('the run starts in the biome of the ground the gate stands in, #1597', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const gates = data().openworldPlaces!.split(' ').filter((p) => p.startsWith('dungeon:')).map((p) => p.slice(8).split(',').map(Number) as unknown as Axial);
@@ -184,7 +176,6 @@ describe('a dungeon gate of the Open world (#1593)', () => {
 
   it('a run started from the menu has no way back to a world', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('roguelite').click();
     expect(data().run).toBe('map');
     expect(byId('exit').dataset.label).toBe('Hub');
@@ -227,7 +218,6 @@ describe('the transition of a place (#1519)', () => {
 
   it('a tower shows its cue and the name of its boss over the fight that is live, and comes back with it', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const [q, r] = data().openworldLairs!.split(' ')[0]!.split(',').map(Number) as unknown as Axial;

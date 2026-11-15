@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { loseByRepetition, startDaily } from './fight-end';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // Daily challenge (#195): the UTC date gives the boss and the seed, the same for every load of the
@@ -17,7 +17,6 @@ test('the daily challenge keeps its boss and seed all day, counts attempts, and 
     await page.clock.setFixedTime(new Date(time));
     await page.goto('./');
     await expect(daily).toBeEnabled();
-    await openModes(page);
   };
   const click = (q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__click(cq, cr), [q, r]); // the page's own click, no mouse round trip
   // The first forward one-marble move (NW or NE), then the boss reply.
@@ -35,7 +34,7 @@ test('the daily challenge keeps its boss and seed all day, counts attempts, and 
   await expect(daily).toHaveText(/^Daily challenge 2027-03-30: The /);
   const title = (await daily.textContent())!;
   const name = title.split(': ')[1]!;
-  await daily.click();
+  await startMode(page, 'daily');
   await expect(page.locator('#boss-bar .name')).toContainText(name);
   await expect(hud).toContainText('Daily challenge 2027-03-30 · attempt 1');
   const first = await fight();
@@ -54,14 +53,14 @@ test('the daily challenge keeps its boss and seed all day, counts attempts, and 
   // A second load the same day, a second before midnight: the same boss and seed, attempt 3.
   await load('2027-03-30T23:59:59Z');
   await expect(daily).toHaveText(title);
-  await daily.click();
+  await startMode(page, 'daily');
   await expect(hud).toContainText('Daily challenge 2027-03-30 · attempt 3');
   expect(await fight()).toEqual({ ...first, daily: { day: '2027-03-30', attempt: 3 } });
 
   // 00:00 UTC: a new day and a new seed (the boss may be the same), the counter starts again.
   await load('2027-03-31T00:00:00Z');
   await expect(daily).toHaveText(/^Daily challenge 2027-03-31: The /);
-  await daily.click();
+  await startMode(page, 'daily');
   await expect(hud).toContainText('Daily challenge 2027-03-31 · attempt 1');
   const next = await fight();
   expect(next.seed).not.toBe(first.seed);
@@ -141,6 +140,8 @@ test('a finished daily fight shows the result card, and Copy puts its text in th
   await shot(page, { path: testInfo.outputPath('daily-card.png') });
 
   // Nothing leaves the browser: Copy only writes the clipboard.
+  await page.keyboard.press('Shift'); // the first gesture of the page loads its audio (no click started the fight any more): done before the count
+  await page.waitForTimeout(150);
   const requests: string[] = [];
   page.on('request', (r) => requests.push(r.url()));
   await page.getByRole('button', { name: 'Copy result' }).click();

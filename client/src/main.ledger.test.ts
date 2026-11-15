@@ -97,7 +97,6 @@ describe('the Medal room carries the line of stage 3 (#1586)', () => {
     const game = await boot('?bot=off', { storage });
     await game.settle();
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [0, 1], beaten: [] }));
-    game.openModes();
     byId('ship').click();
     game.click(0, 2);
     expect(data().reading).toBe('medal-room');
@@ -183,7 +182,6 @@ describe('a town of the Open world is the first town visited, stage 3 (#1586)', 
   /** Opens the world of seed 7 and rolls onto the first town. */
   async function town(storage: Record<string, string>): Promise<void> {
     const game = await boot('?bot=off&openworld=7', { storage });
-    game.openModes();
     byId('openworld').click();
     await settle();
     const [q, r] = data().openworldPlaces!.split(' ').filter((p) => p.startsWith('town:'))[0]!.slice(5).split(',').map(Number) as unknown as Axial;
@@ -210,7 +208,6 @@ describe('a town of the Open world is the first town visited, stage 3 (#1586)', 
 describe('a lost run speaks of line 0412 after stage 5 (#1587)', () => {
   async function lost(storage: Record<string, string>): Promise<string> {
     const game = await boot('?bot=off', { storage });
-    game.openModes();
     byId('roguelite').click();
     await game.hook('__run', { ...newRun(1, 3, LEGACY_UNLOCKED), enemies: false, end: 'lost', army: 3 });
     expect(data().run).toBe('lost');

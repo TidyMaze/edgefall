@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The thumb dock on the harness (#1032, docs/specs/thumb-dock.md): the Goal sheet opens above the dock, Game modes and
 // Settings are one sheet at a time, Esc and a tap outside close the Goal sheet, and Copy diagnostics is the last row of
@@ -14,9 +14,7 @@ function startFight(game: Game): void {
     (a as Uint32Array).fill(1);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  byId('boss-list').querySelector('button')!.click();
+  startBoss('The Echo');
 }
 
 /** Moves the first move of the fight, so the Goal control is no longer greyed out (it is the goal before the first move). */
@@ -60,9 +58,9 @@ describe('the thumb dock', () => {
     const game = await boot('?bot=off');
     startFight(game);
     playFirstMove(game);
-    byId('reset-view').focus();
+    byId('view-reset').focus();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    expect(document.activeElement).toBe(byId('reset-view'));
+    expect(document.activeElement).toBe(byId('view-reset'));
   });
 
   it('a tap outside the Goal sheet and its button closes it, a tap inside keeps it open', async () => {
@@ -88,9 +86,7 @@ describe('the thumb dock', () => {
     game.openSettings();
     window.dispatchEvent(new PointerEvent('pointerdown'));
     expect(byId('settings-menu').hidden).toBe(true);
-    game.openModes();
     window.dispatchEvent(new PointerEvent('pointerdown'));
-    expect(byId('mode-menu').hidden).toBe(true);
   });
 
   it('a tap outside does nothing while no Goal sheet is open', async () => {
@@ -101,23 +97,18 @@ describe('the thumb dock', () => {
     expect(byId('goal-sheet').hidden).toBe(true);
   });
 
-  it('one sheet at a time: Game modes closes the Goal sheet, Settings closes Game modes, Goal closes both', async () => {
+  it('one sheet at a time: Settings closes the Goal sheet, and Goal closes Settings', async () => {
     const game = await boot('?bot=off');
     startFight(game);
     playFirstMove(game);
     byId('boss-goal').click();
-    game.openModes();
-    expect(byId('goal-sheet').hidden).toBe(true);
-    expect(byId('mode-menu').hidden).toBe(false);
+    expect(byId('goal-sheet').hidden).toBe(false);
     game.openSettings();
-    expect(byId('mode-menu').hidden).toBe(true);
+    expect(byId('goal-sheet').hidden).toBe(true);
     expect(byId('settings-menu').hidden).toBe(false);
     byId('boss-goal').click();
     expect(byId('settings-menu').hidden).toBe(true);
     expect(byId('goal-sheet').hidden).toBe(false);
-    game.openModes();
-    expect(byId('goal-sheet').hidden).toBe(true);
-    expect(byId('mode-menu').hidden).toBe(false);
   });
 
   it('Copy diagnostics is the last row of the settings list, with its label', async () => {
@@ -137,7 +128,6 @@ describe('the thumb dock', () => {
 describe('the lobby sheet (#1044)', () => {
   /** Starts an offline battle royale: Invite shows in the lobby sheet. */
   function battleRoyale(game: Game): void {
-    game.openModes();
     byId('battle-royale').click();
   }
 
@@ -206,15 +196,10 @@ describe('the lobby sheet (#1044)', () => {
     expect(game).toBeTruthy();
   });
 
-  it('one sheet at a time: Game modes and Settings close the lobby sheet, and it closes theirs', async () => {
+  it('one sheet at a time: Settings closes the lobby sheet', async () => {
     const game = await boot('?bot=off');
     battleRoyale(game);
     byId('lobby').click();
-    game.openModes();
-    expect(byId('lobby-sheet').hidden).toBe(true);
-    expect(byId('mode-menu').hidden).toBe(false);
-    byId('lobby').click();
-    expect(byId('mode-menu').hidden).toBe(true);
     expect(byId('lobby-sheet').hidden).toBe(false);
     game.openSettings();
     expect(byId('lobby-sheet').hidden).toBe(true);

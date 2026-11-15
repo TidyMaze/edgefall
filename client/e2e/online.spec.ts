@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { inviteLink, lowTierPages, openModes, startMode } from './modes';
+import { inviteLink, lowTierPages, startMode } from './modes';
 
 // Two isolated browser contexts. The transport is the ?net=hook test hook: the test relays records
 // from one page to the other, so no public Nostr relay is involved.
@@ -655,9 +655,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     const turn = (page: Page) => page.locator('#hud .turn');
 
     await expect(a.locator('#hud')).not.toBeEmpty();
-    await openModes(a);
-    await a.getByRole('button', { name: 'Boss vs a player' }).click();
-    await a.locator('#coop-list').getByRole('button', { name: 'The Hull' }).click();
+    await startMode(a, 'duel:hull');
     const hash = new URL(await inviteLink(a)).hash;
     expect(hash).toMatch(/^#room=[\w-]+&boss=hull&seed=\d+&seat=boss&key=[\w-]{8}$/);
     await b.goto(`./?bot=off&net=hook&quality=low&hub=classic${hash}`);
@@ -760,8 +758,7 @@ test('Play online is disabled with a notice while offline and works again back o
   await context.setOffline(false);
   await expect(button).toBeEnabled();
   await expect(page.locator('#hud')).not.toContainText('online play needs a connection');
-  await openModes(page);
-  await button.click();
+  await startMode(page, 'online');
   await expect(page.locator('#hud')).toContainText('You are Black');
 });
 

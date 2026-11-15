@@ -361,7 +361,7 @@ describe('main.ts, free camera and wireframe modes', () => {
     const game = await boot('?bot=off');
     const freeCamBtn = document.getElementById('setting-free-cam') as HTMLButtonElement;
     const renderModeBtn = document.getElementById('setting-render-mode') as HTMLButtonElement;
-    const resetViewBtn = document.getElementById('reset-view') as HTMLButtonElement;
+    const resetViewBtn = document.getElementById('view-reset') as HTMLButtonElement;
 
     expect(game.hook('__freeCamActive')).toBe(false);
     expect(game.hook('__renderMode')).toBe('normal');

@@ -7,7 +7,7 @@ import { bothSigned, type SharedResult } from './boardfeed';
 import { SIGNALING_TIMEOUT_MS } from './netcounters';
 import { OnlineSession } from './session';
 import { fingerprint } from './invite';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 import type { Transport } from './transport';
 
 // The online part of main.ts on the harness (src/test/harness.ts, decision #445): Play online and the invite link,
@@ -70,7 +70,6 @@ function click(game: Game, from: Axial, to: Axial): void {
 async function hosted(url = '?bot=off', options: Parameters<typeof boot>[1] = {}) {
   const game = await boot(url, options);
   if (options.audio) dispatchEvent(new KeyboardEvent('keydown', { key: 'a' })); // the first gesture unlocks the sound (#1570)
-  game.openModes();
   byId('play-online').click();
   await until(game, () => data().seat === 'player');
   const white = await opponent(game.peer()!, game.room()!, 2);
@@ -85,7 +84,6 @@ const declineBoard = (): void => localStorage.setItem('ab-alone.board-consent', 
 async function rankedHosted() {
   const game = await boot('?bot=off');
   declineBoard();
-  game.openModes();
   byId('ranked').click();
   await until(game, () => data().seat === 'player');
   const white = await opponent(game.peer()!, game.room()!, 2);
@@ -134,12 +132,9 @@ afterEach(() => {
 });
 
 describe('Play online', () => {
-  it('closes the mode menu, shows the invite link to the room in the address, and waits for an opponent', async () => {
+  it('shows the invite link to the room in the address, and waits for an opponent', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
-    expect(byId('mode-menu').hidden).toBe(false);
     byId('play-online').click();
-    expect(byId('mode-menu').hidden).toBe(true);
     await until(game, () => data().seat === 'player'); // once its keys are made, the link carries their fingerprint (#1323)
     const room = game.room()!;
     expect(room).toMatch(/^[\w-]{22}$/);
@@ -159,10 +154,10 @@ describe('Play online', () => {
 
   // The four lobbies a creator can wait in (#1529): a table (Play online, Ranked) or a boss (Fight together, Boss duel).
   const lobbies: [string, (game: Game) => void][] = [
-    ['Play online', (game) => (game.openModes(), byId('play-online').click())],
-    ['Ranked', (game) => (declineBoard(), game.openModes(), byId('ranked').click())],
-    ['Fight together', (game) => (game.openModes(), byId('fight-together').click(), bossButton('The Echo').click())],
-    ['Boss duel', (game) => (game.openModes(), byId('boss-duel').click(), bossButton('The Echo').click())],
+    ['Play online', (game) => byId('play-online').click()],
+    ['Ranked', (game) => (declineBoard(), byId('ranked').click())],
+    ['Fight together', (game) => (byId('fight-together').click(), bossButton('The Echo').click())],
+    ['Boss duel', (game) => (byId('boss-duel').click(), bossButton('The Echo').click())],
   ];
   const bossButton = (name: string): HTMLElement => [...byId('coop-list').querySelectorAll('button')].find((b) => b.textContent === name)!;
   /** Opens a lobby, waits out the 80 ms wait (?lobbywait) with no peer, and returns the page. */
@@ -241,9 +236,7 @@ describe('Play online', () => {
   it('leaving the bot game closes the room: its link goes and a later peer is not offered a switch (#1529)', async () => {
     const game = await waited(lobbies[0]![1]);
     byId('lobby-bot').click();
-    game.openModes();
-    byId('boss-fight').click();
-    byId('boss-list').querySelector('button')!.click(); // another mode: the bot game is left as it is today
+    startBoss('The Echo'); // another mode: the bot game is left as it is today
     expect(byId('invite').hidden).toBe(true);
     expect(location.hash).toBe('');
     await opponent(game.peer()!, game.room()!, 2).catch(() => {});
@@ -262,7 +255,6 @@ describe('Play online', () => {
 
   it('scrolls the button column back to the top, so no button above the link is left out of reach (#839)', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('online').scrollTop = 40; // the player scrolled down to the mode menu
     byId('play-online').click();
     await until(game, () => data().seat === 'player'); // the link shows once the keys are made
@@ -304,17 +296,17 @@ describe('Play online', () => {
     expect(game.hud()).toContain(' · closed');
   });
 
-  it('returns to the Hub at any time via the Hub button, tearing down online session (#773)', async () => {
+  it('returns to the Hub at any time via the exit, tearing down online session (#773, #1697)', async () => {
     const { game } = await hosted();
     expect(presence()).toBe('You are Black. White is here.');
     expect(data().online).toBe('Black');
-    game.openModes();
-    byId('ship').click();
+    expect(byId('exit').hidden).toBe(false); // an online room has its way out too (#1697)
+    byId('exit').click();
     expect(data().online).toBeUndefined();
     expect(data().seat).toBeUndefined();
     expect(data().opponent).toBeUndefined();
     expect(byId('invite').hidden).toBe(true);
-    expect(byId('new-game').hidden).toBe(false);
+    expect(data().hub).toBeTruthy();
   });
 
   it('sends our moves to the opponent and replays its moves through the engine', async () => {
@@ -337,7 +329,6 @@ describe('Play online', () => {
 
   it('refuses an opponent on another engine version with a note, and keeps waiting for one, #526', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('play-online').click();
     await until(game, () => data().seat === 'player');
     await opponent(game.peer()!, game.room()!, 2, 1);
@@ -349,11 +340,9 @@ describe('Play online', () => {
   it('Ranked queues 1v1 with rank badge and tolerance window, and updates Elo rating on game end (#711)', async () => {
     const game = await boot('?bot=off');
     declineBoard();
-    game.openModes();
     const rankedBtn = byId<HTMLButtonElement>('ranked');
     expect(rankedBtn.disabled).toBe(false);
     rankedBtn.click();
-    expect(byId('mode-menu').hidden).toBe(true);
     await until(game, () => data().seat === 'player');
     expect(byId('hud').querySelector('.rank-badge')?.textContent).toContain('Silver');
     expect(byId('hud').querySelector('.rank-queue')?.textContent).toBe('Queue ±100');
@@ -397,7 +386,6 @@ describe('Play online', () => {
     });
     const game = await boot(search);
     localStorage.setItem('ab-alone.board-consent', JSON.stringify({ v: 5, choice: joined ? 'joined' : 'declined' }));
-    game.openModes();
     byId('ranked').click();
     await until(game, () => data().seat === 'player');
     const heard: Seal[] = [];
@@ -474,10 +462,8 @@ describe('Play online', () => {
 
   it('Ranked in Battle royale shows rank badge and updates Battle Royale Elo on placement (#711)', async () => {
     const game = await boot('?bot=off', { reducedMotion: true });
-    game.openModes();
     byId('battle-royale').click();
     declineBoard();
-    game.openModes();
     byId('ranked').click();
     expect(byId('hud').querySelector('.rank-badge')?.textContent).toContain('Silver');
     // Load a finished royale state via __royale hook while in ranked royale mode
@@ -495,10 +481,8 @@ describe('Play online', () => {
 
   it('a finished royale game is rated once, however often Ranked is pressed after it', async () => {
     const game = await boot('?bot=off', { reducedMotion: true });
-    game.openModes();
     byId('battle-royale').click();
     declineBoard();
-    game.openModes();
     byId('ranked').click();
     const { Royale } = await import('edgefall-wasm');
     const r = new Royale(6, 7);
@@ -509,7 +493,6 @@ describe('Play online', () => {
     }
     (window as unknown as { __royale(f: { seed: number; rounds: number[][] }): void }).__royale({ seed: 7, rounds });
     for (let i = 0; i < 3; i++) {
-      game.openModes();
       byId('ranked').click();
     }
     expect(JSON.parse(localStorage.getItem('ab-alone.ranked')!).matches).toHaveLength(1);
@@ -609,7 +592,6 @@ describe('The invite link', () => {
     const game = await boot('?bot=off');
     const p2p = await import('./p2p');
     const transport = vi.spyOn(p2p, 'p2pTransport');
-    game.openModes();
     byId('play-online').click();
     transport.mock.calls[0]![1]!('ICE failed');
     byId('copy-diagnostics').click();
@@ -624,7 +606,6 @@ describe('Copy on the invite link (#839)', () => {
   /** Boots, presses Play online and waits for the room: the link, its label and Copy show. */
   async function invited() {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('play-online').click();
     await until(game, () => data().seat === 'player'); // the room is open before the test ends
     return game;
@@ -650,14 +631,14 @@ describe('Copy on the invite link (#839)', () => {
     expect(shown()).toEqual([false, false, false]);
   });
 
-  it('says the link was copied and gives the focus to Game modes (#1190)', async () => {
+  it('says the link was copied and gives the focus to the cog (#1190)', async () => {
     clipboard(async () => {});
     const game = await invited();
     byId('invite-copy').focus();
     byId('invite-copy').click();
     await until(game, () => byId('invite').hidden === true);
     expect(game.hud()).toContain('invite link copied');
-    expect(document.activeElement).toBe(byId('modes'));
+    expect(document.activeElement).toBe(byId('settings'));
   });
 
   it('keeps the link shown, selected, when the browser refuses the clipboard', async () => {
@@ -682,10 +663,8 @@ describe('Copy on the invite link (#839)', () => {
 
   it('closes with the room, and shows again with the next one', async () => {
     const game = await invited();
-    game.openModes();
     byId('ship').click(); // Back to the hub
     expect(shown()).toEqual([false, false, false]);
-    game.openModes();
     byId('play-online').click();
     await until(game, () => data().seat === 'player');
     expect(shown()).toEqual([true, true, true]);

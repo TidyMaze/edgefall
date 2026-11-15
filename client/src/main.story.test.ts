@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Axial } from './board';
 import { BOSS_LORE, WORLD_LOGS } from './lorelogs';
 import { SEALED, STORY_KEY } from './story';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The stage store of the story (#1584, docs/specs/world.md section 12): the game reveals the story in order. A boss entry above the current stage
 // is held back on the win screen and in the log archive; the moments of the ladder fire from the call sites of main.ts.
@@ -30,9 +30,7 @@ async function finish(game: Game, kind: 'Encounter' | 'Engine', status: 1 | 2): 
 }
 /** Starts the fight of the boss named `name` from the boss list. */
 function start(game: Game, name: string): void {
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.includes(name))!.click();
+  startBoss(name);
 }
 /** Starts the fight of `name` and ends it with the status `status` at the first move. */
 async function fight(game: Game, name: string, status: 1 | 2): Promise<void> {
@@ -146,7 +144,6 @@ describe('the moments of the ladder fire from main.ts (#1584)', () => {
     const game = await boot('?bot=off');
     await game.settle();
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [0, 1], beaten: [] }));
-    game.openModes();
     byId('ship').click();
     game.click(0, 2);
     expect(data().reading).toBe('medal-room');

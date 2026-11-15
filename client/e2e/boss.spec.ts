@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { ANNOUNCED_AT, CONVERTED_AT, EXPLODED_AT, SEED, parseRecorded } from '../src/test/chaplain-game';
-import { openModes, startMode } from './modes';
+import { startBoss, startMode } from './modes';
 import { shot } from './shot';
 
 // Waits for a draw that began after this call. It is asked of the page, so the draw throttle does not hold it (#435).
@@ -46,20 +46,6 @@ test('start The Echo, play a move, the boss replies, Retry resets the board', as
   await expect(hud).toContainText('White ejected 0/6');
 });
 
-// Bug #144: main.ts awaits the wasm engine, the renderer and the textures before it attaches the
-// Boss fight listener. A click right after domcontentloaded must either hit a disabled button or open the list.
-test('Boss fight is disabled or works when clicked right after load, bug #144', async ({ page }) => {
-  await page.goto('./', { waitUntil: 'domcontentloaded' });
-  const atClick = await page.evaluate(() => {
-    const button = document.getElementById('boss-fight') as HTMLButtonElement;
-    const disabled = button.disabled;
-    button.click();
-    return { disabled, open: !document.getElementById('boss-list')!.hidden };
-  });
-  expect(atClick.disabled || atClick.open).toBe(true);
-  await expect(page.locator('#boss-fight')).toBeEnabled(); // and it works once the page is ready
-});
-
 // The Hull (#149): a rim cell cracks at ply 8, shows its ticks for 2 player turns, then it is a hole. The cracked cell wears
 // the crack decal in both quality tiers, with Clear board off and on (#355, world.md section 8), 3:1 on the cell with
 // Clear board on: the fog dims the far rim cells under 3:1 (bug #399). The crack's course and the decal's contrast are
@@ -81,7 +67,7 @@ const startHull = async (page: Page, tier: string, seed?: number) => {
   await page.goto(seed === undefined ? './' : './?nodes=200');
   await page.locator('canvas').waitFor();
   await expect(page.locator('body')).toHaveAttribute('data-tier', tier);
-  await page.locator('#boss-list').getByRole('button', { name: 'The Hull', includeHidden: true }).dispatchEvent('click');
+  await startBoss(page, 'The Hull');
   await expect(page.locator('#boss-bar .name')).toContainText('The Hull');
   await expect(page.locator('body')).toHaveAttribute('data-cracks', '0');
 };
@@ -308,7 +294,7 @@ for (const [name, accent, stored] of [
     }, stored);
     await page.goto(accent === 'crown' ? './?scene=room' : './'); // the terrace leaves the Hull's crown off (#1374)
     await page.locator('canvas').waitFor();
-    await page.locator('#boss-list').getByRole('button', { name, includeHidden: true }).dispatchEvent('click');
+    await startBoss(page, name);
     await expect(page.locator('#boss-bar .name')).toContainText(name);
     const worn = (await page.evaluate(() => (window as any).__accents())) as { cell: [number, number]; accent: string }[];
     expect(worn).toHaveLength(14);
@@ -361,8 +347,9 @@ test('The Ballast Mind radius 5 board frames in 1280x720 and phone upright, task
   });
   expect(cells.every((c) => c.x > 30 && c.x < 1250 && c.y > 30 && c.y < 690)).toBe(true);
 
-  // Reset view keeps the framing
-  await openModes(page); // Replay and Reset view sit in the Game modes menu (#1612)
+  // Reset view keeps the framing: the button over the board shows once the camera moved (#1681)
+  await page.mouse.move(640, 360);
+  await page.mouse.wheel(0, 400);
   await page.getByRole('button', { name: 'Reset view' }).click();
   const resetCells = await page.evaluate(() => {
     const toScreen = (window as any).__cellToScreen;

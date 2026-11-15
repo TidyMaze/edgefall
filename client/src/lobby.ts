@@ -5,9 +5,6 @@ export const BOT_OFFER_MS = 20000; // 20 s with no peer: the lobby offers a bot 
 export const BOT_BUTTON = 'Play the bot while you wait';
 export const SWITCH_LINE = 'A player joined the room: switch to it';
 
-/** The labels of the three boss entries of the mode menu, by id: solo, with a partner, against a player. */
-export const MODE_LABELS = { 'boss-fight': 'Solo boss fight', 'fight-together': 'Boss with a partner', 'boss-duel': 'Boss vs a player' } as const;
-
 /** `wait`: keep waiting; `offer`: nobody joined, offer the bot game; `joined`: a peer is in, no offer. */
 export type LobbyState = 'wait' | 'offer' | 'joined';
 

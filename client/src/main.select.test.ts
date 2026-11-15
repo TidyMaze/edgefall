@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { type Axial } from './board';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // Selecting a line and previewing its move (#1679): the HUD counts the line, a touch screen
 // previews on a first tap and plays on a second.
@@ -162,9 +162,7 @@ describe('the tap preview on a touch screen (#1679)', () => {
   it('a boss fight has rule lines of its own: no count and no tap hint over them, the pill still shows', async () => {
     const game = await boot('?bot=off');
     vi.spyOn(crypto, 'getRandomValues').mockImplementation((a) => ((a as Uint32Array).fill(42), a));
-    game.openModes();
-    document.getElementById('boss-fight')!.click();
-    [...document.getElementById('boss-list')!.querySelectorAll('button')].find((b) => b.textContent!.startsWith('The Echo'))!.click();
+    startBoss('The Echo');
     const mv = legal(game).find((m) => m.cells.length === 1)!;
     game.click(...mv.cells[0]!);
     expect(document.querySelector('.pick-note')).toBeNull();
@@ -196,7 +194,6 @@ describe('the tap preview on a touch screen (#1679)', () => {
   it('the Hub entry drops the preview: no pill over the Hub', async () => {
     const game = await boot('?bot=off');
     await preview(game);
-    game.openModes();
     document.getElementById('ship')!.click();
     expect(pill().hidden).toBe(true);
   });

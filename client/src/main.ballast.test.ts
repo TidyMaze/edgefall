@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Axial } from './board';
 import type { View } from './camera';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Ballast Mind on the harness (#749, game-design.md section 7.5): every 2 turns it borrows an effect of another
 // boss, named in the HUD during the turn before. ?bot=off plays both sides, one-marble moves, so no boss search runs.
@@ -19,9 +19,7 @@ function fightBallast(game: Game, seed: number): void {
     (a as Uint32Array).fill(seed);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Ballast Mind')!.click();
+  startBoss('The Ballast Mind');
 }
 
 /** Plays `n` plies, the first one-marble move of the side to move each time, the slides run to their end. */

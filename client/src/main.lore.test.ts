@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Axial } from './board';
 import { BOSS_LORE, WORLD_LOGS } from './lorelogs';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The lore of the story (#1589, docs/specs/world.md section 12): a boss win shows that boss's entry under the banner and files it in the log
 // archive; a log of the Open world read lands there too; the archive reopens both in the terminal reader.
@@ -18,9 +18,7 @@ const rows = (): HTMLButtonElement[] => [...document.querySelectorAll<HTMLButton
 /** Starts the fight of the boss named `name` from the boss list, and ends it with the status `status` (1 a win, 2 a loss) at the first move. */
 async function fight(game: Game, name: string, status: 1 | 2): Promise<void> {
   const { Encounter } = await import('edgefall-wasm');
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent!.includes(name))!.click();
+  startBoss(name);
   const over = (): number => (game.hook<number>('__plies') > 0 ? status : 0);
   vi.spyOn(Encounter.prototype, 'result').mockImplementation(over);
   vi.spyOn(Encounter.prototype, 'status').mockImplementation(over);
@@ -67,7 +65,6 @@ describe('the lore after a boss win (#1589)', () => {
       expect(byId('lore').hidden).toBe(false);
       vi.restoreAllMocks();
       await game.settle();
-      game.openModes();
       byId(leave).click();
       await game.settle();
       expect(byId('lore').hidden, leave).toBe(true);
@@ -100,7 +97,6 @@ describe('the lore after a boss win (#1589)', () => {
 describe('a lore log of the Open world in the log archive (#1589)', () => {
   it('rolling onto a log files it, and the archive reopens it in the reader with no audio log to play', async () => {
     const game = await boot('?bot=off&openworld=7');
-    game.openModes();
     byId('openworld').click();
     await settle();
     const all = game.hook<number[]>('__openworldLogs', 7);

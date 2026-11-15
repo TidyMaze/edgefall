@@ -17,7 +17,6 @@ describe('the code of the Open world, #1578', () => {
     await game.settle();
     expect(chunk.evaluated).toBe(0);
     expect(document.body.dataset.openworld).toBeUndefined();
-    game.openModes();
     document.getElementById('openworld')!.click();
     await vi.waitFor(() => expect(document.body.dataset.openworld).toBeDefined()); // its code loads cold
     expect(chunk.evaluated).toBe(1);

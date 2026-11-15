@@ -17,7 +17,6 @@ const byId = <T extends HTMLElement = HTMLButtonElement>(id: string): T => docum
 describe('a failed load of the Open world, #1578', () => {
   it('shows the message, keeps the page alive, and Retry enters the world', async () => {
     const game = await boot('?bot=off', { warmChunks: false });
-    game.openModes();
     byId('openworld').click();
     await vi.waitFor(() => expect(byId('chunk-error').hidden).toBe(false));
     expect(byId('chunk-name').textContent).toBe('Open world');

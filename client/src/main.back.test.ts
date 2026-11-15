@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it, vi } from 'vitest';
 import type { Axial, Move } from './board';
 import './test/openworldwasm';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // Browser Back and the Android Back gesture (#1564, docs/specs/ui.md section "Browser Back"): a screen other than the one the page
 // started on holds one history entry, and Back runs the way out the screen already has: a mode goes to the Hub, the Hub to the table,
@@ -25,15 +25,12 @@ async function pressBack(game: Game): Promise<() => number> {
   return () => leave.mock.calls.length;
 }
 async function pick(game: Game, id: string): Promise<void> {
-  game.openModes();
   byId(id).click();
   await game.settle();
   game.frame();
 }
 const bossPick = async (game: Game): Promise<void> => {
-  game.openModes();
-  byId('boss-fight').click();
-  byId('boss-list').querySelector('button')!.click();
+  startBoss('The Echo');
   await game.settle();
   game.frame();
 };
@@ -69,7 +66,7 @@ describe('main.ts, browser Back (#1564)', () => {
     expect(game.hud()).toContain('Hub');
   });
 
-  it('Back from the table of a page that began on the Hub goes to the Hub: the plain table has no exit', async () => {
+  it('Back from the table of a page that began on the Hub goes to the Hub: the exit of the plain table leads there too (#1697)', async () => {
     const game = await boot('/'); // no query: a new player lands on the Hub, the base screen
     await game.settle();
     expect(hubOn()).toBe(true);
@@ -77,7 +74,8 @@ describe('main.ts, browser Back (#1564)', () => {
     await game.settle();
     game.frame();
     expect(hubOn()).toBe(false);
-    expect(byId('exit').hidden).toBe(true);
+    expect(byId('exit').hidden).toBe(false);
+    expect(byId('exit').dataset.label).toBe('Hub');
     await pressBack(game);
     expect(hubOn()).toBe(true);
   });
@@ -128,9 +126,7 @@ describe('main.ts, browser Back (#1564)', () => {
   it('Back from the Hub brings a saved Stalker fight back under its fog, and a saved game against the bot with its bot', async () => {
     const indexedDB = new IDBFactory();
     const game = await boot('?nodes=50', { indexedDB });
-    game.openModes();
-    byId('boss-fight').click();
-    [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Stalker')!.click();
+    startBoss('The Stalker');
     await playMove(game);
     game.frame();
     await pressBack(game); // the Hub
@@ -363,7 +359,6 @@ describe('main.ts, browser Back (#1564)', () => {
   it('writing the online address fires popstate in Chrome: the room is not left', async () => {
     const game = await boot('?bot=off&net=hook');
     window.addEventListener('hashchange', () => window.dispatchEvent(new PopStateEvent('popstate', { state: null }))); // Chrome fires it with the write
-    game.openModes();
     byId('play-online').click();
     await game.online();
     await game.settle();
@@ -374,7 +369,6 @@ describe('main.ts, browser Back (#1564)', () => {
 
   it('an online room keeps what the browser does: Back drops the address and the room stays', async () => {
     const game = await boot('?bot=off&net=hook');
-    game.openModes();
     byId('play-online').click();
     await game.online();
     game.frame();

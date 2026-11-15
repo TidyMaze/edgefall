@@ -12,7 +12,6 @@ const key = (name: string, shiftKey = false): void =>
 describe('online consent dialog', () => {
   it('asks before Play online, shows the decided text and the notice link, and starts nothing until Accept', async () => {
     const game = await boot('?bot=off&consent');
-    game.openModes();
     byId('play-online').click();
     await game.settle();
     expect(shown()).toBe(true);
@@ -30,7 +29,6 @@ describe('online consent dialog', () => {
   it('keeps solo play on Stay solo and on Escape, and does not store the refusal', async () => {
     const game = await boot('?bot=off&consent');
     for (const leave of [() => byId('consent-stay').click(), () => key('Escape')]) {
-      game.openModes();
       byId('play-online').click();
       await game.settle();
       expect(shown()).toBe(true);
@@ -64,7 +62,6 @@ describe('online consent dialog', () => {
 
   it('keeps the focus inside on Tab and waits on one answer for two entries', async () => {
     const game = await boot('?bot=off&consent');
-    game.openModes();
     byId('play-online').click();
     byId('royale-invite').click();
     await game.settle();
@@ -89,7 +86,6 @@ describe('online consent dialog', () => {
         game.frame();
       }
     };
-    game.openModes();
     byId('play-online').click();
     await game.settle();
     tap(15);
@@ -103,19 +99,16 @@ describe('online consent dialog', () => {
   it('does not ask again once accepted, nor under ?net=hook, nor under automation without ?consent', async () => {
     const accepted = await boot('?bot=off&consent');
     localStorage.setItem('ab-alone.online-consent', 'accepted');
-    accepted.openModes();
     byId('play-online').click();
     await accepted.online();
     expect(shown()).toBe(false);
 
     const hook = await boot('?bot=off&consent&net=hook');
-    hook.openModes();
     byId('play-online').click();
     await hook.settle();
     expect(shown()).toBe(false);
 
     const automated = await boot('?bot=off');
-    automated.openModes();
     byId('play-online').click();
     await automated.online();
     expect(shown()).toBe(false);

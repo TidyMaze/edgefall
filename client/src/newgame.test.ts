@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONFIRM_MS, newGameLabel, pressNewGame, quickGameHidden } from './newgame';
+import { CONFIRM_MS, newGameLabel, pressNewGame } from './newgame';
 
 describe('pressNewGame', () => {
   it('starts the new game at the first press when no move was played: nothing to lose', () => {
@@ -30,20 +30,5 @@ describe('newGameLabel', () => {
   it('reads New game, and Confirm new game while the confirmation is asked', () => {
     expect(newGameLabel(null)).toBe('New game');
     expect(newGameLabel(pressNewGame(null, 0, 1).confirm)).toBe('Confirm new game');
-  });
-});
-
-describe('quickGameHidden (#1612)', () => {
-  it('shows Quick game outside a fight: the menus, the world, a run, the Hub', () => {
-    expect(quickGameHidden(false, false)).toBe(false);
-  });
-
-  it('hides Quick game in a boss fight, which it would drop', () => {
-    expect(quickGameHidden(true, false)).toBe(true);
-  });
-
-  it('hides Quick game in a wild fight, which it would drop', () => {
-    expect(quickGameHidden(false, true)).toBe(true);
-    expect(quickGameHidden(true, true)).toBe(true);
   });
 });

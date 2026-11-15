@@ -4,7 +4,7 @@ import type { Axial } from './board';
 import { TAUNTS, VENT_NOTE, toxinText } from './overseer';
 import { BLAST_MS, FLASH_MS } from './martyr';
 import { CHAR_MS, FAREWELL, angryLine } from './speech';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Overseer on the harness (#635, game-design.md section 7.11): the Overseer, its 6 cores and 6 vents drawn, the
 // slag fill line, a core pushed next to a vent that slides there then rolls into it and sinks (#1241), and the win.
@@ -33,9 +33,7 @@ function fightOverseer(game: Game): void {
     (a as Uint32Array).fill(153);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Overseer')!.click();
+  startBoss('The Overseer');
 }
 
 /** Plays plies `from` to `to` (excluded) of the fixture by clicks, the slides and the burns run to their end. */

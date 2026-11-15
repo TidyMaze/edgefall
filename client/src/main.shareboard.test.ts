@@ -16,7 +16,6 @@ const tick = (): void => {
 describe('shared board opt-in', () => {
   it('asks at the first ranked entry, unticked, with the decided text; Join needs the tick and stores a choice, a name and a key', async () => {
     const game = await boot('?bot=off&board&net=hook');
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     expect(shown()).toBe(true);
@@ -39,7 +38,6 @@ describe('shared board opt-in', () => {
   it('Escape leaves it unanswered and it asks again at the next entry; only Keep ranked local stores a decline', async () => {
     const game = await boot('?bot=off&board&net=hook');
     for (let again = 0; again < 2; again++) {
-      game.openModes();
       byId('ranked').click();
       await game.settle();
       expect(shown()).toBe(true);
@@ -48,7 +46,6 @@ describe('shared board opt-in', () => {
       expect(shown()).toBe(false);
       expect(localStorage.getItem('ab-alone.board-consent')).toBeNull();
     }
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     byId('optin-no').click();
@@ -60,7 +57,6 @@ describe('shared board opt-in', () => {
     const game = await boot('?bot=off&board&net=hook');
     for (const leave of [() => byId('optin-no').click()]) {
       localStorage.removeItem('ab-alone.board-consent');
-      game.openModes();
       byId('ranked').click();
       await game.settle();
       expect(shown()).toBe(true);
@@ -76,7 +72,6 @@ describe('shared board opt-in', () => {
       expect(JSON.parse(localStorage.getItem('ab-alone.board-consent')!)).toEqual({ v: 5, choice: 'declined' });
       expect(localStorage.getItem('ab-alone.board-key')).toBeNull();
     }
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     expect(shown()).toBe(false);
@@ -92,7 +87,6 @@ describe('shared board opt-in', () => {
         game.frame();
       }
     };
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     tap(15);
@@ -105,7 +99,6 @@ describe('shared board opt-in', () => {
     FakeSocket.all = [];
     vi.stubGlobal('WebSocket', FakeSocket);
     const game = await boot('?bot=off&net=hook');
-    game.openModes();
     byId('leaderboard').click();
     await game.settle();
     expect(byId('board-share').hidden).toBe(false);
@@ -120,7 +113,6 @@ describe('shared board opt-in', () => {
     FakeSocket.all = [];
     vi.stubGlobal('WebSocket', FakeSocket);
     const game = await boot('?bot=off&board');
-    game.openModes();
     byId('leaderboard').click();
     expect(byId('board-share-state').textContent).toContain('not on the shared board');
     expect(byId('board-leave').hidden).toBe(true);
@@ -148,7 +140,6 @@ describe('shared board opt-in', () => {
     const sockets = vi.fn();
     vi.stubGlobal('WebSocket', sockets);
     const game = await boot('?bot=off&board&net=hook');
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     tick();
@@ -170,7 +161,6 @@ describe('shared board opt-in', () => {
     }
     vi.stubGlobal('WebSocket', Sock);
     const game = await boot('?bot=off&board=publish&net=hook');
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     tick();
@@ -238,18 +228,15 @@ describe('shared board opt-in', () => {
       }
       s.emit('message', JSON.stringify(['EOSE', 'ab-board']));
     };
-    game.openModes();
     byId('leaderboard').click();
     expect(FakeSocket.all).toHaveLength(0); // not joined: nothing is read
     expect(byId('board-shared').textContent).toContain('Join the board');
     byId('board-close').click();
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     tick();
     byId('optin-yes').click();
     await vi.waitFor(() => expect(localStorage.getItem('ab-alone.board-key')).not.toBeNull());
-    game.openModes();
     byId('leaderboard').click();
     await vi.waitFor(() => expect(byId('board-shared').textContent).toContain('Ann'));
     expect(FakeSocket.all.map((s) => s.url)).toEqual(['wss://relay.piazza.today', 'wss://relay.bitmacro.cloud']);
@@ -273,7 +260,6 @@ describe('shared board opt-in', () => {
     vi.stubGlobal('WebSocket', FakeSocket);
     localStorage.setItem('ab-alone.board-consent', JSON.stringify({ v: 3, choice: 'joined' }));
     const game = await boot('?bot=off&net=hook');
-    game.openModes();
     byId('leaderboard').click();
     await game.settle();
     expect(FakeSocket.all).toHaveLength(0);
@@ -287,7 +273,6 @@ describe('shared board opt-in', () => {
       localStorage.clear();
       if (saved) localStorage.setItem('ab-alone.board-consent', typeof saved === 'string' ? saved : JSON.stringify(saved));
       const game = await boot('?bot=off&board&net=hook');
-      game.openModes();
       byId('leaderboard').click();
       await game.settle();
       expect(FakeSocket.all).toHaveLength(0);
@@ -301,14 +286,12 @@ describe('shared board opt-in', () => {
     vi.stubGlobal('WebSocket', FakeSocket);
     FakeSocket.serve = (s) => s.emit('message', JSON.stringify(['EOSE', 'ab-board']));
     const game = await boot('?bot=off&board&net=hook');
-    game.openModes();
     byId('ranked').click();
     await game.settle();
     tick();
     byId('optin-yes').click();
     await vi.waitFor(() => expect(localStorage.getItem('ab-alone.board-key')).not.toBeNull());
     const spies = ['importKey', 'generateKey'].map((m) => vi.spyOn(crypto.subtle, m as 'importKey').mockRejectedValue(new Error('no key')));
-    game.openModes();
     byId('leaderboard').click();
     byId('leaderboard').click(); // opened again at once: the first read fails after the second began, and says nothing
     await vi.waitFor(() => expect(byId('board-shared').textContent).toBe('The relays could not be read.'));

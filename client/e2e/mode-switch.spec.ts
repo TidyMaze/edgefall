@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // One mode at a time (#1275, docs/specs/ui.md): a mode left for another leaves nothing of itself on screen. The modes load
@@ -11,16 +11,14 @@ test('a boss fight and a battle royale left for the Hub leave no control and no 
   await startMode(page, 'echo');
   await expect(page.locator('#boss-retry')).toBeVisible();
   await expect(page.locator('#boss-bar')).toBeVisible();
-  await openModes(page);
-  await page.locator('#ship').click();
+  await startMode(page, 'hub');
   await expect(page.locator('#hud')).toContainText('Hub');
   for (const id of ['#boss-retry', '#boss-goal', '#boss-bar']) await expect(page.locator(id)).toBeHidden();
-  await expect(page.locator('#new-game')).toBeVisible();
+  await expect(page.locator('#dock')).toBeHidden(); // the Hub at home has no dock (#1697)
   expect(await page.evaluate(() => document.body.dataset.boss)).toBeUndefined();
   await page.evaluate(() => (window as unknown as { __royale: (file: object) => void }).__royale({ seed: 7, rounds: [] }));
   await expect(page.locator('#royale-hold')).toBeVisible();
-  await openModes(page);
-  await page.locator('#ship').click();
+  await startMode(page, 'hub');
   await expect(page.locator('#hud')).toContainText('Hub');
   await expect(page.locator('#royale-hold')).toBeHidden();
   // The arena's marbles are drawn from their group, hidden arena or not: none is left to draw.

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { pauseClock, stepClock } from './clock';
-import { openModes, startMode } from './modes';
+import { startMode } from './modes';
 import { shot } from './shot';
 
 // The Overseer (#635, game-design.md section 7.11) from the fixture of the core tests
@@ -170,9 +170,4 @@ test('A boss win earns a medal: a new record on the banner, the turns next to th
   await expect(page.locator('#hud .end')).toContainText('New record: 11 turns.');
   await shot(page, { path: testInfo.outputPath('medal-banner.png') });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ab-alone.medals')!))).toEqual({ echo: 14, overseer: 11 });
-  await openModes(page);
-  await page.getByRole('button', { name: 'Boss fight' }).click();
-  await expect(page.locator('#boss-list .medal')).toHaveText(['Medal: 14 turns', 'Medal: 11 turns']);
-  await expect(page.locator('#boss-list button', { hasText: 'The Overseer' })).toContainText('Medal: 11 turns');
-  await shot(page, { path: testInfo.outputPath('medal-menu.png') });
 });

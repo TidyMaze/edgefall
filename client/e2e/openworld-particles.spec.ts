@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openModes } from './modes';
 
 // #1110: particles drift near the hero in the Open world (pollen, leaves, snow or dust by biome), a step's dust puff and the
 // reduced-motion rest are unit tests (openworldmode.test.ts, openworldambiencemode.test.ts). The page marks the count it draws (`data-openworld-particles`, webdriver pages only).

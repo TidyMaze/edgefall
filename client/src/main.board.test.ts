@@ -8,7 +8,7 @@ import { DEFAULT_SKIN, SKINS, skinById } from './skins';
 import { generateKeys } from './moverecord';
 import { OnlineSession } from './session';
 import { BOSS_IDS } from './tally';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss as startBossById } from './test/harness';
 
 // The board drawing and the HUD of main.ts (#451): the materials and skins, the steel frame and its rim light, the
 // boss phase notches, the tally marks, refresh, the ghosts and the HUD plate, with their browser hooks. The scene the
@@ -85,12 +85,6 @@ const both = (game: Game): Play => async (from, to) => step(game, from, to);
 
 function setting(id: string): void {
   document.getElementById(`setting-${id}`)!.click();
-}
-
-function startBoss(game: Game, id: (typeof BOSS_IDS)[number]): void {
-  game.openModes();
-  document.getElementById('boss-fight')!.click();
-  (document.getElementById('boss-list')!.children[BOSS_IDS.indexOf(id)] as HTMLButtonElement).click();
 }
 
 /** Moves the pointer over a cell of the board, or off it when `cell` is null. */
@@ -223,7 +217,7 @@ describe('main.ts board and HUD', () => {
     const scene = catchScene();
     const game = await boot('?bot=off&look=terrace'); // the terrace's discs and pillars: the neon look draws its own board (#1424)
     const shown = (): number => parts(scene()).discs.filter((d) => d.visible).length;
-    startBoss(game, 'ballast');
+    startBossById('ballast');
     expect(shown()).toBe(85);
     expect(game.hook('__frame')).toMatchObject({ radius: 5, holes: 6 });
     const { shells, glass } = drawn(scene());
@@ -232,7 +226,7 @@ describe('main.ts board and HUD', () => {
     const ring5 = game.hook<{ cells: Axial[] }[]>('__legal').find((m) => m.cells.length === 1 && Math.abs(m.cells[0]![0]) === 5)!;
     step(game, ring5.cells[0]);
     expect(game.hook('__plies')).toBe(1);
-    startBoss(game, 'echo'); // back on 61 cells, ring 5 hides again
+    startBossById('echo'); // back on 61 cells, ring 5 hides again
     expect(shown()).toBe(61);
     expect(game.hook('__frame')).toMatchObject({ radius: 4, holes: 0 });
   });
@@ -400,14 +394,14 @@ describe('main.ts board and HUD', () => {
       mesh.addEventListener('dispose', seen);
       return seen;
     });
-    startBoss(game, 'choir'); // a new fight draws the tally again
+    startBossById('choir'); // a new fight draws the tally again
     freed.forEach((seen) => expect(seen).toHaveBeenCalledOnce());
   });
 
   it('draws no phase notch outside a boss fight, and the phase notches and threshold glyph in one', async () => {
     const game = await boot('?bot=off');
     expect(game.hook('__notches')).toEqual({ lit: 0, dark: 0, glyph: false });
-    startBoss(game, 'echo');
+    startBossById('echo');
     const notches = game.hook<{ lit: number; dark: number; glyph: boolean }>('__notches');
     expect(notches.glyph).toBe(true);
     expect(notches.lit + notches.dark).toBeGreaterThan(0);
@@ -419,7 +413,7 @@ describe('main.ts board and HUD', () => {
       { marked: 0, slots: 6 },
       { marked: 0, slots: 6 },
     ]);
-    startBoss(game, 'choir');
+    startBossById('choir');
     expect(game.hook('__tally')).toEqual([
       { marked: 0, slots: 6 },
       { marked: 0, slots: 6 },
@@ -429,7 +423,7 @@ describe('main.ts board and HUD', () => {
   it('counts in the hooks only what the scene draws', async () => {
     const scene = catchScene();
     const game = await boot('?bot=off&scene=room');
-    startBoss(game, 'echo');
+    startBossById('echo');
     const { notches, tallies, plate } = parts(scene());
     scene().remove(notches, ...tallies);
     expect(game.hook('__notches')).toEqual({ lit: 0, dark: 0, glyph: false });
@@ -480,7 +474,7 @@ describe('main.ts board and HUD', () => {
     expect(local.hud()).not.toContain('Eject 6 to win');
     const bot = await boot('?nodes=1');
     expect(bot.hud()).toContain('You vs Bot. Eject 6 to win.');
-    startBoss(bot, 'hull');
+    startBossById('hull');
     expect(bot.hud()).toContain('Rim on file.'); // #1038: the boss bar names the boss, the line keeps its flavour
     await bot.settle(); // the bot's pending answers arrive before the test ends
   });
@@ -499,7 +493,7 @@ describe('main.ts board and HUD', () => {
   it('opens holes in the frame where The Hull makes cells vanish', async () => {
     const scene = catchScene();
     const game = await boot('?nodes=1&look=terrace'); // counts the terrace look's 109 holes; the neon default gives 110 (#1424)
-    startBoss(game, 'hull');
+    startBossById('hull');
     await game.hook<Promise<number>>('__playTurns', 6, [0, 1, 2, 3, 4, 5]); // a crack at ply 8, its cell gone at ply 11
     const vanished = Number(document.body.dataset.vanished);
     expect(vanished).toBeGreaterThan(0);

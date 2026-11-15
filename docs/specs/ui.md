@@ -695,8 +695,7 @@ A new player first plays a normal Abalone game against the bot (Easy, #1664); th
   (the menu, the dock, the pad, `?openworld=` of a real player, Back, the Hub's doors). While locked the Hub's goal reads "Win your first game vs the bot" and no door is the amber plate; the notice board says "Next: win your first game vs the bot." and the open deck's seat in the rail "Seat: win your first game", not "The Echo waits". A locked Hub plate wears the line and the dashed grey of a
   locked lift. No animation, so reduced motion needs no case.
 - **Start.** A new player on the plain URL gets the board, no cold open and no Hub (the cold open waits for the unlock too). Importing a game file that holds a won game
-  against the bot unlocks like a win. The Open world does not lead the menu (`openWorldLeads`, `menuorder.ts`,
-  stays for a profile that is unlocked and fresh, which is none on a browser).
+  against the bot unlocks like a win. There is no menu to order (`menuorder.ts` is gone, #1697): every mode starts from a bay of the ship.
 - **First win.** The first win against the bot in a standard game (not a boss, run, Trainer, online room, wild fight or replay; a loss or a draw counts for
   nothing) saves `ab-alone.firstwin=1` and shows a card once: "You won." / "Unlocked: Open world, Bosses, Runs, Daily, Royale, Ranked, Leaderboard", with Open world (the filled button), Hub and Dismiss.
 - **Existing players** are unlocked at once, with no card, when any holds: `ab-alone.firstwin`, a boss beaten, a saved local game, run or Open world, or any
@@ -770,8 +769,7 @@ slot stays New game. A wild fight keeps Flee (F) in the first slot until it is o
 A boss or lair fight in progress with a ply played is not saved, so the exit asks for a second press, `Sure?` in the `.confirm` look, lapsing after `CONFIRM_MS` as New game does (`newgame.ts`); a fight over or with no ply, the world, the Hub, a town, a run, the Trainer and a table ask nothing, and Browser Back never asks.
 
 **The Hub Cutaway rewrites this table (#1698; amends Decision #1513, owner 2026-11-14).** Design: `cutaway-v2.html` on the `pr-screenshots` branch (`hub-cutaway/`).
-Status: the ship is the default Hub since #1696 (#1689, #1691, #1694). `?hub=classic` is the off switch for one release and brings the old Hub back; `?hub=cutaway` is a no-op. #1697 removes
-the old path (the Modes menu, Quick game, the dock's World button and the old Hub code). What follows is the default page.
+Status: the ship is the default Hub since #1696 (#1689, #1691, #1694). The Modes menu, Quick game, the dock's World button, the lock banner and note and `menuorder.ts` are gone (#1697). `?hub=classic` is still the off switch and brings the old deck back (its code goes in a later commit of #1697); `?hub=cutaway` is a no-op. What follows is the default page.
 
 **One home for every feature.** A feature starts in one place; any other screen may show its state and lead there, never start it.
 
@@ -791,7 +789,7 @@ With no room left (all five beaten) the line and the card say so and do nothing.
 
 | Screen | Enter | Exit, first slot | State |
 |---|---|---|---|
-| Plain table | Hub, House table bay; New game | the exit, to the Hub (the table is no longer a home) | Once the flag is on (#1697) |
+| Plain table | Hub, House table bay; New game | the exit, to the Hub (the table is no longer a home); none while the first win is awaited (the ship is not open yet) | Built (#1697) |
 | Hub (the ship) | Boot of a returning player; the exit of any mode | none: the home, no dock. Back goes to the table | Default (`?hub=classic` for the old one) |
 | A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its bay: the marble rolls there, the confirm asks, Enter starts | Hub | Default (`?hub=classic` for the old one) |
 | Open world | Hub, Airlock bay | Hub (the world saved) | Default (`?hub=classic` for the old one) |
@@ -799,11 +797,11 @@ With no room left (all five beaten) the line and the card say so and do nothing.
 | Dungeon gate (the run) | Roll onto a gate: the ship opens on the Mining cut, the biome kept | Stay or the exit: World, hero on the entrance | Default (`?hub=classic` for the old one) |
 | Tower (a lair fight) | Roll onto a lair: the ship opens on the boss's bay | Stay or the exit: World, hero on the entrance | Default (`?hub=classic` for the old one) |
 | Wild fight | A marble touches the hero | Flee, then World | Built |
-| Online room (Play online, Fight together, Boss duel, an invite link) | Comms desk, Shift crew bays; `#room=` opens its table | the exit; its Lobby sheet | Once the flag is on |
+| Online room (Play online, Fight together, Boss duel, an invite link) | Comms desk, Shift crew bays; `#room=` opens its table | the exit; its Lobby sheet | Built (#1697) |
 
 Not changed by the Cutaway: the first slot of the dock is the exit in every mode (Hub or World), Esc and Browser Back press it, and a fight with a ply played asks `Sure?`.
 
-**The Modes menu goes once the flag is on (#1696, #1697).** World and Quick leave the dock with it, and the Hub at home has no dock. The dock of a table is New, Hint, Undo, Replay;
+**The Modes menu is gone (#1697).** World and Quick left the dock with it, and the Hub at home has no dock (a dock with no button to show is not drawn). The mode buttons the bays press live in a hidden `#starters` group; none is a screen. The dock of a table is New, Hint, Undo, Replay;
 in the Open world the plate keeps Nearest tower and Quick game goes. Two taps reach any mode from any game: the exit, then a bay.
 
 **A new player (#1665 with the Cutaway).** Plays the guided first match first, then lands in the ship with only the Mess lit; the other decks stay dark with a padlock and open after
@@ -840,7 +838,7 @@ Every feature, after:
 | New version: reload | Settings, first row, the dot on the cog |
 | Reset everything | Settings, last row (unchanged) |
 
-**Old table (flag off, until #1697 removes it).**
+**Old table (`?hub=classic`, until the old Hub code goes; its Modes menu, Quick game and World button are already gone).**
 
 | Screen | Enter | Exit, first slot | State |
 |---|---|---|---|
@@ -863,7 +861,7 @@ Quick game button, the Console and the fast travel.
 
 Held upright in the world the plate stands above the exit and in the lower half of the screen, the hero at the middle stays seen: a taller plate scrolls, the online row last (#1606).
 
-The dock keeps New game, View, Hint, Replay and Modes clear of the exit: held upright, the gaps shrink from 8 px to what a 360 px
+The dock keeps New game, View, Hint, Undo and Replay clear of the exit: held upright, the gaps shrink from 8 px to what a 360 px
 window leaves, so seven buttons (the exit with Auto-play at a bot's table) fit; the buttons stay 44 px. Held sideways the column scrolls from six
 buttons on, as before (thumb-dock.md section 2).
 

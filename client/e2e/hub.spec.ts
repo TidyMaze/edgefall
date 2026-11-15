@@ -111,7 +111,7 @@ test('the boss door starts the Echo, and Back to the hub after the defeat lands 
   await expect(back).toBeHidden();
 });
 
-test('the evaluation bar and Hint are off in the hub and back once a new game leaves it, #583', async ({ page }, testInfo) => {
+test('the evaluation bar and Hint are off in the hub and back once a table leaves it, #583', async ({ page }, testInfo) => {
   await page.goto('./?bot=off&hub=classic');
   await page.locator('canvas').waitFor();
   const bar = page.locator('#eval');
@@ -123,14 +123,14 @@ test('the evaluation bar and Hint are off in the hub and back once a new game le
   await expect(bar).toBeHidden();
   await expect(hint).toBeHidden();
   await shot(page, { path: testInfo.outputPath('hub-no-eval.png') });
-  await page.locator('#new-game').click(); // no move played: one press starts over
+  await startMode(page, 'arena'); // the House table's bay starts a game (the Hub has no New game, #1697)
   await expect(page.locator('body')).not.toHaveAttribute('data-hub');
   await expect(bar).toBeVisible();
   await expect(bar).toHaveAttribute('data-ply', '0', { timeout: 10_000 });
   await expect(hint).toBeVisible();
 });
 
-test('Export game and Import game are off in the hub and back once a new game leaves it, #589', async ({ page }, testInfo) => {
+test('Export game and Import game are off in the hub and back once a table leaves it, #589', async ({ page }, testInfo) => {
   await page.goto('./?bot=off&hub=classic');
   await page.locator('canvas').waitFor();
   const cog = page.getByRole('button', { name: 'Settings' });
@@ -144,7 +144,7 @@ test('Export game and Import game are off in the hub and back once a new game le
   await expect(menu.getByRole('button', { name: 'Import game' })).toBeHidden();
   await shot(page, { path: testInfo.outputPath('hub-settings.png') });
   await page.keyboard.press('Escape');
-  await page.locator('#new-game').click(); // no move played: one press starts over
+  await startMode(page, 'arena'); // the House table's bay starts a game (the Hub has no New game, #1697)
   await expect(page.locator('body')).not.toHaveAttribute('data-hub');
   await cog.click();
   await openAdvanced(page);

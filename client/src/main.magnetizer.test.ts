@@ -2,7 +2,7 @@
 import * as THREE from 'three/webgpu';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import type { Axial } from './board';
-import { boot, type Game } from './test/harness';
+import { boot, type Game, startBoss } from './test/harness';
 
 // The Magnetizer on the harness (#645, #671, game-design.md section 7.9): the + and − glyphs over the polarized
 // marbles, the announce one turn ahead, the ring on a fresh one, the HUD line, and the repulsions played in the engine's
@@ -48,9 +48,7 @@ function fightMagnetizer(game: Game, seed = 120): void {
     (a as Uint32Array).fill(seed);
     return a;
   });
-  game.openModes();
-  byId('boss-fight').click();
-  [...byId('boss-list').querySelectorAll('button')].find((b) => b.textContent === 'The Magnetizer')!.click();
+  startBoss('The Magnetizer');
 }
 
 /** Plays ply `i` of the fixture by clicks: its marbles, then the cell in front of the first one. */

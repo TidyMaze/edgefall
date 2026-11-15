@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { firstWon, existingPlayer, LOCK_BANNER, LOCK_NOTE, isLocked, markFirstWin, paintLocks, doorLocked, firstWinGame, LOCKED_IDS, LOCK_LINE, LOCK_SHORT, UNLOCK_CARD, SHIP_UNLOCK_TEXT, LOCKED_BAY_LINE } from './unlock';
+import { firstWon, existingPlayer, LOCK_BANNER, isLocked, markFirstWin, markStarters, doorLocked, firstWinGame, LOCK_LINE, UNLOCK_CARD, SHIP_UNLOCK_TEXT, LOCKED_BAY_LINE } from './unlock';
 import type { Store } from './quality';
 
 // The first-win lock (#1665, docs/specs/ui.md section 4.10): a new player plays the normal game first; the modes unlock after the first win.
@@ -93,45 +93,18 @@ describe('the lock', () => {
   });
 });
 
-describe('the menu render of a locked entry', () => {
-  const menu = (): void => {
-    document.body.innerHTML = [...LOCKED_IDS, 'play-online', 'new-game'].map((id) => `<button id="${id}"></button>`).join('') + '<p id="lock-banner"></p><p id="lock-note"></p>';
-  };
-  it('dims every locked entry with aria-disabled, data-locked and both lines, and leaves the others', () => {
-    menu();
-    paintLocks(document, true);
-    for (const id of LOCKED_IDS) {
-      const el = document.getElementById(id)!;
-      expect(el.getAttribute('aria-disabled'), id).toBe('true');
-      expect(el.dataset.locked, id).toBe(LOCK_LINE);
-      expect(el.dataset.lockShort, id).toBe(LOCK_SHORT);
-    }
-    for (const id of ['play-online', 'new-game']) expect(document.getElementById(id)!.hasAttribute('aria-disabled'), id).toBe(false);
+describe('the starters that wait for the first win (#1697)', () => {
+  it('marks them data-locked while locked and clears the mark when unlocked, and leaves the others', () => {
+    document.body.innerHTML = ['openworld', 'daily', 'roguelite', 'battle-royale', 'ranked', 'leaderboard', 'fight-together', 'boss-duel', 'ship', 'trainer', 'play-online'].map((id) => `<button id="${id}"></button>`).join('');
+    markStarters(document, true);
+    for (const id of ['openworld', 'ship', 'trainer', 'daily']) expect(document.getElementById(id)!.dataset.locked, id).toBe(LOCK_LINE);
+    expect(document.getElementById('play-online')!.dataset.locked).toBeUndefined();
+    markStarters(document, false);
+    expect(document.querySelectorAll('[data-locked]')).toHaveLength(0);
+  });
+  it('says the lines of the lock', () => {
     expect(LOCK_LINE).toBe('Win your first game to unlock');
-    expect(LOCK_SHORT).toBe('Win 1st game');
-    expect(LOCKED_IDS).toEqual(expect.arrayContaining(['openworld', 'boss-fight', 'roguelite', 'daily', 'battle-royale', 'ranked', 'leaderboard', 'fight-together', 'boss-duel', 'ship', 'trainer']));
-    expect(LOCKED_IDS).not.toContain('play-online');
-  });
-  it('shows the banner and the note while locked, hides them when unlocked', () => {
-    menu();
-    paintLocks(document, true);
-    expect(document.getElementById('lock-banner')!.hidden).toBe(false);
-    expect(document.getElementById('lock-note')!.hidden).toBe(false);
-    paintLocks(document, false);
-    expect(document.getElementById('lock-banner')!.hidden).toBe(true);
-    expect(document.getElementById('lock-note')!.hidden).toBe(true);
     expect(LOCK_BANNER).toBe('Win your first game vs the bot');
-    expect(LOCK_NOTE).toBe('More unlocks after your first win');
-  });
-  it('lifts the look when unlocked', () => {
-    menu();
-    paintLocks(document, true);
-    paintLocks(document, false);
-    for (const id of LOCKED_IDS) {
-      const el = document.getElementById(id)!;
-      expect(el.hasAttribute('aria-disabled'), id).toBe(false);
-      expect(el.dataset.locked, id).toBeUndefined();
-    }
   });
 });
 

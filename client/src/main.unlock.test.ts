@@ -4,10 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { BLACK_WINS, WHITE_WINS } from '../e2e/end-games';
 import { gameFileText } from './gamefile';
 import { boot, type Game } from './test/harness';
-import { LOCKED_IDS, LOCK_LINE } from './unlock';
+
 
 // The first-win lock on main.ts (#1665, docs/specs/ui.md section 4.10): a new player plays the normal game first; the other modes unlock after the first win.
 
+/** The starter buttons that wait for the first win (#1697). */
+const LOCKED_IDS = ['openworld', 'daily', 'roguelite', 'battle-royale', 'ranked', 'leaderboard', 'fight-together', 'boss-duel', 'ship', 'trainer'];
 const byId = <T extends HTMLElement = HTMLButtonElement>(id: string): T => document.getElementById(id) as T;
 const unlocked = (): string | undefined => document.body.dataset.unlocked;
 const flag = (): string | null => localStorage.getItem('ab-alone.firstwin');
@@ -29,19 +31,12 @@ describe('the landing of a new player', () => {
     expect(document.body.dataset.firstrun).toBe('match');
     expect(document.body.dataset.hub).toBeUndefined();
     expect(unlocked()).toBe('0');
-    expect(byId('open-world-entry').hidden).toBe(true); // the Open world does not lead a new player
-    for (const id of LOCKED_IDS) {
-      expect(byId(id).getAttribute('aria-disabled'), id).toBe('true');
-      expect(byId(id).dataset.locked, id).toBe(LOCK_LINE);
-    }
-    for (const id of ['play-online', 'new-game', 'quick-game']) expect(byId(id).hasAttribute('aria-disabled'), id).toBe(false);
+    expect(byId('exit').hidden).toBe(true); // the ship is not open yet: the table has no way out
   });
 
   it('presses on a locked entry start nothing, the menu stays as it is', async () => {
     const game = await boot('/', { webdriver: false });
-    game.openModes();
     for (const id of LOCKED_IDS) byId(id).click();
-    expect(byId('boss-list').hidden).toBe(true);
     expect(document.body.dataset.hub).toBeUndefined();
     expect(document.body.dataset.boss).toBeUndefined();
     expect(document.body.dataset.openworld).toBeUndefined();
@@ -55,7 +50,7 @@ describe('the landing of a new player', () => {
     expect(document.body.dataset.hub).toBe('mess 0,0');
     const plate = (cell: string): HTMLElement => document.querySelector<HTMLElement>(`#hub-labels [data-cell="${cell}"]`)!;
     expect(plate('2,0').dataset.mark).toBe('locked'); // The Dual Room
-    expect(plate('2,0').textContent).toContain(LOCK_LINE);
+    expect(plate('2,0').textContent).toContain('Win your first game to unlock');
     expect(plate('-2,0').dataset.mark).toBeUndefined(); // the House table
     game.click(1, 0);
     game.click(2, 0);
@@ -73,9 +68,6 @@ describe('who is locked', () => {
   it('an automated page is open, and ?newplayer gives it a new player', async () => {
     await boot('/');
     expect(unlocked()).toBe('1');
-    expect(byId('boss-fight').hasAttribute('aria-disabled')).toBe(false);
-    await boot('?locks'); // the boss list's own hook
-    expect(unlocked()).toBe('1');
     await boot('?newplayer');
     expect(unlocked()).toBe('0');
   });
@@ -91,7 +83,6 @@ describe('who is locked', () => {
     await boot('/?newplayer', { storage });
     expect(unlocked()).toBe('1');
     expect(card().hidden).toBe(true);
-    for (const id of LOCKED_IDS) expect(byId(id).hasAttribute('aria-disabled'), id).toBe(false);
   });
 
   it('a saved local game opens everything at once', async () => {
@@ -127,7 +118,6 @@ describe('the first win', () => {
     expect(byId('unlock-title').textContent).toBe('You won.');
     expect(byId('unlock-text').textContent).toBe('Unlocked: Open world, Bosses, Runs, Daily, Royale, Ranked, Leaderboard');
     expect(card().getAttribute('role')).toBe('dialog');
-    for (const id of LOCKED_IDS) expect(byId(id).hasAttribute('aria-disabled'), id).toBe(false);
     byId('unlock-dismiss').click();
     expect(card().hidden).toBe(true);
     await finish(game, BLACK_WINS); // another win does not show it again
@@ -198,7 +188,6 @@ describe('the returning player, whatever the record', () => {
   it('a saved Open world opens everything at once', async () => {
     const indexedDB = new IDBFactory();
     const first = await boot('?bot=off', { indexedDB });
-    first.openModes();
     byId('openworld').click();
     for (let i = 0; i < 10; i++) await new Promise((done) => setTimeout(done)); // the menu reads the saved world first
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })); // one step of the hero, saved
@@ -225,44 +214,14 @@ describe('every way into a locked mode', () => {
     const game = await boot('/?openworld=7', { webdriver: false });
     expect(document.body.dataset.openworld).toBeUndefined();
     expect(unlocked()).toBe('0');
-    game.openModes();
-    for (const id of ['ship', 'trainer', 'openworld', 'open-world-entry']) byId(id).click();
+    for (const id of ['ship', 'trainer', 'openworld']) byId(id).click();
     expect(document.body.dataset.hub).toBeUndefined();
     expect(document.body.dataset.trainer).toBeUndefined();
     expect(document.body.dataset.openworld).toBeUndefined();
   });
 });
 
-describe('the locked rows are reachable by keyboard', () => {
-  it('stay focusable (not disabled, in the tab order), say aria-disabled and open nothing on Enter', async () => {
-    const game = await boot('?newplayer');
-    game.openModes();
-    for (const id of LOCKED_IDS) {
-      const row = byId(id);
-      expect(row.disabled, id).toBe(false);
-      expect(row.tabIndex, id).toBeGreaterThanOrEqual(0);
-      row.focus();
-      expect(document.activeElement, id).toBe(row);
-      expect(row.getAttribute('aria-disabled'), id).toBe('true');
-      row.click(); // Enter on a button is a click
-    }
-    expect(document.body.dataset.hub).toBeUndefined();
-    expect(byId('boss-list').hidden).toBe(true);
-  });
-});
-
-describe('the menu and the Hub name the first move', () => {
-  it('the menu opens on a banner and ends on a note while locked; both go with the lock', async () => {
-    const game = await boot('?newplayer');
-    game.openModes();
-    expect(byId('lock-banner').hidden).toBe(false);
-    expect(byId('lock-banner').textContent).toBe('Win your first game vs the bot');
-    expect(byId('lock-note').textContent).toBe('More unlocks after your first win');
-    expect(byId('lock-banner').nextElementSibling).toBe(byId('lock-note')); // the note sits at the top under the banner, never below the list
-    await finish(game, BLACK_WINS);
-    expect(byId('lock-banner').hidden).toBe(true);
-    expect(byId('lock-note').hidden).toBe(true);
-  });
+describe('the Hub names the first move', () => {
   it('the Hub goal reads the first win, and no door is the amber goal', async () => {
     const game = await boot('?newplayer');
     game.hook('__enterMode', 'hub');

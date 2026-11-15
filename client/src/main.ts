@@ -32,8 +32,7 @@ import { BOARD_TEXT, publishAllowed, publishFlag, boardAskNeeded, boardKeys, joi
 import { GUIDE, guideDue, guideStep, writeGuideSeen, type GuideEvent } from './guide';
 import { firstBotMove } from './firstbot';
 import { COACH, COLD_OPEN, PRACTICE_BOT, firstRunDue, isPush, markFirstRunDone, nextStep, stepLine, type MatchStep } from './firstrun';
-import { openWorldLeads } from './menuorder';
-import { doorLocked, existingPlayer, firstWinGame, isLocked, LOCK_BANNER, LOCKED_BAY_LINE, markFirstWin, paintLocks, SHIP_UNLOCK_TEXT, UNLOCK_CARD } from './unlock';
+import { doorLocked, existingPlayer, firstWinGame, isLocked, LOCK_BANNER, LOCKED_BAY_LINE, markFirstWin, markStarters, SHIP_UNLOCK_TEXT, UNLOCK_CARD } from './unlock';
 import { worldSaves } from './openworldsave';
 import { askBot, askEval, BOT_NODES, botBudget, encounterFor, engineFor, WILD_NODES } from './bot';
 import { askMirror } from './traitchoice';
@@ -332,7 +331,7 @@ import { tallyRow, tallySlots } from './tallymarks';
 import { formatScore } from './score';
 import { runScoreHtml } from './runhud';
 import { cardText, Legend, legendHtml, marksOn } from './specialhelp';
-import { bestTurns, loadMedals, medalLabel, medalLine, medalRoom, playerTurns, recordMedal, tallyAttempt, tallyWin, type MedalResult } from './medals';
+import { bestTurns, loadMedals, medalLine, medalRoom, playerTurns, recordMedal, tallyAttempt, tallyWin, type MedalResult } from './medals';
 import { loadProgress, recordWin, saveProgress } from './progress';
 import { HUB_CELLS, hubPath, neighbours, roomAt, START, step, type Door, type Spot as HubSpot } from './hub';
 import { gateBay, towerBay, visitCue, type BayEntry } from './hubentry';
@@ -344,7 +343,7 @@ import { noticeBoard } from './hubboard';
 import { NO_ARMY, NO_RESOURCES, type Army, type Resources } from './openworldresources';
 import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hullKeeps, leave as leaveBrought, leaveRelic, lose, placeBrought, relicsMask, sell, sellRelic, thrownOff, upgrade as upgradeMarble, wildFoes, withoutKinds, type Stock } from './openworldworkshop';
 import { workshopHtml } from './workshopview';
-import { bossLockLine, labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, type Goal } from './hubview';
+import { labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, type Goal } from './hubview';
 import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, plainSearch, shellFor, shipState } from './hubcutaway';
 import { bayButtons, bayRect, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { goalBay, goalLabel, goalWords, paintGoalText, placeGoal, wayTag } from './hubgoal';
@@ -356,7 +355,7 @@ import { LocalSaves, type LocalGame } from './savegame';
 import { LEGACY_UNLOCKED, readUnlocked, recordUnlocked } from './collector';
 import { undoAllowed, undoLength } from './undo';
 import { engineAt, replayKey, replayLabel, stepPly, type ReplayStep } from './replay';
-import { CONFIRM_MS, newGameLabel, pressNewGame, quickGameHidden, type Confirm } from './newgame';
+import { CONFIRM_MS, newGameLabel, pressNewGame, type Confirm } from './newgame';
 import { gameFileName, gameFileText, readGameFile } from './gamefile';
 import {
   actBoss,
@@ -1328,7 +1327,6 @@ let menuIsOpen = false;
 const moveMenu = (event: MenuEvent): void => {
   menuIsOpen = menuOpen(menuIsOpen, event);
   if (menuIsOpen) {
-    moveModes('outside'); // one sheet at a time (#1032)
     closeGoal();
     closeLobby(); // one sheet at a time (#1044)
     closeBay();
@@ -1397,7 +1395,7 @@ guideBox.addEventListener('keydown', (e) => {
 // and a press starts nothing, whatever opens them (the menu, the dock, a door of the Hub); a link, Settings, New game and Play online never ask.
 // The first win against the bot saves one flag, lifts the lock and shows a card once. body[data-unlocked] reads 0 or 1.
 function syncLocks(): void {
-  paintLocks(document, locked);
+  markStarters(document, locked);
   document.body.dataset.unlocked = locked ? '0' : '1';
 }
 let landTimer: ReturnType<typeof setTimeout> | undefined; // the landing in the ship, and the spark's end
@@ -1431,8 +1429,8 @@ for (const [id, press] of [['unlock-world', () => openWorldButton.click()], ['un
     press();
   });
 }
-// One guard for the whole page, in the capture phase: a press on a locked entry (the menu, the dock's Open world, the pad's Enter, a call of .click() such
-// as ?openworld=, Browser Back or a door of the Hub) starts nothing. The entry keeps the focus and its aria-disabled.
+// One guard for the whole page, in the capture phase: a press on a starter that waits for the first win (a bay, a call of .click() such as ?openworld=,
+// Browser Back or a door of the Hub) starts nothing.
 document.addEventListener(
   'click',
   (e) => {
@@ -1713,7 +1711,6 @@ function showShared(): void {
   });
 }
 boardButton.addEventListener('click', () => {
-  moveModes('outside');
   showShare();
   showShared();
   const profile = loadRankedProfile(store);
@@ -1736,37 +1733,11 @@ boardBox.addEventListener('keydown', (e) => {
 // Where the pad walks the focus: in the guide or the opt-in while one is open.
 const padScope = (): ParentNode => (!optinBox.hidden ? optinBox : !consentBox.hidden ? consentBox : !coldBox.hidden ? coldBox : guideBox.hidden ? document : guideBox);
 if (guideDue(store, location.search)) openGuide(null);
-// The mode menu (#357): Play online, Boss fight with its boss list, and Daily challenge behind one button, opened and
-// closed like the settings menu. Starting a mode closes it (startBoss, Play online).
-const modeButton = document.getElementById('modes') as HTMLButtonElement;
-const modeMenu = document.getElementById('mode-menu')!;
-modeButton.innerHTML = icon('modes');
-let modesOpen = false;
-const moveModes = (event: MenuEvent): void => {
-  if (event === 'pick') {
-    leaveRun(); // another mode abandons the run (startRun starts its own after)
-    leaveTrainer();
-  }
-  modesOpen = menuOpen(modesOpen, event);
-  modeMenu.hidden = !modesOpen;
-  modeButton.setAttribute('aria-expanded', String(modesOpen));
-  if (modesOpen) {
-    moveMenu('outside'); // one sheet at a time (#1032)
-    closeGoal();
-    closeLobby(); // one sheet at a time (#1044)
-    closeBay();
-  }
+// Another mode abandons the run and the Trainer (startRun and startTrainer start their own after). There is no mode menu (#1697): a mode starts in the ship.
+const pickMode = (): void => {
+  leaveRun();
+  leaveTrainer();
 };
-modeButton.addEventListener('click', () => moveModes('button'));
-addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape' || !modesOpen) return;
-  moveModes('escape');
-  modeButton.focus();
-});
-addEventListener('pointerdown', (e) => {
-  if (modesOpen && !within(modeMenu, e.target) && !within(modeButton, e.target)) moveModes('outside');
-});
-modeButton.disabled = false; // listener ready (#146)
 
 for (const type of ['pointerdown', 'pointerup', 'keydown']) addEventListener(type, () => sfx.unlock(), { capture: true });
 document.addEventListener('visibilitychange', () => sfx.visible(!document.hidden)); // no sound in a hidden tab (#728)
@@ -2947,12 +2918,11 @@ let exitReady = false; // the page is built: what the exit reads (the online roo
 /** Where the exit of the screen shown leads (exitslot.ts); Browser Back goes to the same place. */
 function exitNow(): Exit {
   return exitOf({
-    online: online !== null && roomOf === null, // a table of a Hub door keeps its way back to the Hub, online or not (#522)
     world: openWorld.active,
     wild: wildFrom !== null,
     lair: lairFrom !== null,
     place: placeFrom !== null && (hub !== null || run !== null),
-    mode: run !== null || trainer !== null || fight !== null || royale !== null || roomOf !== null,
+    home: (hub !== null && roomOf === null) || locked, // the Hub (a table a door started has left it), or the new player's first table: the ship is not open yet (#1697)
   });
 }
 /** Draws the exit from the screen shown: its label names where it leads. A wild fight keeps Flee in the first slot (it leads to the same place). */
@@ -4450,7 +4420,11 @@ function placeShipGoal(): void {
 }
 /** The room the ship leaves to the title plate over it and the dock under it, so that no bay sits under either (#1691). */
 // The hull's dome and mast may stand behind the plate and the gear, a bay never.
-const dockGap = (): number => Math.max(0, innerHeight - document.getElementById('dock')!.getBoundingClientRect().top + 6);
+/** The height the dock takes from the bottom, 6 px over it; the Hub at home has no dock (#1697), so the ship takes its height. */
+const dockGap = (): number => {
+  const { top, height } = document.getElementById('dock')!.getBoundingClientRect();
+  return height === 0 ? 8 : Math.max(0, innerHeight - top + 6);
+};
 const shipInset = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) - 40), bottom: dockGap() + (shellFor(innerWidth, innerHeight) === 'tall' && !bayEntry ? GOAL_LINE : 0) }); // a phone's goal line stands over the dock, no bay under it
 /** What a small phone's camera leaves at the top and the bottom: the whole of the plate and the gear, and the dock, so that no bay is drawn under them. */
 const shipSolid = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) + 4), bottom: shipInset().bottom });
@@ -4616,7 +4590,6 @@ function refresh(): void {
   dirty = CHANGE_DRAWS;
   syncSpace();
   syncAuto();
-  syncQuick();
   if (hub || royale) drawDual(null); // no fight, no void (#947)
   if (hub) {
     const { beaten } = loadProgress(store);
@@ -5674,14 +5647,11 @@ canvas.addEventListener(
   { passive: false },
 );
 
-document.getElementById('reset-view')!.addEventListener('click', () => {
-  moveModes('outside'); // the Reset view button sits in the Game modes menu (#1612): a press closes it
+viewResetButton.addEventListener('click', () => { // the button over the board that #1681 added; the Modes menu's row is gone (#1697)
   if (freeCam.active) toggleFreeCam(false);
   view = fitted = fightView();
   applyView();
 });
-(document.getElementById('reset-view') as HTMLButtonElement).disabled = false; // listener ready (#146)
-viewResetButton.addEventListener('click', () => (document.getElementById('reset-view') as HTMLButtonElement).click()); // the same Reset view, one press away (#1681)
 // The left HUD panel folds to a tab with its button alone (#957), saved. Folded, it stays in the page for screen readers.
 const hudFold = document.getElementById('hud-fold') as HTMLButtonElement;
 function foldHud(folded: boolean): void {
@@ -6087,8 +6057,6 @@ newGameButton.disabled = false; // listener ready (#146)
 
 // Boss fight: the menu lists the bosses of the bridge, picking one switches the page to encounter
 // mode (human Black, the boss answers in the worker). Retry restarts the same boss and seed.
-const bossButton = document.getElementById('boss-fight')!;
-const bossList = document.getElementById('boss-list')!;
 const retryButton = document.getElementById('boss-retry')!;
 /** What the army brings to the lair `id` entered from the world (#1655): the special marbles on its side and the relics when the boss takes the army's build (`takes_build`), nothing for the others. */
 function lairBuild(id: string, seed: number, mirror: boolean, brought: number[], relics: number[]): { placed: number[][]; relics: number[] } {
@@ -6114,9 +6082,7 @@ function startBoss(id: string, seed: number, daily?: { day: string; attempt: num
   selected = [];
   thinking = false;
   if (!resumeFrom && stalkerSaved()) void saves.save(savedGame(), false); // a new Stalker fight replaces the saved one (#1122)
-  bossList.hidden = true;
-  bossButton.setAttribute('aria-expanded', 'false');
-  moveModes('pick');
+  pickMode();
   retryButton.hidden = false;
   newGameButton.hidden = true;
   document.body.dataset.boss = id;
@@ -6127,48 +6093,6 @@ function startBoss(id: string, seed: number, daily?: { day: string; attempt: num
   if (!resumeFrom) beginEntrance(id); // a fight from a reload does not replay it
   applyView();
 }
-/** Whether the boss menu locks the bosses above the Hub's lifts (#1527): a player's browser does, an automated page (every other spec) only with `?locks`.
- * Links, `startBoss` itself, the Hub's doors, the lairs and the test hooks never ask. */
-const menuLocks = !navigator.webdriver || new URLSearchParams(location.search).has('locks');
-const bossEntries = new Map<string, HTMLButtonElement>();
-for (const id of boss_ids()) {
-  const entry = document.createElement('button');
-  entry.type = 'button';
-  entry.textContent = boss_name(id)!;
-  entry.title = bossBlurb(id)!; // the tower's one line of the story (#1544)
-  entry.addEventListener('click', () => {
-    if (!entry.dataset.locked) startBoss(id, crypto.getRandomValues(new Uint32Array(1))[0]!);
-  });
-  bossList.appendChild(entry);
-  bossEntries.set(id, entry);
-}
-/** The medal and its best turn count next to each beaten boss (#791), read from the storage when the menu opens. */
-function showMedals(): void {
-  const beaten = loadProgress(store).beaten;
-  for (const [id, entry] of bossEntries) {
-    const turns = bestTurns(store, id);
-    const lock = menuLocks ? bossLockLine(id, beaten) : ''; // a boss above the Hub's lifts is locked, with its reason (#1527)
-    entry.replaceChildren(boss_name(id)!);
-    if (turns !== null) entry.append(' ', Object.assign(document.createElement('span'), { className: 'medal', textContent: medalLabel(turns) }));
-    if (lock) {
-      entry.append(' ', Object.assign(document.createElement('span'), { className: 'lock', textContent: lock }));
-      entry.dataset.locked = lock;
-      entry.setAttribute('aria-disabled', 'true');
-    } else {
-      delete entry.dataset.locked;
-      entry.removeAttribute('aria-disabled');
-    }
-  }
-}
-bossButton.addEventListener('click', () => {
-  if (online) return;
-  if (bossList.hidden) showMedals();
-  bossList.hidden = !bossList.hidden;
-  bossButton.setAttribute('aria-expanded', String(!bossList.hidden));
-  if (!bossList.hidden) showCoopList(false); // one boss list open at a time (#615)
-});
-(bossButton as HTMLButtonElement).disabled = false; // engine, boss list and listener ready (#144)
-
 // Daily challenge (#195): the UTC date gives the boss and the seed, the same for everyone that day.
 // Each start counts one attempt of the day in localStorage, Retry included. Retry on a daily starts
 // the daily of the current day, so after 00:00 UTC it is the new day's fight.
@@ -6194,7 +6118,6 @@ dailyButton.disabled = false; // label and listener ready (#144)
 goalButton.addEventListener('click', () => {
   goalOpen = !goalOpen;
   if (goalOpen) {
-    moveModes('outside'); // one sheet at a time (#1032)
     moveMenu('outside');
     closeLobby(); // one sheet at a time (#1044)
   }
@@ -6231,7 +6154,7 @@ function startWild(from: NonNullable<typeof wildFrom>): void {
   replaying = null;
   selected = [];
   thinking = false;
-  moveModes('pick');
+  pickMode();
   retryButton.hidden = true;
   newGameButton.hidden = true;
   view = resetView(4);
@@ -6349,7 +6272,7 @@ addEventListener('keydown', (e) => {
 });
 const shipButton = document.getElementById('ship') as HTMLButtonElement;
 shipButton.addEventListener('click', () => {
-  moveModes('pick');
+  pickMode();
   enterHub(loadProgress(store).at);
 });
 shipButton.disabled = false; // listener ready (#146)
@@ -6365,7 +6288,7 @@ function enterHub(at: HubSpot): void {
   hubCoach.hidden = !(helpOn && hubCoachDue(store, loadProgress(store).beaten));
   view = fitted = fightView(); // the deck plan, framed closer (#1249)
   applyView();
-  evalBar.hidden = hintButton.hidden = exportButton.hidden = importButton.hidden = true; // no game on in the hub: a new game shows them again (#583, #589)
+  evalBar.hidden = hintButton.hidden = exportButton.hidden = importButton.hidden = newGameButton.hidden = true; // no game on in the hub, and no dock (#1697): a new game shows them again (#583, #589)
   analyst.stop();
   sceneRenderer.setHubFloor(true); // the dark neon ground round the deck (#1639)
   applyDeck(at.deck);
@@ -6489,7 +6412,6 @@ function enterModeRoom(door: Door | undefined): void {
   else if (door?.kind === 'trainer') trainerButton.click();
   else if (door?.kind === 'world') openWorldButton.click();
   else if (door?.kind === 'together') {
-    if (!modesOpen) moveModes('button');
     showCoopList(true);
   }
 }
@@ -6500,39 +6422,6 @@ function startLocal(bot: boolean): void {
   worker = bot ? botWorker : null;
   newGame();
 }
-// Quick game (#1612, Decision #1513): a bot game from the dock and from the Open world's plate, outside the world. An unfinished game
-// asks first, as New game does (pressNewGame), and the question shows on the Quick game button that was pressed, since the New game
-// button is hidden in a fight, a run or the world.
-const quickButtons = [document.getElementById('quick-game')!, document.getElementById('openworld-quick')!] as HTMLButtonElement[];
-let confirmQuick: Confirm = null;
-let quickLapse = 0; // ends the question
-function askQuickGame(confirm: Confirm): void {
-  confirmQuick = confirm;
-  for (const quick of quickButtons) {
-    quick.textContent = confirm === null ? 'Quick game' : 'Confirm quick game';
-    quick.classList.toggle('confirm', confirm !== null); // the dock draws its label from the class (#1678)
-  }
-  clearTimeout(quickLapse);
-  if (confirm !== null) quickLapse = setTimeout(askQuickGame, CONFIRM_MS, null);
-}
-/** Quick game is hidden in a fight, a boss or a wild one (#1612): the press of a fight that is still on does nothing, as a hidden button does. */
-function syncQuick(): void {
-  const hidden = quickGameHidden(fight !== null, wildFrom !== null);
-  for (const id of ['quick-game', 'openworld-quick']) document.getElementById(id)!.hidden = hidden; // by id: refresh() may run before the buttons below are set up
-}
-for (const quick of quickButtons) {
-  quick.addEventListener('click', () => {
-    if (quickGameHidden(fight !== null, wildFrom !== null)) return;
-    const press = pressNewGame(confirmQuick, performance.now(), history.length);
-    askQuickGame(press.confirm);
-    if (press.start) startLocal(true);
-  });
-  quick.disabled = false; // listener ready (#146)
-}
-// The one-tap Open world of a fresh profile (#1612): the dock entry opens the world as the mode menu's entry does.
-const openWorldEntry = document.getElementById('open-world-entry') as HTMLButtonElement;
-openWorldEntry.addEventListener('click', () => openWorldButton.click());
-openWorldEntry.disabled = false; // listener ready (#146)
 /** The exit of the dock (#1517): to the Open world, the hero on the entrance cell the mode was entered from (a lair, a wild marble, a town, a gate),
  * or to the Hub, the saved world left as Esc leaves it. The Hub of a table's door keeps the door's cell. */
 function leaveByExit(): void {
@@ -6594,13 +6483,13 @@ function leaveMode(): void {
   skipEjections(); // the effects of the mode's last move end with it
   clearStray(document);
   newGameButton.hidden = false;
-  syncQuick();
 }
 function leaveHub(): void {
   if (!hub) return;
   cancelHubWalk();
   hub.exit();
   hub = null;
+  newGameButton.hidden = false; // the table's dock is back (#1697)
   sceneRenderer.setHubFloor(false); // the fight's surround leans to its deck again (#1639)
   hubPlan.hidden = true;
   view = fitted = resetView(4); // a board again, as at the start: the game started from the hub frames its own (#1249)
@@ -6797,10 +6686,10 @@ const hideInvite = (): void => {
   syncLobby();
 };
 // Copy (#839): the link goes to the clipboard and the link, its label and Copy close: the HUD says so, and the focus goes
-// to Game modes, not to the page (#1190). When the browser refuses, the link stays, selected, to copy by hand.
+// to the cog, not to the page (#1190). When the browser refuses, the link stays, selected, to copy by hand.
 inviteCopy.addEventListener('click', async () => {
   if (await copyText(inviteBox.value, navigator.clipboard)) {
-    document.getElementById('modes')!.focus();
+    cog.focus();
     hideInvite();
     return hud(' · invite link copied');
   }
@@ -7032,7 +6921,7 @@ async function goOnline(room: string, side: number, coop?: CoopFight, creator?: 
 /** Opens a new room as its creator and shows its invite link: a co-op room with `coop` (#529), a versus room without. */
 function playOnline(coop?: CoopFight, asDuel = false): void {
   rankedMode = null;
-  moveModes('pick');
+  pickMode();
   leaveMode(); // the room left first: its invite link goes, the new one shows once its keys are made
   void goOnline(newRoomId((b) => crypto.getRandomValues(b)), 1, coop, undefined, asDuel); // it shows the invite link
 }
@@ -7051,7 +6940,7 @@ function startRanked(): void {
   rankedQueuedAt = Date.now();
   if (royale) {
     rankedMode = 'royale';
-    moveModes('pick');
+    pickMode();
     hud();
     return;
   }
@@ -7084,22 +6973,16 @@ for (const id of boss_ids()) {
 const duelButton = document.getElementById('boss-duel') as HTMLButtonElement;
 let listIsDuel = false; // the shared list opened by Boss duel, not by Fight together
 duelButton.addEventListener('click', () => {
-  bossList.hidden = true;
-  bossButton.setAttribute('aria-expanded', 'false');
   const open = !!coopList.hidden || !listIsDuel;
   listIsDuel = true;
   showCoopList(open);
 });
 coopButton.addEventListener('click', () => {
-  if (coopList.hidden) {
-    bossList.hidden = true; // one boss list open at a time (#615)
-    bossButton.setAttribute('aria-expanded', 'false');
-  }
   const open = !!coopList.hidden || listIsDuel;
   listIsDuel = false;
   showCoopList(open); // hidden or opened by Boss duel: open it
 });
-// The two-row sheets of the Clamp list and the Shift crew bays (#1693, `?hub=cutaway`): the rows press the buttons of the Modes menu that stay behind them, hidden under the flag until #1697 removes them.
+// The two-row sheets of the Clamp list and the Shift crew bays (#1693, `?hub=cutaway`): the rows press the starter buttons that stay behind them.
 const BAY_ROWS = { ranked: { name: 'Clamp list', rows: ['Ranked', 'Leaderboard'] }, together: { name: 'Shift crew', rows: ['Boss with a partner', 'Boss vs a player'] } } as const;
 const bayRows = [document.getElementById('bay-row-1'), document.getElementById('bay-row-2')] as HTMLButtonElement[];
 function syncBayRows(): void {
@@ -7108,7 +6991,6 @@ function syncBayRows(): void {
   bayRows[1]!.setAttribute('aria-expanded', String(together && !coopList.hidden && listIsDuel));
 }
 function openBaySheet(kind: keyof typeof BAY_ROWS): void {
-  moveModes('outside');
   moveMenu('outside');
   closeGoal();
   closeLobby(); // one sheet at a time
@@ -7127,7 +7009,6 @@ function openBaySheet(kind: keyof typeof BAY_ROWS): void {
 }
 if (cutaway) {
   baySheet.append(coopList); // the boss list of Boss with a partner and Boss vs a player is the sheet's
-  for (const id of ['ranked', 'leaderboard', 'fight-together', 'boss-duel']) document.getElementById(id)!.hidden = true; // their home is the bay (#1693)
   bayRows[0]!.addEventListener('click', () => {
     if (baySheet.dataset.bay === 'together') return coopButton.click();
     if (rankedButton.disabled) return;
@@ -7210,7 +7091,7 @@ function startRun(state: Run, map: MapNode[], resumed: Engine | Encounter | null
   runMore = false;
   armed = 0;
   swapping = false;
-  moveModes('pick');
+  pickMode();
   leaveMode();
   applyDeck(deckOf('local'));
   worker = botWorker;
@@ -7493,8 +7374,8 @@ const trainerCard = document.getElementById('trainer-card')!;
 const trainerText = document.getElementById('trainer-text')!;
 const trainerNext = document.getElementById('trainer-next') as HTMLButtonElement;
 function startTrainer(wave: number, lost = 0): void {
-  trainer = null; // moveModes('pick') below leaves the old one
-  moveModes('pick');
+  trainer = null; // pickMode() below leaves the old one
+  pickMode();
   leaveMode();
   applyDeck(deckOf('local'));
   worker = botWorker;
@@ -7585,7 +7466,7 @@ const openWorld = new OpenWorldHandle(async () =>
       // A town opens the Hub and a gate the rogue-lite run, as their mode menu entries do (#1593): every town the same Hub for now.
       if (cutaway && kind === 'dungeon') return openBay(gateBay(), { seed, kind }, null, BIOMES.findIndex(({ id }) => id === biome)); // the gate opens the ship on the Mining cut, its biome kept for Enter (#1694)
       gateBiome = kind === 'dungeon' ? BIOMES.findIndex(({ id }) => id === biome) : 0; // the run begins in the gate's biome (#1597)
-      if (cutaway && kind === 'town') (moveModes('pick'), enterHub(START)); // a town's ship opens on the Mess (#1694)
+      if (cutaway && kind === 'town') (pickMode(), enterHub(START)); // a town's ship opens on the Mess (#1694)
       else (kind === 'town' ? shipButton : runButton).click();
       placeFrom = { seed, kind };
       syncExit();
@@ -7617,7 +7498,7 @@ function beginLair({ seed, lair, phase, brought, relics }: NonNullable<typeof ba
 }
 /** A tower or a gate opens the ship on its bay (#1694): the deck is open for the visit, the bay amber and the first-entry confirm up; Enter starts what the tower or the gate started, Stay and the exit lead back to it. */
 function openBay(bay: BayEntry, from: { seed: number; kind: PlaceKind }, lair: NonNullable<typeof bayEntry>['lair'], biome: number): void {
-  moveModes('pick');
+  pickMode();
   enterHub(bay.at);
   placeFrom = from;
   bayEntry = { ...bay, place: from, lair, biome, confirmed: false };
@@ -7668,15 +7549,16 @@ if (navigator.webdriver) {
   hooks.__modeMarks = () => modeProbe.marks();
   const entries = { arena: () => startLocal(false), run: beginRun, boss: startDaily, world: enterOpenWorld, hub: () => enterHub(loadProgress(store).at) }; // each mode's own entry, as the menus call it
   hooks.__enterMode = (mode: keyof typeof entries) => entries[mode]();
-  // Any mode by id, a boss of boss_ids() or a partner fight `coop:<boss>`, with no menu to press (#1690), whatever the first-win lock or the lifts say.
-  const startable: Record<string, () => unknown> = { arena: entries.arena, run: entries.run, world: entries.world, hub: entries.hub, daily: startDaily, online: () => playOnline(), royale: () => !online && startRoyale({ seed: crypto.getRandomValues(new Uint32Array(1))[0]!, rounds: [] }) };
+  // Any mode by id (`arena`, `run`, `world`, `hub`, `daily`, `trainer`, `ranked`, `leaderboard`, `online`, `royale`), a boss of boss_ids(), a partner fight `coop:<boss>` or a duel `duel:<boss>`, with no menu to press (#1690), whatever the first-win lock or the lifts say.
+  const startable: Record<string, () => unknown> = { arena: entries.arena, run: entries.run, world: entries.world, hub: entries.hub, daily: startDaily, trainer: () => startTrainer(1), ranked: () => rankedButton.click(), leaderboard: () => boardButton.click(), online: () => playOnline(), royale: () => !online && startRoyale({ seed: crypto.getRandomValues(new Uint32Array(1))[0]!, rounds: [] }) };
   hooks.__startMode = (id: string) => {
     if (Object.hasOwn(startable, id)) return startable[id]!();
-    const partner = id.startsWith('coop:') ? id.slice(5) : null;
+    const duel = id.startsWith('duel:') ? id.slice(5) : null;
+    const partner = duel ?? (id.startsWith('coop:') ? id.slice(5) : null);
     const boss = partner ?? id;
     if (!boss_ids().includes(boss)) throw new Error(`unknown mode ${id}`);
     const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
-    if (partner) playOnline({ boss, seed });
+    if (partner) playOnline({ boss, seed }, duel !== null);
     else startBoss(boss, seed);
   };
   // A tower or a gate opens the ship on its bay with no walk through the world (#1694): the e2e checks the page only, the rules are unit tests.
@@ -7706,7 +7588,7 @@ if (navigator.webdriver) {
   };
 }
 openWorldButton.addEventListener('click', () => {
-  moveModes('pick');
+  pickMode();
   leaveRoyale(); // first: its room is the page's online session too (#1275)
   leaveOnline();
   void enterOpenWorld();
@@ -7719,7 +7601,7 @@ bindJoystick(document, openWorld); // the touch stick of the Open world, on the 
 // further: the world is left by the next one (#1591). The sheets close on their own keydown, before this one, so the state is read
 // as the key goes down, in the capture phase.
 let sheetOpen = false;
-addEventListener('keydown', () => (sheetOpen = reading !== null || menuIsOpen || modesOpen || goalOpen || lobbyOpen), { capture: true });
+addEventListener('keydown', () => (sheetOpen = reading !== null || menuIsOpen || goalOpen || lobbyOpen), { capture: true });
 addEventListener('keydown', (e) => {
   if (!openWorld.active || e.target instanceof HTMLInputElement || (e.key === 'Escape' && sheetOpen)) return;
   if (e.key === 'Escape' && !openWorld.mapShown && !openWorld.asking) return e.preventDefault(), exitButton.click(); // Escape presses the exit of the dock, as Browser Back does (#1605, ui.md 4.10); the map closes first, below
@@ -7759,7 +7641,7 @@ function startRoyale(file: RoyaleFile): void {
   royale = loadRoyale(file, (seats, seed) => new Royale(seats, seed));
   view = fitted = fightView(); // the whole arena on the window (#1374)
   applyView();
-  moveModes('pick');
+  pickMode();
   for (const control of [newGameButton, retryButton, goalButton, hintButton, exportButton, importButton, resultCard]) control.hidden = true;
   holdButton.hidden = false;
   fogRadius = 4.2;
@@ -8117,7 +7999,6 @@ function paintLobby(): void {
 function openLobby(): void {
   if (!lobbyControls().some((el) => !el.hidden)) return;
   lobbyOpen = true;
-  moveModes('outside'); // one sheet at a time (#1032, #1044)
   moveMenu('outside');
   closeGoal();
   closeBay();
@@ -8160,16 +8041,12 @@ const coopInvite = coopFromHash(location.hash);
 const duelInvite = bossSeatFromHash(location.hash);
 const royaleInvite = royaleFromHash(location.hash);
 const creator = creatorFromHash(location.hash); // the fingerprint of the creator's key, none in an older link (#1323)
-// The Open world leads the mode menu of a fresh profile (#1612, menuorder.ts); a profile with a save or a boss beaten keeps its menu.
-// A saved run or a saved public world is a save too: the profile keeps its menu (#1612).
+// A saved run or a saved public world is a save too: the profile is not new.
 const worldSaved = (await worldSaves(gameStore, world_version()).load(PUBLIC_SEED)) !== null;
 const saved = resumed !== null || resumedRun !== null || worldSaved;
 if (new URLSearchParams(location.search).has('unlock')) markFirstWin(store); // dev: the lock is lifted for good (#1665)
 locked = isLocked(location.search, navigator.webdriver, existingPlayer(store, saved, loadProgress(store).beaten.length));
 syncLocks();
-const leadsMenu = !locked && openWorldLeads(saved, loadProgress(store).beaten.length);
-if (leadsMenu) modeMenu.insertBefore(openWorldButton, document.getElementById('play-online'));
-document.getElementById('open-world-entry')!.hidden = !leadsMenu;
 if (invited) void goOnline(invited, 2, undefined, creator);
 else if (royaleInvite) void goRoyale(royaleInvite, 2, creator);
 else if (duelInvite && boss_ids().includes(duelInvite.boss)) void goOnline(duelInvite.room, 2, duelInvite, creator, true); // the joiner plays the boss (#1316)
@@ -8223,7 +8100,6 @@ async function backToTable(): Promise<void> {
 }
 const WAYS: Record<Exclude<Way, 'stay'>, () => void> = {
   exit: leaveByExit, // the Hub or the Open world, as the control leads, with no question
-  hub: () => shipButton.click(),
   table: () => void backToTable(),
   leave: () => window.history.back(), // the base screen: the browser goes on back
 };

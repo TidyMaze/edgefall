@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import page from '../index.html?raw';
-import { BOT_BUTTON, BOT_OFFER_MS, MODE_LABELS, SWITCH_LINE, botGameOf, lobbyState, lobbyWaitMs } from './lobby';
+import { BOT_BUTTON, BOT_OFFER_MS, SWITCH_LINE, botGameOf, lobbyState, lobbyWaitMs } from './lobby';
 
 describe('lobbyState (#1529)', () => {
   it('waits under 20 s with no peer', () => {
@@ -66,10 +66,5 @@ describe('the lobby texts (#1529)', () => {
     expect(text('room-switch')).toBe(SWITCH_LINE);
     expect(doc.getElementById('room-switch')!.hidden).toBe(true);
     expect(doc.getElementById('room-switch')!.parentElement!.id).toBe('chrome');
-  });
-
-  it('the three boss entries say solo, with a partner and against a player, and keep their ids', () => {
-    expect(MODE_LABELS).toEqual({ 'boss-fight': 'Solo boss fight', 'fight-together': 'Boss with a partner', 'boss-duel': 'Boss vs a player' });
-    for (const [id, label] of Object.entries(MODE_LABELS)) expect(text(id), id).toBe(label);
   });
 });

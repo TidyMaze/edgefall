@@ -21,7 +21,6 @@ const army = (specials: number[], brought: number[]) => ({ specials, brought, re
 
 /** Opens the world of seed 7, loads `stock`, rolls onto its first town. */
 async function inTown(game: Game, stock: Stock): Promise<Axial> {
-  game.openModes();
   byId('openworld').click();
   await settle();
   const [q, r] = data().openworldPlaces!.split(' ').find((p) => p.startsWith('town:'))!.slice(5).split(',').map(Number) as unknown as Axial;
@@ -48,7 +47,6 @@ const text = (id: string): string => byId(id).textContent!;
 describe('the Workshop station of the Hub (#1655)', () => {
   it('shows in the Hub of a town of the Open world, not in the Hub of the mode menu', async () => {
     const menu = await boot('?bot=off');
-    menu.openModes();
     byId('ship').click();
     expect(data().hub).toBeTruthy();
     expect(byId('workshop-open').hidden).toBe(true);
@@ -246,7 +244,6 @@ describe('the special marbles in a wild fight (#1655)', () => {
   async function met(stock: Stock, url = `?openworld=${seed}&nodes=40`, options: Parameters<typeof boot>[1] = {}, booted: () => Promise<void> = async () => {}): Promise<Game> {
     const game = await boot(url, options);
     await booted(); // the page's own copy of the bridge is loaded: a spy set here sees what it calls
-    game.openModes();
     byId('openworld').click();
     await settle();
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -394,7 +391,6 @@ describe('no other fight has a special marble (#1655)', () => {
 
   it.each(['arena', 'boss'] as const)('the %s entered after the world, with the army brought, has none', async (mode) => {
     const game = await boot(`?openworld=${seed}`);
-    game.openModes();
     byId('openworld').click();
     await settle();
     hooks().__openworldFixture({ hero: [0, 0], troop: [], enemies: [], ...brought });
@@ -429,7 +425,6 @@ describe('the army in a lair fight walked into from the world (#1655)', () => {
   async function walkInto(stock: Stock, lair: number, booted: () => Promise<void> = async () => {}): Promise<Game> {
     const game = await boot('?openworld=7', { reducedMotion: true });
     await booted(); // the page's own copy of the bridge is loaded: a spy set here sees what it calls
-    game.openModes();
     byId('openworld').click();
     await settle();
     const [q, r] = data().openworldLairs!.split(' ')[lair]!.split(',').map(Number) as unknown as Axial;

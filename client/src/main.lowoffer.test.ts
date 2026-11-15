@@ -86,7 +86,6 @@ describe('the low tier offer (#849)', () => {
 
   it('is not offered in an online game, whose turn has a timer', async () => {
     const game = await boot('?bot=off');
-    game.openModes();
     byId('play-online').click();
     for (let i = 0; i < 50 && document.body.dataset.seat !== 'player'; i++) await game.settle();
     expect(document.body.dataset.seat).toBe('player');
