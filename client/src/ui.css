@@ -1697,7 +1697,7 @@ body[data-hub-cutaway='true'] :is(#hub-labels, #hub-rail, #hub-board) { display:
 body[data-hub-cutaway='true'] #ship-bays { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
 body[data-hub-cutaway='true'] .cut-bay {
   --k: #7fd6e8;
-  position: absolute; box-sizing: border-box; margin: 0; padding: 0 1px 3px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 1px;
+  position: absolute; box-sizing: border-box; margin: 0; padding: 3px 1px 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; container-type: inline-size;
   overflow: hidden; pointer-events: auto; cursor: pointer; background: transparent; border: 0; color: #c9d1d6; text-align: center; font: 600 0.5625rem/1.1 var(--ui);
 }
 .cut-bay .short, .cut-bay b, .cut-bay small { max-width: 100%; padding: 1px 3px; border-radius: 2px; background: rgba(14, 18, 20, 0.86); overflow-wrap: anywhere; }
@@ -1711,10 +1711,10 @@ body[data-hub-cutaway='true'] .cut-bay {
 .cut-bay[data-state='beaten'] { --k: #ffd43b; }
 .cut-bay[data-state='dark'] { cursor: not-allowed; }
 @media (max-width: 599px), (max-height: 499px) { body[data-hub-cutaway='true'] #hub-pips { display: none; } } /* a phone: the medal count would stand over the top bays */
-@media (min-width: 600px) and (min-height: 500px) {
-  body[data-hub-cutaway='true'] .cut-bay { font-size: 0.625rem; }
+/* A bay wide enough (96 px, a deep window) shows its name and line; a narrower one the short name alone, one line, so no label crowds its neighbour or the marble's tag (#1702). */
+@container (min-width: 96px) {
   .cut-bay .short { display: none; }
-  .cut-bay b { display: block; }
+  .cut-bay b { display: block; font-size: 0.625rem; }
   .cut-bay small { display: block; font-size: 0.5625rem; font-weight: 400; color: #c9d1d6; }
 }
 /* A tower's or a gate's visit to the ship (#1694): the dock holds the one exit, and on a phone the confirm sits under the title row, over the top deck, never over the target bay's row. */
@@ -1748,7 +1748,7 @@ body[data-hub-cutaway='true'] .cut-bay[data-here='true'] { box-shadow: inset 0 -
 #ship-goal[hidden], #ship-goal-line[hidden], #ship-gocard[hidden], #ship-goal [hidden] { display: none; }
 body[data-hub-cutaway='true'] #ship-goal { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
 #ship-goal svg { position: absolute; inset: 0; overflow: visible; }
-#ship-goal path { fill: none; stroke: #ffb000; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0.5 8; filter: drop-shadow(0 0 3px rgba(255, 176, 0, 0.85)); }
+#ship-goal path { fill: none; stroke: #ffb000; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 0.5 9; filter: drop-shadow(0 0 3px rgba(255, 176, 0, 0.85)); }
 #ship-goal .ring { position: absolute; box-sizing: border-box; border: 2px solid #ffb000; border-radius: 6px; animation: ship-ring 1.8s ease-out infinite; }
 #ship-goal .ring + .ring { animation-delay: 0.9s; }
 @keyframes ship-ring { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.3); opacity: 0; } }

@@ -4438,10 +4438,13 @@ function placeShipGoal(): void {
   const rect = box && bayRect(box.box, shipProject, cutaway!.follow);
   const point = (p: { x: number; y: number }): { x: number; y: number } => { const w = cutaway!.worldPoint(p); return shipProject(w.x, w.y, w.z); };
   const way = target && stage ? rollRoute(stage.floors, stage.at, target) : null;
+  // The tag stands over the top of its deck's row of bays, clear of the bays' labels (#1702): its foot is 12 px above its anchor.
+  const deckNow = stage?.floors.find((f) => f.y === stage.at.y)?.deck;
+  const rowTop = !way ? 0 : Math.min(...cutaway!.bayBoxes().filter((b) => b.deck === deckNow).map((b) => bayRect(b.box, shipProject, cutaway!.follow)).filter((r) => !r.hidden).map((r) => r.y));
   placeGoal(shipGoalLayer, {
     route: way && way.points.map(point),
     ring: rect && !rect.hidden ? rect : null,
-    tag: way && { ...point(stage!.at), ...wayTag(stage!.floors, stage!.at, target!, goalLabel(target!)) },
+    tag: way && { ...point(stage!.at), y: Math.min(point(stage!.at).y, rowTop + 12), ...wayTag(stage!.floors, stage!.at, target!, goalLabel(target!)) },
   }, innerWidth);
   shipGoalLine.style.bottom = `${dockGap()}px`; // over the dock
 }

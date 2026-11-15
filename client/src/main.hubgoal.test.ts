@@ -122,6 +122,13 @@ describe('the beacon, the route and the marble\'s tag', () => {
     expect(tag().dataset.dir).toBe('up');
   });
 
+  it("stand the marble's tag over the row of its deck, never over a bay's label (#1702)", async () => {
+    await ship('?bot=off&hub=cutaway', ['echo']);
+    const row = [...document.querySelectorAll<HTMLElement>('#ship-bays [data-bay^="mess:"]')].map((b) => parseFloat(b.style.top));
+    expect(row.length).toBeGreaterThan(3);
+    expect(parseFloat(tag().style.top) - 12).toBeLessThanOrEqual(Math.min(...row)); // the tag's foot (12 px above its anchor) is at or above the row's top
+  });
+
   it('move to the new goal after a win', async () => {
     await ship('?bot=off&hub=cutaway', []);
     const echo = document.querySelector<HTMLElement>('#ship-bays [data-bay="mess:echo"]')!;
