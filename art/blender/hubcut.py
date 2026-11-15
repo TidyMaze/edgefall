@@ -228,18 +228,23 @@ def kit(hull, glow):
     k = {}
     slab, rim, edge, gnd, dark, body = C('slab'), C('rim'), C('rimlight'), C('ground'), C('black'), C('steel')
     t = 0.035
-    # the bay shell: floor, back wall, two side walls, ceiling, the cut edges, a sign over the door, a lamp under it
-    m = MB()
-    m.poly([(0, 0, 0), (W, 0, 0), (W, D, 0), (0, D, 0)], gnd, [0.1, 0.1, 0.3, 0.3], (0, 0, 1))
-    m.poly([(0, D, 0), (W, D, 0), (W, D, H), (0, D, H)], slab, [0.05, 0.05, 0.5, 0.5], (0, -1, 0))
-    m.poly([(0, 0, 0), (0, D, 0), (0, D, H), (0, 0, H)], rim, [0.02, 0.05, 0.3, 0.12], (1, 0, 0))
-    m.poly([(W, 0, 0), (W, D, 0), (W, D, H), (W, 0, H)], rim, [0.02, 0.05, 0.3, 0.12], (-1, 0, 0))
-    m.poly([(0, 0, H), (W, 0, H), (W, D, H), (0, D, H)], rim, 0.25, (0, 0, -1))
-    for x0, x1, z0, z1 in ((0, t, 0, H), (W - t, W, 0, H), (t, W - t, 0, t), (t, W - t, H - t, H)):
-        m.poly([(x0, 0, z0), (x1, 0, z0), (x1, 0, z1), (x0, 0, z1)], edge, 0, (0, -1, 0))
-    m.poly([(0.06, -0.012, H - 0.3), (W - 0.06, -0.012, H - 0.3), (W - 0.06, -0.012, H - 0.06), (0.06, -0.012, H - 0.06)], C('plate'), 0, (0, -1, 0))
-    m.box(0.36, 0.64, 0.02, 0.1, H - 0.365, H - 0.325, dark, 1.0)
-    k['bay'] = m.build('hub_bay', glow)
+    # the bay shell: floor, back wall, two side walls, ceiling, the cut edges, and for a room a sign over the door and a lamp under it;
+    # a set piece (hold, crates, nave, vents, console) has no sign: an empty name plate read as broken (#1705)
+    def shell(name, sign):
+        m = MB()
+        m.poly([(0, 0, 0), (W, 0, 0), (W, D, 0), (0, D, 0)], gnd, [0.1, 0.1, 0.3, 0.3], (0, 0, 1))
+        m.poly([(0, D, 0), (W, D, 0), (W, D, H), (0, D, H)], slab, [0.05, 0.05, 0.5, 0.5], (0, -1, 0))
+        m.poly([(0, 0, 0), (0, D, 0), (0, D, H), (0, 0, H)], rim, [0.02, 0.05, 0.3, 0.12], (1, 0, 0))
+        m.poly([(W, 0, 0), (W, D, 0), (W, D, H), (W, 0, H)], rim, [0.02, 0.05, 0.3, 0.12], (-1, 0, 0))
+        m.poly([(0, 0, H), (W, 0, H), (W, D, H), (0, D, H)], rim, 0.25, (0, 0, -1))
+        for x0, x1, z0, z1 in ((0, t, 0, H), (W - t, W, 0, H), (t, W - t, 0, t), (t, W - t, H - t, H)):
+            m.poly([(x0, 0, z0), (x1, 0, z0), (x1, 0, z1), (x0, 0, z1)], edge, 0, (0, -1, 0))
+        if sign:
+            m.poly([(0.06, -0.012, H - 0.3), (W - 0.06, -0.012, H - 0.3), (W - 0.06, -0.012, H - 0.06), (0.06, -0.012, H - 0.06)], C('plate'), 0, (0, -1, 0))
+            m.box(0.36, 0.64, 0.02, 0.1, H - 0.365, H - 0.325, dark, 1.0)
+        return m.build(name, glow)
+    k['bay'] = shell('hub_bay', True)
+    k['bay_plain'] = shell('hub_bay_plain', False)
     # the lift shaft, one level: back wall and two rails
     m = MB()
     m.poly([(0, D, 0), (SW, D, 0), (SW, D, H), (0, D, H)], C('gap'), [0.03, 0.03, 0.1, 0.1], (0, -1, 0))
@@ -550,7 +555,7 @@ def build_layout(sc, name, layout, sx, st, kitm, hull, glow, marble, hero=None):
                     while k + 1 < len(cells) and cells[k + 1][1] == it and abs(cells[k + 1][0] - (x + w * W)) < 1e-6:
                         w += 1
                         k += 1
-                    add(coll, 'hub_%s_bay_%s_%s' % (name, did, it), kitm['bay'], (x, 0, z), lamp if opened else off, (w, 1, 1))
+                    add(coll, 'hub_%s_bay_%s_%s' % (name, did, it), kitm['bay_plain'], (x, 0, z), lamp if opened else off, (w, 1, 1))
                     add(coll, 'hub_%s_set_%s_%s' % (name, did, it), kitm[it], (x + w * W / 2, D * 0.55, z), (C('sodium') if it == 'nave' else lamp) if opened else C('rimlight', 0.15))
                 else:
                     s = item_state(it, did, st)
