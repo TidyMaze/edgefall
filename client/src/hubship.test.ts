@@ -130,6 +130,20 @@ describe('a tap on a bay', () => {
   });
 });
 
+describe('the stage of the goal (#1695)', () => {
+  it('is the floors and where the marble stands, none before the ship is there, none during a roll', () => {
+    const s = setup();
+    expect(s.walk.stage).toBeNull();
+    s.walk.sync(ECHO);
+    expect(s.walk.stage!.at).toEqual({ x: 0.58, y: 1.4 });
+    expect(s.walk.stage!.floors.length).toBe(7);
+    s.walk.tap('cargo:run');
+    expect(s.walk.stage).toBeNull();
+    s.advance(800);
+    expect(s.walk.stage!.at).toEqual({ x: 2.58, y: 2.78 });
+  });
+});
+
 describe('the logs bay', () => {
   it('opens the first log of its deck not read yet', () => {
     const s = setup(undefined, false, ['mess-house-rule']);

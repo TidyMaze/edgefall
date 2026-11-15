@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { describe, expect, it } from 'vitest';
 import { framing } from './camera';
-import { Cutaway, CUTAWAY_VIEW, DIM, MIN_BAY, STRIP, bakeShip, cutawayFrame, followFrame, shipState } from './hubcutaway';
+import { Cutaway, CUTAWAY_VIEW, DIM, MARBLE_RISE, MIN_BAY, STRIP, bakeShip, cutawayFrame, followFrame, shipState } from './hubcutaway';
 
 // The Hub Cutaway on a small phone and its light (#1691): the decks other than the marble's at 70 %, and a camera that frames the floors around the marble when the whole ship
 // would leave a bay under 46 px, and follows the marble up the lift.
@@ -103,6 +103,14 @@ describe('the lift column on the window', () => {
     expect(p.x).toBeCloseTo(-0.5 * cut.group.scale.x + cut.group.position.x); // the car's node stands at x -0.5
     expect(p.z).toBeCloseTo(cut.bayBoxes()[0]!.box.max.z);
     expect(new Cutaway(async () => ship(), () => undefined).liftWorld().z).toBe(0);
+  });
+  it('gives the window point of a floor point, the marble\'s height above it (the route and the tag of the goal, #1695)', async () => {
+    const cut = await ready(360, 640);
+    const p = cut.worldPoint({ x: 0.58, y: 1.4 });
+    expect(p.x).toBeCloseTo(0.58 * cut.group.scale.x + cut.group.position.x);
+    expect(p.y).toBeCloseTo((1.4 + MARBLE_RISE) * cut.group.scale.y + cut.group.position.y);
+    expect(p.z).toBeCloseTo(cut.bayBoxes()[0]!.box.max.z);
+    expect(new Cutaway(async () => ship(), () => undefined).worldPoint({ x: 0, y: 0 }).z).toBe(0); // before its file is loaded
   });
 });
 

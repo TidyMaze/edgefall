@@ -344,11 +344,12 @@ import { noticeBoard } from './hubboard';
 import { NO_ARMY, NO_RESOURCES, type Army, type Resources } from './openworldresources';
 import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hullKeeps, leave as leaveBrought, leaveRelic, lose, placeBrought, relicsMask, sell, sellRelic, thrownOff, upgrade as upgradeMarble, wildFoes, withoutKinds, type Stock } from './openworldworkshop';
 import { workshopHtml } from './workshopview';
-import { bossLockLine, labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml } from './hubview';
-import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, shipState } from './hubcutaway';
-import { bayButtons, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
+import { bossLockLine, labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, type Goal } from './hubview';
+import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, shellFor, shipState } from './hubcutaway';
+import { bayButtons, bayRect, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
+import { goalBay, goalLabel, goalWords, paintGoalText, placeGoal, wayTag } from './hubgoal';
 import { ShipWalk } from './hubship';
-import { bayAt } from './hubroll';
+import { bayAt, route as rollRoute } from './hubroll';
 import { clearStray } from './modeswitch';
 import { indexedDbStore } from './idb';
 import { LocalSaves, type LocalGame } from './savegame';
@@ -4382,7 +4383,7 @@ const ship = cutaway
       now: () => performance.now(),
       frame: (cb) => requestAnimationFrame(cb),
       unframe: (id) => cancelAnimationFrame(id),
-      settle: (bay) => focusBay(shipBays, bay),
+      settle: (bay) => (focusBay(shipBays, bay), placeShipGoal()), // the route and the tag come back where the marble stands
     })
   : null;
 /** The roll ended on a room of the old Hub (or its shut hatch): the marble of the old model is put beside it and rolls on, so the confirm, the save, the lift's bump and the room's start are the plate's own. */
@@ -4397,15 +4398,47 @@ shipLift.addEventListener('click', (e) => {
   cancelHubWalk();
   ship!.ride((e.target as Element).closest<HTMLElement>('[data-lift]')!.dataset.lift === 'up' ? 1 : -1);
 });
-shipBays.addEventListener('click', (e) => {
-  const key = (e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!;
+/** A tap on a bay, or on the goal line or its Go: the marble rolls there. */
+const rollTo = (key: string): void => {
   if (bayEntry && key !== `${bayEntry.deck}:${bayEntry.room}`) return; // a visit's other bays take no tap (#1694)
   cancelHubWalk();
   ship!.tap(key);
-});
+};
+shipBays.addEventListener('click', (e) => rollTo((e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!));
+// The next goal (#1695): the goal line on a phone, the card's Go in a window; the beacon, the route and the tag on the overlay.
+const shipGoalLine = document.getElementById('ship-goal-line') as HTMLButtonElement;
+const shipGoalCard = document.getElementById('ship-gocard')!;
+const shipGoalLayer = document.getElementById('ship-goal')!;
+for (const button of [shipGoalLine, shipGoalCard.querySelector('button')!]) button.addEventListener('click', () => rollTo(button.dataset.bay!));
+let shipGoalAt: { deck: Deck; room: string } | null = null; // the bay of the goal, none during a visit or when no room is left
+const GOAL_LINE = 48; // the room the goal line of a phone takes over the dock
+/** The goal line and the card from the game's next goal (the House table while the first win is awaited); none during a tower's or a gate's visit. */
+function paintShipGoal(goal: Goal): void {
+  const on = cutawayShown && !bayEntry;
+  shipGoalAt = on ? goalBay(goal, locked) : null;
+  paintGoalText(shipGoalLine, shipGoalCard, on ? goalWords(goal, locked) : null, shipGoalAt && `${shipGoalAt.deck}:${shipGoalAt.room}`);
+  placeShipGoal();
+}
+/** The beacon on the goal's bay, the dotted route from the marble and its tag; the route and the tag wait while the marble rolls (it is between two floors). */
+function placeShipGoal(): void {
+  const at = shipGoalAt;
+  const stage = ship?.stage;
+  const target = at && cutaway!.bays.find((b) => b.deck === at.deck && b.room === at.room); // none while another shell loads
+  const box = at && cutaway!.bayBoxes().find((b) => b.deck === at.deck && b.room === at.room);
+  const rect = box && bayRect(box.box, shipProject, cutaway!.follow);
+  const point = (p: { x: number; y: number }): { x: number; y: number } => { const w = cutaway!.worldPoint(p); return shipProject(w.x, w.y, w.z); };
+  const way = target && stage ? rollRoute(stage.floors, stage.at, target) : null;
+  placeGoal(shipGoalLayer, {
+    route: way && way.points.map(point),
+    ring: rect && !rect.hidden ? rect : null,
+    tag: way && { ...point(stage!.at), ...wayTag(stage!.floors, stage!.at, target!, goalLabel(target!)) },
+  }, innerWidth);
+  shipGoalLine.style.bottom = `${dockGap()}px`; // over the dock
+}
 /** The room the ship leaves to the title plate over it and the dock under it, so that no bay sits under either (#1691). */
 // The hull's dome and mast may stand behind the plate and the gear, a bay never.
-const shipInset = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) - 40), bottom: Math.max(0, innerHeight - document.getElementById('dock')!.getBoundingClientRect().top + 6) });
+const dockGap = (): number => Math.max(0, innerHeight - document.getElementById('dock')!.getBoundingClientRect().top + 6);
+const shipInset = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) - 40), bottom: dockGap() + (shellFor(innerWidth, innerHeight) === 'tall' && !bayEntry ? GOAL_LINE : 0) }); // a phone's goal line stands over the dock, no bay under it
 /** What a small phone's camera leaves at the top and the bottom: the whole of the plate and the gear, and the dock, so that no bay is drawn under them. */
 const shipSolid = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) + 4), bottom: shipInset().bottom });
 const shipPoint = new THREE.Vector3();
@@ -4420,6 +4453,7 @@ function placeShip(): void {
   const lift = cutaway!.liftWorld();
   placeBays(shipBays, cutaway!.bayBoxes(), shipProject, cutaway!.follow, { deck: cutaway!.deck, bay: bayAt(cutaway!.bays, ship!.at) });
   placeVeil(shipVeil, cutaway!.follow, innerHeight);
+  placeShipGoal();
   placeLift(shipLift, cutaway!.follow, shipProject(lift.x, lift.y, lift.z).x, innerWidth);
 }
 function syncCutaway(): void {
@@ -4433,7 +4467,12 @@ function syncCutaway(): void {
   if (shown === cutawayShown) return;
   cutawayShown = shown;
   shipBays.hidden = !shown;
-  if (!shown) shipLift.hidden = shipVeil.hidden = true;
+  if (!shown) {
+    shipLift.hidden = shipVeil.hidden = true;
+    shipGoalAt = null; // the goal goes with the ship: a game, a mode, the world
+    paintGoalText(shipGoalLine, shipGoalCard, null, null);
+    placeShipGoal();
+  }
   document.body.dataset.hubCutaway = String(shown); // read by the e2e tests, and by the CSS that hides the plates
   showBoard();
   view = fitted = fightView();
@@ -4575,6 +4614,7 @@ function refresh(): void {
     const goal = locked ? { text: LOCK_BANNER, deck: null, room: null } : nextGoal(beaten, ranRun(store)); // the next thing to do (#1524); the first win while the lock is on
     hubLabels.innerHTML = labelsHtml(hub.at, beaten, loadMedals(store), goal, locked); // a beaten boss's door shows its medal (#1249)
     paintBays(shipBays, cutawayShown ? bayButtons(cutaway!.bays, shipNow(beaten), beaten, loadMedals(store), locked, shipSpark) : '');
+    paintShipGoal(goal);
     document.getElementById('hub-rail')!.innerHTML = railHtml(hub.at.deck, beaten, goal, locked);
     document.getElementById('hub-pips')!.innerHTML = pipsHtml(beaten, loadMedals(store));
     const day = utcDay(Date.now());

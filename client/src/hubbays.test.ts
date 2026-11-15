@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { TALL_BAYS } from './test/shipbays';
-import { bayButtons, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
+import { bayButtons, bayRect, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { shipState } from './hubcutaway';
 
 // The bays of the Hub Cutaway as tap targets (#1691): a button per bay with its name and state, a locked deck dark and unnamed, set pieces none.
@@ -204,5 +204,16 @@ describe('the locked look and the first-win spark (#1692)', () => {
     expect(bay(lit, 'mess:bot').dataset.spark).toBeUndefined();
     expect(bay(lit, 'cargo:hull').dataset.spark).toBeUndefined(); // a dark deck
     expect(bay(html(), 'mess:daily').dataset.spark).toBeUndefined();
+  });
+});
+
+describe('the window rect of a bay (#1695)', () => {
+  const box = { min: { x: 0, y: 0, z: -1 }, max: { x: 1, y: 1.2, z: 0 } };
+  const at = (x: number, y: number) => ({ x: 100 + x * 60, y: 700 - y * 60 });
+  it('is the front face of the box, hidden only when a small phone\'s camera leaves it out of the room', () => {
+    expect(bayRect(box, at)).toEqual({ x: 100, y: 628, w: 60, h: 72, hidden: false });
+    expect(bayRect(box, at, { top: 600, bottom: 710, up: true, down: true, seenUp: false, seenDown: false }).hidden).toBe(false);
+    expect(bayRect(box, at, { top: 650, bottom: 710, up: true, down: true, seenUp: false, seenDown: false }).hidden).toBe(true);
+    expect(bayRect(box, at, { top: 600, bottom: 690, up: true, down: true, seenUp: false, seenDown: false }).hidden).toBe(true);
   });
 });

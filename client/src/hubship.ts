@@ -46,6 +46,11 @@ export class ShipWalk {
     return this.pos;
   }
 
+  /** The floors and where the marble stands, for the route and the tag of the goal; null before the ship is there and during a roll (the marble is between two floors). */
+  get stage(): { floors: readonly Floor[]; at: Pos } | null {
+    return this.roll || this.floors.length === 0 ? null : { floors: this.floors, at: this.pos };
+  }
+
   /** Puts the marble on the spot saved by the Hub, when the ship is new (first draw, another shell). */
   sync(spot: Spot): void {
     const bays = this.host.bays();

@@ -1744,6 +1744,36 @@ body[data-hub-cutaway='true'] .cut-bay[data-here='true'] { box-shadow: inset 0 -
 .cut-bay[data-spark='1'] { animation: cut-spark 0.9s ease-out 2; }
 @keyframes cut-spark { 0% { box-shadow: inset 0 0 0 2px #ffe3bf, 0 0 18px #ffe3bf; background: rgba(255, 227, 191, 0.45); } 100% { box-shadow: inset 0 0 0 0 transparent, 0 0 0 transparent; background: transparent; } }
 :root[data-motion='reduced'] .cut-bay[data-spark='1'] { animation: none; box-shadow: inset 0 0 0 2px #ffe3bf; } /* the game's Reduced motion setting, not the media query (#379) */
+/* The next goal of the Cutaway (#1695): the beacon's two rings on the goal's bay, the dotted amber route from the marble and its tag, then the goal in words: a line over the dock on a phone,
+   a card with Go over the right shoulder in a window. Reduced motion: the rings stand still. */
+#ship-goal[hidden], #ship-goal-line[hidden], #ship-gocard[hidden], #ship-goal [hidden] { display: none; }
+body[data-hub-cutaway='true'] #ship-goal { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+#ship-goal svg { position: absolute; inset: 0; overflow: visible; }
+#ship-goal path { fill: none; stroke: #ffb000; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0.5 8; filter: drop-shadow(0 0 3px rgba(255, 176, 0, 0.85)); }
+#ship-goal .ring { position: absolute; box-sizing: border-box; border: 2px solid #ffb000; border-radius: 6px; animation: ship-ring 1.8s ease-out infinite; }
+#ship-goal .ring + .ring { animation-delay: 0.9s; }
+@keyframes ship-ring { from { transform: scale(1); opacity: 0.9; } to { transform: scale(1.3); opacity: 0; } }
+:root[data-motion='reduced'] #ship-goal .ring { animation: none; opacity: 0.8; }
+:root[data-motion='reduced'] #ship-goal .ring + .ring { transform: scale(1.12); opacity: 0.45; }
+#ship-goal .tag { position: absolute; transform: translate(-50%, calc(-100% - 12px)); max-width: 11rem; padding: 2px 6px; border-radius: 4px; background: #ffb000; color: #1a1300; font: 700 0.6875rem/1.2 var(--ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#ship-goal .tag::before { content: ''; margin-right: 4px; }
+#ship-goal .tag[data-dir='up']::before { content: '\25B2'; }
+#ship-goal .tag[data-dir='down']::before { content: '\25BC'; }
+#ship-goal .tag[data-dir='left']::before { content: '\25C0'; }
+#ship-goal .tag[data-dir='right']::before { content: '\25B6'; }
+#ship-goal-line { position: fixed; left: 16px; right: 16px; z-index: 2; box-sizing: border-box; min-height: 44px; margin: 0; padding: 6px 12px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; align-items: center; text-align: left; cursor: pointer; border: 1px solid #ffb000; border-radius: 22px; background: rgba(14, 18, 20, 0.92); color: #ffd98a; font: 600 0.8125rem/1.25 var(--ui); }
+#ship-goal-line:disabled { cursor: default; border-color: #9aa3a8; color: #c9d1d6; }
+#ship-gocard { position: fixed; right: 12px; top: 4.5rem; z-index: 2; box-sizing: border-box; width: 11.5rem; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #ffb000; border-radius: 8px; background: rgba(14, 18, 20, 0.92); color: #c9d1d6; font: 400 0.75rem/1.25 var(--ui); }
+#ship-gocard > small { color: #ffb000; font: 700 0.625rem/1.2 var(--ui); letter-spacing: 0.12em; text-transform: uppercase; }
+#ship-gocard > small:last-child { color: #9aa3a8; font-weight: 400; letter-spacing: 0; text-transform: none; }
+#ship-gocard b { color: #fff; font-size: 0.875rem; }
+#ship-gocard button { min-height: 44px; margin: 2px 0; border: 0; border-radius: 22px; background: #ffb000; color: #1a1300; font: 700 0.9375rem/1 var(--ui); cursor: pointer; }
+#ship-gocard button:disabled { background: #3a4248; color: #9aa3a8; cursor: default; }
+:is(#ship-goal-line, #ship-gocard button):focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+body:not([data-hub-cutaway='true']) :is(#ship-goal-line, #ship-gocard) { display: none; }
+@media (min-width: 600px) and (min-height: 500px) { #ship-goal-line { display: none; } }
+@media (max-width: 599px), (max-height: 499px) { #ship-gocard { display: none; } }
+
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

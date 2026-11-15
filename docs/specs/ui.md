@@ -784,6 +784,11 @@ the old path (the Modes menu, Quick game, the dock's World button and the old Hu
 opens the ship on the boss's deck, the boss's room amber and the first-entry confirm up (the deck is lit for the visit, shut or not). A gate does the same for the Mining cut, its
 biome kept; a town opens the Mess. Enter starts the same fight or run as a tap on the bay; Stay and the exit lead back to the tower or gate (`hubentry.ts`, #1694).
 
+**The next goal, always in sight (#1695).** The goal is the game's own (`nextGoal`; the House table while the first win is awaited), never a second rule. Its bay wears the beacon (amber sign, two
+rings that pulse unless motion is reduced); a dotted amber route runs from the marble up the lift and along the floor, and the marble's tag says the way (the deck to ride to, or the room); both redraw
+when the goal or the marble moves, and wait while the marble rolls. A phone has the goal line over the dock, a window the card with Go over the right shoulder: one tap rolls the marble to the goal's bay.
+With no room left (all five beaten) the line and the card say so and do nothing. A tower's or a gate's visit shows none of it. Code: `hubgoal.ts`.
+
 | Screen | Enter | Exit, first slot | State |
 |---|---|---|---|
 | Plain table | Hub, House table bay; New game | the exit, to the Hub (the table is no longer a home) | Once the flag is on (#1697) |

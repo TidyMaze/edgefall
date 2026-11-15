@@ -479,6 +479,12 @@ export class Cutaway {
     return new THREE.Vector3(this.lift, 0, this.bays[0]?.box.max.z ?? 0).applyMatrix4(this.group.matrixWorld);
   }
 
+  /** The window point of a floor point of the file, the marble's height above it, at the front face of the bays: the route and the tag of the goal (#1695). */
+  worldPoint(pos: Pos): THREE.Vector3 {
+    this.group.updateWorldMatrix(true, false);
+    return new THREE.Vector3(pos.x, pos.y + MARBLE_RISE, this.bays[0]?.box.max.z ?? 0).applyMatrix4(this.group.matrixWorld);
+  }
+
   /** The shell on show, null before its file is loaded. */
   get shell(): Layout | null {
     return this.source ? this.layout : null;

@@ -39,6 +39,15 @@ export interface BayBox {
   box: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } };
 }
 
+/** The window rect of a bay (the front face of its box), and whether it is no button: a small phone's camera (`follow`) leaves a bay not whole in the room out. */
+export function bayRect(box: BayBox['box'], project: (x: number, y: number, z: number) => { x: number; y: number }, follow: Follow | null = null): { x: number; y: number; w: number; h: number; hidden: boolean } {
+  const a = project(box.min.x, box.min.y, box.max.z);
+  const b = project(box.max.x, box.max.y, box.max.z);
+  const y = Math.min(a.y, b.y);
+  const h = Math.abs(b.y - a.y);
+  return { x: Math.min(a.x, b.x), y, w: Math.abs(b.x - a.x), h, hidden: !!follow && (y < follow.top - 0.5 || Math.max(a.y, b.y) > follow.bottom + 0.5) };
+}
+
 const kept = new WeakMap<HTMLElement, HTMLElement | null>(); // the button that had the focus at the last placing
 
 /** Puts each button on the window rect of its bay: `project` gives the window point of a point of the scene; the front face of the box is the bay. */
@@ -47,14 +56,13 @@ export function placeBays(root: HTMLElement, boxes: readonly BayBox[], project: 
   for (const { deck, room, box } of boxes) {
     const button = root.querySelector<HTMLElement>(`[data-bay="${deck}:${room}"]`);
     if (!button) continue;
-    const a = project(box.min.x, box.min.y, box.max.z);
-    const b = project(box.max.x, box.max.y, box.max.z);
-    button.style.left = `${Math.min(a.x, b.x)}px`;
-    button.style.top = `${Math.min(a.y, b.y)}px`;
-    button.style.width = `${Math.abs(b.x - a.x)}px`;
-    button.style.height = `${Math.abs(b.y - a.y)}px`;
+    const r = bayRect(box, project, follow);
+    button.style.left = `${r.x}px`;
+    button.style.top = `${r.y}px`;
+    button.style.width = `${r.w}px`;
+    button.style.height = `${r.h}px`;
     button.dataset.here = String(!!marble && marble.deck === deck); // the deck the marble is on: a bright edge on its floors (ui.css)
-    button.hidden = !!follow && (Math.min(a.y, b.y) < follow.top - 0.5 || Math.max(a.y, b.y) > follow.bottom + 0.5); // a small phone: a bay not whole in the room is no button
+    button.hidden = r.hidden; // a small phone: a bay not whole in the room is no button
   }
   const held = document.activeElement as HTMLElement | null;
   if (marble && ((root.contains(held) && held!.hidden) || (held === document.body && was?.hidden))) focusBay(root, marble.bay); // the camera hid the bay the keyboard stood on (the browser drops its focus to the page): it goes to the marble's
