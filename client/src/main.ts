@@ -334,7 +334,9 @@ import { runScoreHtml } from './runhud';
 import { cardText, Legend, legendHtml, marksOn } from './specialhelp';
 import { bestTurns, loadMedals, medalLabel, medalLine, medalRoom, playerTurns, recordMedal, tallyAttempt, tallyWin, type MedalResult } from './medals';
 import { loadProgress, recordWin, saveProgress } from './progress';
-import { HUB_CELLS, hubPath, neighbours, roomAt, step, type Door, type Spot as HubSpot } from './hub';
+import { HUB_CELLS, hubPath, neighbours, roomAt, START, step, type Door, type Spot as HubSpot } from './hub';
+import { gateBay, towerBay, visitCue, type BayEntry } from './hubentry';
+import { roomKey } from './hubroll';
 import { entryConfirmDue, entryName, HUB_COACH, hubCoachDue, hubHelpOn, markEntered, markHubCoachDone, needsConfirm } from './hubcoach';
 import { createKitGlyph, type GlyphOptions } from './hubart';
 import { HubController } from './controller';
@@ -2901,6 +2903,8 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyPale
 let hover: Axial | null = null;
 let roomOf: HubSpot | null = null; // the hub room that started the game, for Back to the hub (#522)
 let lairFrom: { seed: number; lair: number; phase: Phase; placed: number[][]; relics: number[] } | null = null; // the Open world lair that started the fight, for Back to the Open world (#1170), and the phase of the world it was entered in (#1496)
+/** The bay a tower or a gate of the Open world opened the ship on (#1694, `?hub=cutaway`): amber with the first-entry confirm up until Enter; `lair` is the fight a tower started and `biome` the ground of a gate. Left with the mode. */
+let bayEntry: (BayEntry & { place: { seed: number; kind: PlaceKind }; lair: { seed: number; lair: number; phase: Phase; brought: number[]; relics: number[] } | null; biome: number; confirmed: boolean }) | null = null;
 let placeFrom: { seed: number; kind: PlaceKind } | null = null; // the Open world a town or a dungeon gate was entered from: the Hub or the run it opened has a way back (#1593)
 /** Dresses the board for the phase the lair or the wild marble was met in (#1496, #1511): day, dusk or night, `body[data-fight-board]` reading the same. A fight that is neither has the ordinary board. */
 function syncBoardLook(): void {
@@ -2929,10 +2933,14 @@ function syncExit(): void {
   if (!exitReady || confirmExit !== null) return; // while it asks, the label is Sure?
   const to = exitNow();
   exitButton.hidden = !to || !wildFlee.hidden;
-  if (!to || exitButton.dataset.label === EXIT_LABEL[to]) return;
-  exitButton.dataset.label = EXIT_LABEL[to];
-  exitButton.textContent = EXIT_NAME[to];
-  exitButton.setAttribute('aria-label', EXIT_NAME[to]);
+  if (!to) return;
+  const cue = bayEntry && visitCue(bayEntry.lair ? bayEntry.room : null); // a tower's or a gate's visit: the one way out names where it leads (#1694)
+  const label = cue?.label ?? EXIT_LABEL[to];
+  const name = cue?.exit ?? EXIT_NAME[to];
+  if ((exitButton.dataset.label === label && exitButton.getAttribute('aria-label') === name)) return;
+  exitButton.dataset.label = label;
+  exitButton.textContent = name;
+  exitButton.setAttribute('aria-label', name);
 }
 
 // The bot thinks in a worker so the page never freezes. ?bot=off gives the two-player board back
@@ -4334,7 +4342,10 @@ const cutawaySpace = new THREE.Color(NEON.sky);
 const cutaway = cutawayOn(location.search) ? new Cutaway(terraceFile, () => refresh()) : null;
 if (cutaway) sceneRenderer.terrace.add(cutaway.group);
 /** Draws the ship in the Hub of the terrace, and the deck again anywhere else; the camera follows when the ship comes or goes. */
-const shipNow = (beaten: readonly string[]) => shipState(beaten, locked, locked ? null : goalRoom(nextGoal(beaten, ranRun(store))));
+const shipNow = (beaten: readonly string[]) => {
+  const state = shipState(beaten, locked && !bayEntry, bayEntry ? bayEntry.room : locked ? null : goalRoom(nextGoal(beaten, ranRun(store))));
+  return bayEntry ? { ...state, open: new Set([...state.open, bayEntry.deck]) } : state; // a tower or a gate opens its deck for the visit, shut or not, the bay amber (#1694)
+};
 // The bays are the tap targets (#1691): a tap rolls the marble there, and the room opens as the old deck's plate did (first-entry confirm kept). The deck's invisible discs take no click then.
 const shipBays = document.getElementById('ship-bays')!;
 const ship = cutaway
@@ -4363,8 +4374,10 @@ function shipArrive({ deck, cell }: HubSpot): void {
   if (hubConfirm.hidden) shipFrom = null; // no confirm asked: the arrival stands; else Stay (cancelHubWalk) puts the marble of the old model back
 }
 shipBays.addEventListener('click', (e) => {
+  const key = (e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!;
+  if (bayEntry && key !== `${bayEntry.deck}:${bayEntry.room}`) return; // a visit's other bays take no tap (#1694)
   cancelHubWalk();
-  ship!.tap((e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!);
+  ship!.tap(key);
 });
 /** The room the ship leaves to the title plate over it and the dock under it, so that no bay sits under either (#1691). */
 // The hull's dome and mast may stand behind the plate and the gear, a bay never.
@@ -6303,7 +6316,10 @@ function walk(to: Axial): boolean {
   const deck = hub!.at.deck;
   const next = step(hub!.at, to, progress.beaten);
   const door = next === hub!.at ? undefined : roomAt(next.deck, next.cell);
-  if (door && helpOn && needsConfirm(door) && entryConfirmDue(store, progress.beaten)) {
+  const target = roomAt(deck, to);
+  if (bayEntry && target && roomKey(target) !== bayEntry.room) return hud(), false; // a visit from a tower or a gate rolls to its own bay only (#1694)
+  const asked = bayEntry !== null && !bayEntry.confirmed && door !== undefined && roomKey(door) === bayEntry.room; // the amber bay of a tower or a gate always asks (#1694)
+  if (door && (asked || (helpOn && needsConfirm(door) && entryConfirmDue(store, progress.beaten)))) {
     askedFor = to;
     hubConfirmText.textContent = `Enter ${entryName(next.deck, door)}?`;
     hubConfirm.hidden = false;
@@ -6317,7 +6333,7 @@ function walk(to: Axial): boolean {
   }
   markHubCoachDone(store); // the player rolled: the coach line has done its job
   hubCoach.hidden = true;
-  saveProgress(store, { ...progress, at });
+  if (!bayEntry) saveProgress(store, { ...progress, at }); // a tower's deck may be shut: the spot is not kept (#1694)
   if (at.deck !== deck) applyDeck(at.deck);
   refresh();
   enterRoom(at);
@@ -6336,10 +6352,11 @@ hubLabels.addEventListener('click', (e) => {
   const [q, r] = (e.target as Element).closest<HTMLElement>('[data-cell]')!.dataset.cell!.split(',').map(Number);
   walkTo([q!, r!]);
 });
-document.getElementById('hub-confirm-no')!.addEventListener('click', cancelHubWalk);
+document.getElementById('hub-confirm-no')!.addEventListener('click', () => (bayEntry && !bayEntry.confirmed ? leaveByExit() : cancelHubWalk())); // Stay on a tower's or a gate's bay goes back to it (#1694)
 hubConfirmYes.addEventListener('click', () => {
   const to = askedFor!;
   markEntered(store);
+  if (bayEntry) bayEntry.confirmed = true;
   shipFrom = null; // Enter: the roll stands
   cancelHubWalk();
   walk(to);
@@ -6350,7 +6367,9 @@ hubConfirmYes.addEventListener('click', () => {
 function enterRoom(at: HubSpot): void {
   const from = placeFrom; // a table or a boss of the Hub of a town is still that visit (#1593)
   const door = roomAt(at.deck, at.cell);
-  if (locked && door && doorLocked(door.kind)) return; // the Hub stays as it is: its boss and mode doors wait for the first win (#1665)
+  const entry = bayEntry; // a tower's or a gate's bay (#1694)
+  if (entry?.lair && door?.kind === 'boss') return beginLair(entry.lair); // the fight of the lair, its exit the tower's
+  if (locked && door && doorLocked(door.kind) && !entry) return; // the Hub stays as it is: its boss and mode doors wait for the first win (#1665)
   if (door?.kind === 'terminal') return openReader(door.lore);
   if (door?.kind === 'medals') return openReader(MEDAL_ROOM);
   if (door?.kind === 'boss') startBoss(door.boss, crypto.getRandomValues(new Uint32Array(1))[0]!);
@@ -6359,7 +6378,12 @@ function enterRoom(at: HubSpot): void {
   else if (door?.kind === 'royale') startRoyale({ seed: crypto.getRandomValues(new Uint32Array(1))[0]!, rounds: [] });
   else if (door?.kind === 'daily') startDaily();
   else if (door?.kind === 'ranked' && !rankedButton.disabled) rankedButton.click();
-  else return enterModeRoom(door);
+  else if (entry && door?.kind === 'run') {
+    gateBiome = entry.biome; // the run begins in the gate's biome (#1597)
+    enterModeRoom(door);
+    placeFrom = entry.place;
+    return syncExit(); // its exit leads back to the gate
+  } else return enterModeRoom(door);
   roomOf = at;
   placeFrom = from;
   syncExit(); // the table is started: its exit leads to the Hub (#1517)
@@ -6461,6 +6485,10 @@ function leaveMode(): void {
   lairFrom = null;
   wildFrom = null;
   placeFrom = null; // the next mode is no town's or gate's (#1593)
+  bayEntry = null;
+  delete document.body.dataset.bayVisit;
+  traitChoice.panel.hidden = true; // the mirror question of a tower left with the Hub is not answered later (#1694)
+  hudFold.setAttribute('aria-label', 'HUD panel');
   wildMarked(false);
   wildFlee.hidden = true;
   syncBoardLook();
@@ -7396,15 +7424,15 @@ const openWorld = new OpenWorldHandle(async () =>
     // each world entered leaked them (#1258).
     releaseScene: (scene) => void (renderer.lighting.getNode(scene) as { dispose?(): void }).dispose?.(),
     startLair: (seed, lair, phase, brought, relics) => {
-      const ids = boss_ids();
-      const id = ids[lair % ids.length]!;
-      const fightSeed = crypto.getRandomValues(new Uint32Array(1))[0]!;
-      askMirror(traitChoice, store, boss_takes_mirror(id), (mirror) => startBoss(id, fightSeed, undefined, undefined, { seed, lair, phase, ...lairBuild(id, fightSeed, mirror, brought, relics) }, mirror)); // a lair starts the normal boss fight (#1170), on the board of the hour (#1496); the Echo's mirror is asked first (#1620)
+      if (cutaway) return openBay(towerBay(boss_ids()[lair % boss_ids().length]!), { seed, kind: 'tower' }, { seed, lair, phase, brought, relics }, 0); // the tower opens the ship on the boss's bay (#1694)
+      beginLair({ seed, lair, phase, brought, relics });
     },
     onPlace: (seed, kind, index, biome, contract) => {
       // A town opens the Hub and a gate the rogue-lite run, as their mode menu entries do (#1593): every town the same Hub for now.
+      if (cutaway && kind === 'dungeon') return openBay(gateBay(), { seed, kind }, null, BIOMES.findIndex(({ id }) => id === biome)); // the gate opens the ship on the Mining cut, its biome kept for Enter (#1694)
       gateBiome = kind === 'dungeon' ? BIOMES.findIndex(({ id }) => id === biome) : 0; // the run begins in the gate's biome (#1597)
-      (kind === 'town' ? shipButton : runButton).click();
+      if (cutaway && kind === 'town') (moveModes('pick'), enterHub(START)); // a town's ship opens on the Mess (#1694)
+      else (kind === 'town' ? shipButton : runButton).click();
       placeFrom = { seed, kind };
       syncExit();
       if (kind === 'town') {
@@ -7426,6 +7454,28 @@ const openWorld = new OpenWorldHandle(async () =>
     wanderTick: () => wanderTick,
   }),
 );
+/** A lair starts the normal boss fight (#1170), on the board of the hour (#1496); the Echo's mirror is asked first (#1620). */
+function beginLair({ seed, lair, phase, brought, relics }: NonNullable<typeof bayEntry>['lair'] & object): void {
+  const ids = boss_ids();
+  const id = ids[lair % ids.length]!;
+  const fightSeed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+  askMirror(traitChoice, store, boss_takes_mirror(id), (mirror) => startBoss(id, fightSeed, undefined, undefined, { seed, lair, phase, ...lairBuild(id, fightSeed, mirror, brought, relics) }, mirror));
+}
+/** A tower or a gate opens the ship on its bay (#1694): the deck is open for the visit, the bay amber and the first-entry confirm up; Enter starts what the tower or the gate started, Stay and the exit lead back to it. */
+function openBay(bay: BayEntry, from: { seed: number; kind: PlaceKind }, lair: NonNullable<typeof bayEntry>['lair'], biome: number): void {
+  moveModes('pick');
+  enterHub(bay.at);
+  placeFrom = from;
+  bayEntry = { ...bay, place: from, lair, biome, confirmed: false };
+  const cue = visitCue(lair ? bay.room : null);
+  document.body.dataset.bayVisit = cue.label.toLowerCase();
+  hub!.bumped = cue.origin; // under the title: where the visit came from
+  hudFold.setAttribute('aria-label', cue.panel);
+  syncExit();
+  hud();
+  refresh(); // the ship again with the deck open and the bay amber
+  walk(bay.cell); // the confirm
+}
 /** The boss lairs of the world `seed` (#1305), one cell per boss, the bridge's `world_lairs` read as cells. */
 function lairCells(seed: number): Axial[] {
   const flat = Array.from(world_lairs(seed));
@@ -7474,6 +7524,12 @@ if (navigator.webdriver) {
     const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
     if (partner) playOnline({ boss, seed });
     else startBoss(boss, seed);
+  };
+  // A tower or a gate opens the ship on its bay with no walk through the world (#1694): the e2e checks the page only, the rules are unit tests.
+  hooks.__openBay = (kind: 'tower' | 'gate', boss = 'echo') => {
+    const seed = Number.isFinite(openWorldFixedSeed) ? openWorldFixedSeed : PUBLIC_SEED; // the page needs no ?openworld: the world is not booted
+    if (kind === 'gate') return openBay(gateBay(), { seed, kind: 'dungeon' }, null, 1);
+    openBay(towerBay(boss), { seed, kind: 'tower' }, { seed, lair: boss_ids().indexOf(boss), phase: 'day', brought: [], relics: [] }, 0);
   };
   hooks.__openworldEnemies = () => openWorld.loaded.mode.enemies();
   hooks.__openworldDrawn = () => openWorld.loaded.mode.drawn; // the frames drawn since the world opened: a spec waits for one before it reads the wild fight (#1601)

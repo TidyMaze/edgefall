@@ -1718,6 +1718,13 @@ body[data-hub-cutaway='true'] .cut-bay {
   .cut-bay b { display: block; }
   .cut-bay small { display: block; font-size: 0.5625rem; font-weight: 400; color: #c9d1d6; }
 }
+/* A tower's or a gate's visit to the ship (#1694): the dock holds the one exit, and on a phone the confirm sits under the title row, over the top deck, never over the target bay's row. */
+body[data-bay-visit] #dock > :not(#exit) { display: none; }
+body[data-bay-visit] #hud .tally { animation: none; } /* the line under the title says where the visit came from, and stays */
+body[data-hub-cutaway='true'] #hub-confirm .actions { gap: 8px; }
+body[data-hub-cutaway='true'] #hub-confirm .actions button { min-height: 44px; white-space: nowrap; }
+@media (orientation: portrait) { body[data-hub-cutaway='true'] #hub-confirm { top: calc(8.25rem + env(safe-area-inset-top)); bottom: auto; } }
+
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */
