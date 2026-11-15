@@ -6,7 +6,10 @@ import { axialTo3D, encodeMove, moveForClick, parseMoves, type Axial } from './b
 import { resetView, type View } from './camera';
 import { generateKeys } from './moverecord';
 import { OnlineSession } from './session';
-import { boot, slowKeys, type Game, startBoss } from './test/harness';
+import { boot as bootShip, slowKeys, type Game, startBoss } from './test/harness';
+
+/** The deck is drawn and takes the taps (as before the ship's file has loaded). */
+const boot: typeof bootShip = (query, options) => bootShip(query, { deck: true, ...options });
 import type { Transport } from './transport';
 
 // Walking the hub (docs/specs/game-design.md section 3.5, #521): the Hub entry of the mode menu draws the deck's map

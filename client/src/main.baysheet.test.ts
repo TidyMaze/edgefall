@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { BOSS_IDS } from './tally';
 import { boot, type Game } from './test/harness';
 
-// One home for every feature, part 1 (#1693), behind `?hub=cutaway`: the Clamp list bay opens a two-row sheet (Ranked, Leaderboard) and the Shift crew bay another (Boss with a partner,
+// One home for every feature, part 1 (#1693): the Clamp list bay opens a two-row sheet (Ranked, Leaderboard) and the Shift crew bay another (Boss with a partner,
 // Boss vs a player, whose boss list is in the sheet). The Modes menu is gone (#1697).
 
 const byId = <T extends HTMLElement = HTMLButtonElement>(id: string): T => document.getElementById(id) as T;
@@ -44,7 +44,7 @@ async function withBays(): Promise<void> {
   });
 }
 /** The Hub of a player who beat every boss, the ship drawn; `query` may leave the flag out. */
-async function open(query = '?bot=off&hub=cutaway'): Promise<{ game: Game; run: (ms: number) => void }> {
+async function open(query = '?bot=off'): Promise<{ game: Game; run: (ms: number) => void }> {
   const game = await boot(query, { storage: progress([...BOSS_IDS]) });
   await withBays();
   game.hook('__startMode', 'hub');

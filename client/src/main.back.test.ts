@@ -176,7 +176,7 @@ describe('main.ts, browser Back (#1564)', () => {
   });
 
   it('the Hub exit is the way out of a table opened from the Hub, mid-fight or not, and Back takes it', async () => {
-    const game = await boot('?bot=off');
+    const game = await boot('?bot=off', { deck: true });
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [1, 0], beaten: [] }));
     await pick(game, 'ship');
     game.click(2, 0); // the boss door of the Mess: the fight is on, the exit leads to the Hub
@@ -210,6 +210,7 @@ describe('main.ts, browser Back (#1564)', () => {
     (window as unknown as { __openworldFixture: (f: object) => void }).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
     game.frame();
     expect(data().boss).toBeDefined();
     expect(byId('exit').dataset.label).toBe('World'); // the fight is on
@@ -234,6 +235,7 @@ describe('main.ts, browser Back (#1564)', () => {
       (window as unknown as { __openworldFixture: (f: object) => void }).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] });
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
       window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+      document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
       game.frame();
       expect(data().boss).toBeDefined();
     };
@@ -287,7 +289,7 @@ describe('main.ts, browser Back (#1564)', () => {
       expect(hubOn()).toBe(true);
     });
     it('asks nothing of a table game, which is saved', async () => {
-      const game = await boot('?bot=off');
+      const game = await boot('?bot=off', { deck: true });
       localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [-1, 0], beaten: [] }));
       await pick(game, 'ship');
       game.click(-1, -1);
@@ -315,6 +317,7 @@ describe('main.ts, browser Back (#1564)', () => {
     (window as unknown as { __openworldFixture: (f: object) => void }).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
     const won = (): number => (game.hook<number>('__plies') > 0 ? 1 : 0);
     vi.spyOn(Encounter.prototype, 'result').mockImplementation(won);
     vi.spyOn(Encounter.prototype, 'status').mockImplementation(won);

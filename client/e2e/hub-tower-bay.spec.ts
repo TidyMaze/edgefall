@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { shot } from './shot';
 
-// #1694: under ?hub=cutaway a tower opens the ship on its boss's bay (amber, the confirm up), a gate on the Mining cut. The rules (Enter, Stay, the exit, the refused taps, the mirror
+// #1694: a tower opens the ship on its boss's bay (amber, the confirm up), a gate on the Mining cut. The rules (Enter, Stay, the exit, the refused taps, the mirror
 // question) are unit tests, main.towerbay.test.ts; a boot of the Open world costs an e2e its 5 s, so the test hook __openBay opens the bay and this spec only reads the page.
 type Hooks = { __openBay: (kind: 'tower' | 'gate', boss?: string) => void };
 const sizes = [
@@ -12,7 +12,7 @@ const sizes = [
 ];
 
 async function open(page: Page, kind: 'tower' | 'gate'): Promise<void> {
-  await page.goto('./?bot=off&hub=cutaway');
+  await page.goto('./?bot=off');
   await page.waitForFunction(() => (window as unknown as { __booted?: () => boolean }).__booted?.() === true); // the landing is settled: a bay opened sooner is replaced by the Hub's entry
   await page.evaluate((kind) => (window as unknown as Hooks).__openBay(kind, 'echo'), kind);
   await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');

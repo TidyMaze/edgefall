@@ -36,7 +36,7 @@ function frames(game: Game): (ms: number) => void {
   };
 }
 /** The Hub with the ship drawn: its file loaded, the bays on the page. */
-async function ship(query = '?bot=off&hub=cutaway', beaten: string[] = [], options: Parameters<typeof boot>[1] = {}): Promise<Game> {
+async function ship(query = '?bot=off', beaten: string[] = [], options: Parameters<typeof boot>[1] = {}): Promise<Game> {
   const game = await boot(query, { ...options, storage: { ...progress(beaten), ...options.storage } });
   game.hook('__startMode', 'hub');
   await game.settle();
@@ -55,23 +55,24 @@ describe('the bays as buttons', () => {
     expect(Number.parseFloat(bay('mess:bot').style.left)).not.toBeNaN();
   });
 
-  it('are hidden with the flag off and shown with it on', async () => {
-    const off = await boot('?bot=off', { storage: progress([]) });
-    off.hook('__startMode', 'hub');
-    await off.settle();
-    expect(byId('ship-bays').hidden).toBe(true);
-    await ship();
-    expect(byId('ship-bays').hidden).toBe(false);
+  it('is rolled on the model beneath by the test hook, as the bays\' arrival does (#1697)', async () => {
+    const game = await ship();
+    game.hook('__roll', 1, 0);
+    expect(hub()).toBe('mess 1,0');
+    game.hook('__roll', 3, 3); // not a neighbour: the marble stays
+    expect(hub()).toBe('mess 1,0');
   });
 
-  it('are none with the flag off, and the old plates stay', async () => {
-    const game = await boot('?bot=off', { storage: progress([]) });
-    game.hook('__startMode', 'hub');
-    await game.settle();
-    expect(byId('ship-bays').children.length).toBe(0);
-    expect(document.querySelectorAll('#hub-labels [data-cell]').length).toBeGreaterThan(5);
-    game.click(1, 0); // the deck's disc takes the click as before
-    expect(hub()).not.toBe('mess 0,0');
+  it('is the plain click where no ship is drawn: on a table, and on the deck while the ship loads (#1697)', async () => {
+    const table = await boot('?bot=off');
+    table.hook('__roll', 0, 2);
+    table.hook('__roll', 0, 1);
+    expect(table.hook<number>('__plies')).toBe(1);
+    const deck = await boot('?bot=off', { deck: true, storage: progress([]) });
+    deck.hook('__startMode', 'hub');
+    await deck.settle();
+    deck.hook('__roll', 1, 0);
+    expect(hub()).toBe('mess 1,0');
   });
 
   it('leave the old deck\'s invisible discs no click', async () => {
@@ -84,7 +85,7 @@ describe('the bays as buttons', () => {
 
 describe('a tap on a bay', () => {
   it('rolls the marble there and starts the room as the plate did, for a player who beat a boss', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const game = await ship('?bot=off', ['echo']);
     const run = frames(game);
     bay('mess:bot').click();
     expect(hub()).toBe('mess 0,0'); // on its way
@@ -94,7 +95,7 @@ describe('a tap on a bay', () => {
   });
 
   it('asks the first-entry confirm before a room, and enters it on Enter', async () => {
-    const game = await boot('?hub=cutaway&firstrun&bot=off');
+    const game = await boot('?firstrun&bot=off');
     byId('coldopen-skip').click();
     await game.settle();
     const run = frames(game);
@@ -107,7 +108,7 @@ describe('a tap on a bay', () => {
   });
 
   it('puts the spot back when the player stays on the confirm, and again on Esc', async () => {
-    const game = await boot('?hub=cutaway&firstrun&bot=off');
+    const game = await boot('?firstrun&bot=off');
     byId('coldopen-skip').click();
     await game.settle();
     const run = frames(game);
@@ -124,7 +125,7 @@ describe('a tap on a bay', () => {
   });
 
   it('rides the lift to a deck that is open, changing the deck of the marble', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const game = await ship('?bot=off', ['echo']);
     const run = frames(game);
     bay('cargo:hull').click();
     run(400);
@@ -144,7 +145,7 @@ describe('a tap on a bay', () => {
   });
 
   it('is ended by another tap: no room opens for the first one', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const game = await ship('?bot=off', ['echo']);
     const run = frames(game);
     bay('mess:daily').click();
     run(40);
@@ -154,7 +155,7 @@ describe('a tap on a bay', () => {
   });
 
   it('fades in where it goes under reduced motion', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo'], { reducedMotion: true });
+    const game = await ship('?bot=off', ['echo'], { reducedMotion: true });
     const run = frames(game);
     bay('mess:bot').click();
     run(100);
@@ -165,14 +166,14 @@ describe('a tap on a bay', () => {
 
 describe('the logs bay', () => {
   it('opens the first log of the deck not read yet, the first one when none is read', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const game = await ship('?bot=off', ['echo']);
     const run = frames(game);
     bay('mess:logs').click();
     run(800);
     expect(document.body.dataset.reading).toBe('mess-house-rule');
   });
   it('skips a log already read', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo'], { storage: { 'ab-alone.lore-read': 'mess-house-rule' } });
+    const game = await ship('?bot=off', ['echo'], { storage: { 'ab-alone.lore-read': 'mess-house-rule' } });
     const run = frames(game);
     bay('mess:logs').click();
     run(800);
@@ -182,7 +183,7 @@ describe('the logs bay', () => {
 
 describe('a small phone', () => {
   it('frames the floors around the marble, makes a bay not whole in the room no button, and rides the lift with its two buttons, the camera following', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo', 'hull']);
+    const game = await ship('?bot=off', ['echo', 'hull']);
     expect(byId('ship-lift').hidden).toBe(true); // a window: the whole ship
     vi.stubGlobal('innerWidth', 200);
     vi.stubGlobal('innerHeight', 300);
@@ -210,16 +211,12 @@ describe('a small phone', () => {
     expect(byId('ship-lift').hidden).toBe(true);
     expect(byId('ship-veil').hidden).toBe(true);
   });
-  it('hides the lift buttons with the ship, and with the flag off', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+  it('hides the lift buttons with the ship', async () => {
+    const game = await ship('?bot=off', ['echo']);
     game.hook('__startMode', 'arena');
     await game.settle();
     expect(byId('ship-lift').hidden).toBe(true);
     expect(byId('ship-veil').hidden).toBe(true);
-    const off = await boot('?bot=off', { storage: progress([]) });
-    off.hook('__startMode', 'hub');
-    await off.settle();
-    expect(byId('ship-lift').hidden).toBe(true);
   });
 });
 
@@ -240,7 +237,7 @@ describe('the arrow keys', () => {
   });
 
   it('end a roll on the way', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const game = await ship('?bot=off', ['echo']);
     const run = frames(game);
     bay('mess:daily').click();
     run(40);
@@ -252,7 +249,7 @@ describe('the arrow keys', () => {
 
 describe('a locked bay of a new player (#1692)', () => {
   it('says why on a tap and on the keyboard, starts nothing and leaves the Hub as it is', async () => {
-    const game = await ship('?bot=off&hub=cutaway&newplayer', [], { storage: { 'ab-alone.progress': '' } }); // no record of play: a new player
+    const game = await ship('?bot=off&newplayer', [], { storage: { 'ab-alone.progress': '' } }); // no record of play: a new player
     const run = frames(game);
     const at = hub();
     for (const room of ['mess:daily', 'mess:echo']) {

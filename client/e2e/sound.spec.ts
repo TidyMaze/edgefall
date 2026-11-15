@@ -6,7 +6,7 @@ import { startMode } from './modes';
 // The ejection sound (world.md section 7): the page says which sound an ejection played in
 // data-sound, and window.__audio() gives the state of the audio context ('none' before one exists).
 async function open(page: Page) {
-  await page.goto('./?bot=off&hub=classic');
+  await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
   await expect(page.locator('#hud')).toContainText('Black to move');
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
@@ -208,7 +208,7 @@ test('the music names the scene, and builds its layers only once the Music slide
 
 // Bug #146 pattern: a click right after load hits a disabled button or toggles.
 test('the settings cog is not clickable before it works, and works right after load', async ({ page }) => {
-  await page.goto('./?bot=off&hub=classic', { waitUntil: 'domcontentloaded' });
+  await page.goto('./?bot=off', { waitUntil: 'domcontentloaded' });
   const atClick = await page.evaluate(() => {
     const cog = document.getElementById('settings') as HTMLButtonElement;
     const disabled = cog.disabled;

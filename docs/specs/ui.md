@@ -524,7 +524,7 @@ The hub (game-design.md section 3.5) reads at a glance, with no hover:
   the day is marked when the daily starts and its result when the end card shows, a win kept over a loss and a faster win over a slower one. A profile
   from before has no such key: it loads as no day, and the attempts it saved for a day count as that day started. No server. Held upright, or on a
   window 600 px wide or 500 px high and under, the card keeps the daily and the streak on one plate above the dock, where the coach line lives, so it
-  covers no station (`hub-board.spec.ts`, 960x540 and 390x844). It waits while the coach line of section 4.7 teaches, and while the first-entry confirm is up.
+  covers no station (old deck; its e2e went with the deck, #1697). It waits while the coach line of section 4.7 teaches, and while the first-entry confirm is up.
 - **Lift-shaft rail.** The five decks from the Bridge down, each beaten (its boss beaten, from the boss menu too), open
   (its lift is open) or locked, and where the marble is. A window: a panel at the right edge, mid-height, left of the dock
   held sideways, the deck names alone on a short window. Held upright: a row of the five decks above the deck, under the
@@ -620,8 +620,7 @@ It is computed by one pure function, `nextGoal(beaten, ran)` (`hubview.ts`), fro
 5. **All five bosses beaten**: "All bosses beaten. Try the Daily or a run." No room is marked.
 
 Not on the path yet: the Open world's first move (a later step) and town training, which comes under Decision #1513. A step is added
-to `nextGoal` when its content ships. Tests: `client/e2e/next-goal.spec.ts` (the line at two progress states, on 960x540 and 390x844,
-covering no plate), `hubview.test.ts` and `main.firstrun.test.ts`.
+to `nextGoal` when its content ships. Tests: `hub-cutaway-goal.spec.ts` (the ship's goal line), `hubview.test.ts` and `main.firstrun.test.ts`.
 
 #### The Hub's first minutes (#1522)
 
@@ -638,7 +637,7 @@ A new player lands in the Hub with a goal and has to learn how to move there. Tw
   tap on another cell or an arrow key closes it, the marble where it was. A tap on a plate that ends next to the room stops there and
   asks. A player who beat a boss is never asked, so the confirm never slows a returning player.
 - **Tests.** An automated browser shows neither unless `?firstrun` asks, so every spec that walks into rooms boots as before
-  (`hubHelpOn`); `client/e2e/hub-walk.spec.ts` covers both, and the tap on a plate, on a desktop window and a phone.
+  (`hubHelpOn`); `main.hubcoach.test.ts` covers both, and `hub-cutaway.spec.ts` the tap on a bay.
 
 #### Guide
 
@@ -769,7 +768,7 @@ slot stays New game. A wild fight keeps Flee (F) in the first slot until it is o
 A boss or lair fight in progress with a ply played is not saved, so the exit asks for a second press, `Sure?` in the `.confirm` look, lapsing after `CONFIRM_MS` as New game does (`newgame.ts`); a fight over or with no ply, the world, the Hub, a town, a run, the Trainer and a table ask nothing, and Browser Back never asks.
 
 **The Hub Cutaway rewrites this table (#1698; amends Decision #1513, owner 2026-11-14).** Design: `cutaway-v2.html` on the `pr-screenshots` branch (`hub-cutaway/`).
-Status: the ship is the default Hub since #1696 (#1689, #1691, #1694). The Modes menu, Quick game, the dock's World button, the lock banner and note and `menuorder.ts` are gone (#1697). `?hub=classic` is still the off switch and brings the old deck back (its code goes in a later commit of #1697); `?hub=cutaway` is a no-op. What follows is the default page.
+Status: the ship is the default Hub since #1696 (#1689, #1691, #1694). The Modes menu, Quick game, the dock's World button, the lock banner and note and `menuorder.ts` are gone (#1697). There is no `?hub=` switch: the old deck stays only as the picture shown while the ship's file loads. What follows is the default page.
 
 **One home for every feature.** A feature starts in one place; any other screen may show its state and lead there, never start it.
 
@@ -790,12 +789,12 @@ With no room left (all five beaten) the line and the card say so and do nothing.
 | Screen | Enter | Exit, first slot | State |
 |---|---|---|---|
 | Plain table | Hub, House table bay; New game | the exit, to the Hub (the table is no longer a home); none while the first win is awaited (the ship is not open yet) | Built (#1697) |
-| Hub (the ship) | Boot of a returning player; the exit of any mode | none: the home, no dock. Back goes to the table | Default (`?hub=classic` for the old one) |
-| A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its bay: the marble rolls there, the confirm asks, Enter starts | Hub | Default (`?hub=classic` for the old one) |
-| Open world | Hub, Airlock bay | Hub (the world saved) | Default (`?hub=classic` for the old one) |
-| Town | Roll onto a town: the ship opens on the Mess | World, hero on the entrance | Default (`?hub=classic` for the old one) |
-| Dungeon gate (the run) | Roll onto a gate: the ship opens on the Mining cut, the biome kept | Stay or the exit: World, hero on the entrance | Default (`?hub=classic` for the old one) |
-| Tower (a lair fight) | Roll onto a lair: the ship opens on the boss's bay | Stay or the exit: World, hero on the entrance | Default (`?hub=classic` for the old one) |
+| Hub (the ship) | Boot of a returning player; the exit of any mode | none: the home, no dock. Back goes to the table | Default |
+| A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its bay: the marble rolls there, the confirm asks, Enter starts | Hub | Default |
+| Open world | Hub, Airlock bay | Hub (the world saved) | Default |
+| Town | Roll onto a town: the ship opens on the Mess | World, hero on the entrance | Default |
+| Dungeon gate (the run) | Roll onto a gate: the ship opens on the Mining cut, the biome kept | Stay or the exit: World, hero on the entrance | Default |
+| Tower (a lair fight) | Roll onto a lair: the ship opens on the boss's bay | Stay or the exit: World, hero on the entrance | Default |
 | Wild fight | A marble touches the hero | Flee, then World | Built |
 | Online room (Play online, Fight together, Boss duel, an invite link) | Comms desk, Shift crew bays; `#room=` opens its table | the exit; its Lobby sheet | Built (#1697) |
 
@@ -837,27 +836,6 @@ Every feature, after:
 | Export and import a game, diagnostics, FPS, render, free camera, Console | Settings, Advanced (unchanged) |
 | New version: reload | Settings, first row, the dot on the cog |
 | Reset everything | Settings, last row (unchanged) |
-
-**Old table (`?hub=classic`, until the old Hub code goes; its Modes menu, Quick game and World button are already gone).**
-
-| Screen | Enter | Exit, first slot | State |
-|---|---|---|---|
-| Plain table | Boot, New game | none: New game | Built |
-| Hub (the deck) | Boot of a new player; Hub of Modes | none: the home. Back goes to the table | Built |
-| A table, a boss, the Daily, the Rogue-lite run, the Trainer or the Open world of a Hub door | Roll onto the door | Hub, the marble on the door's cell | Built |
-| Battle royale, Rogue-lite run, Daily, Trainer, Boss fight, Open world of Modes | The Modes sheet | Hub | Built |
-| Open world | Modes, a Hub door, `#openworld` | Hub (the world saved) | Built |
-| Town (the Hub scene) | Roll onto a town | World, hero on the entrance | Built (its own stations: planned) |
-| Dungeon gate (the run) | Roll onto a gate | World, hero on the entrance | Built |
-| Tower (a lair fight) | Roll onto a lair | World, hero on the entrance, at any time | Built |
-| Wild fight | A marble touches the hero | Flee, then World | Built |
-| Online room (Play online, Fight together, Boss duel, Ranked, an invite link) | Modes, `#room=` | none: its Lobby sheet and the Hub of Modes | Waiting for the arena town |
-| Arena town, the other towns' stations, Quick game button, Console, Boss fight fast travel | | | Waiting (openworld.md section 13) |
-
-**The Modes menu does not shrink in this slice.** The arena town and the other tables are not built, so Play online, Fight together, Boss
-duel, Battle royale, Ranked, Leaderboard, Boss fight, Daily, Trainer and Rogue-lite run have no place in the world to move to: they stay
-in the menu until their rows above are built. The rows of the table that wait are the online room, the arena and the other towns, the
-Quick game button, the Console and the fast travel.
 
 Held upright in the world the plate stands above the exit and in the lower half of the screen, the hero at the middle stays seen: a taller plate scrolls, the online row last (#1606).
 

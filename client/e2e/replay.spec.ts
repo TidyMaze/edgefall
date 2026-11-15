@@ -32,7 +32,7 @@ test('Replay steps through an imported game, view only, and Live returns to the 
 
   const before = await plies(page);
   const mv = await page.evaluate(() => (window as any).__legal()[0].cells[0] as [number, number]);
-  await page.evaluate(([q, r]) => (window as any).__click(q, r), mv); // a click on a marble selects nothing
+  await page.evaluate(([q, r]) => (window as any).__roll(q, r), mv); // a click on a marble selects nothing
   expect(await page.evaluate(() => (window as any).__rings())).toEqual([]);
   expect(await plies(page)).toBe(before);
 

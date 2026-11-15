@@ -12,9 +12,9 @@ async function ready(page: Page): Promise<void> {
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(null))));
 }
 
-/** The click through the game's own handler (window.__click): no raycast, no frames. A test pays the mouse path once, on `mouse`. */
+/** The click through the game's own handler (window.__roll): no raycast, no frames. A test pays the mouse path once, on `mouse`. */
 async function click(page: Page, q: number, r: number, mouse = false): Promise<void> {
-  if (!mouse) return page.evaluate(([cq, cr]) => (window as any).__click(cq, cr), [q, r]);
+  if (!mouse) return page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [q, r]);
   const p = await page.evaluate(([cq, cr]) => (window as any).__cellToScreen(cq, cr), [q, r]);
   await page.mouse.click(p.x, p.y);
 }

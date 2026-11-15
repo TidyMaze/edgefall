@@ -21,8 +21,8 @@ test('the rogue-lite Magnet, Shield, Bomb and Medic: placement, looks and reload
   await expect(panel.locator('button[data-kind]')).toHaveText(['Magnet · 0 left', 'Shield · 0 left', 'Bomb · 0 left', 'Medic · 0 left']);
   await page.evaluate(() => {
     const w = window as any;
-    w.__click(1, 3);
-    w.__click(1, 2);
+    w.__roll(1, 3);
+    w.__roll(1, 2);
   });
   await expect(panel).toBeHidden();
   expect(await marks()).toBe('-2,2,7 -1,2,8 -1,3,10 0,2,9');

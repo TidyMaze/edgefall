@@ -170,6 +170,7 @@ describe('the gamepad in the Open world', () => {
     (window as unknown as { __openworldFixture: (f: object) => void }).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] });
     pad.hold([], [0.9, -0.5, 0, 0]); // right and up in the default camera: the east step
     pad.hold([]);
+    byId('hub-confirm-yes').click(); // the lair's bay asks first (#1694)
     expect(data().boss).toBeTruthy();
     const won = (): number => (plies(game) > 0 ? 1 : 0);
     vi.spyOn(Encounter.prototype, 'result').mockImplementation(won);

@@ -37,8 +37,8 @@ test('the rogue-lite tactics: the bar, Reinforce, Freeze and a reward offering o
   await bar.nth(0).click(); // Freeze
   await page.evaluate(() => {
     const w = window as any;
-    w.__click(0, 2);
-    w.__click(0, 1);
+    w.__roll(0, 2);
+    w.__roll(0, 1);
   });
   await expect(page.locator('#hud')).toContainText('turn passed');
   expect(await page.evaluate(() => (window as any).__plies())).toBe(3); // Reinforce, Freeze, the move

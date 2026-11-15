@@ -5,7 +5,7 @@ import { BLACK_WINS } from './end-games';
 // new player (every other spec stays open). The win comes from an imported finished game; the unit tests hold the rest (main.unlock.test.ts).
 
 test('a new player cannot start a locked mode, wins once and gets the unlock card, #1665', async ({ page }) => {
-  await page.goto('./?newplayer&hub=classic');
+  await page.goto('./?newplayer');
   await page.locator('canvas').waitFor();
   await expect(page.locator('body')).toHaveAttribute('data-unlocked', '0');
   await expect(page.locator('#dock #exit')).toBeHidden(); // the ship is not open yet: the first table has no way out
@@ -21,7 +21,7 @@ test('a new player cannot start a locked mode, wins once and gets the unlock car
   const card = page.locator('#unlock');
   await expect(card).toBeVisible();
   await expect(card).toContainText('You won.');
-  await expect(card).toContainText('Unlocked: Open world, Bosses, Runs, Daily, Royale, Ranked, Leaderboard');
+  await expect(card).toContainText('The Mess is open. Next: beat The Echo.');
   await expect(page.locator('body')).toHaveAttribute('data-unlocked', '1');
   await page.locator('#unlock-dismiss').click();
   await expect(card).toBeHidden();
@@ -29,19 +29,19 @@ test('a new player cannot start a locked mode, wins once and gets the unlock car
 });
 
 test('the locked Hub names the first win and shows no amber door, #1665', async ({ page }) => {
-  await page.goto('./?newplayer&hub=classic');
+  await page.goto('./?newplayer');
   await page.locator('canvas').waitFor();
   await page.evaluate(() => (window as unknown as { __enterMode: (m: string) => void }).__enterMode('hub'));
   await expect(page.locator('#hub-rail .goal')).toHaveText('Next goal: Win your first game vs the bot');
   await expect(page.locator('#hub-labels [data-goal]')).toHaveCount(0);
 });
 
-test('the card has Open world as its filled button and lists the Leaderboard, #1665', async ({ page }) => {
-  await page.goto('./?newplayer&hub=classic');
+test('the card has Open world as its filled button and names the goal, #1665', async ({ page }) => {
+  await page.goto('./?newplayer');
   await page.locator('canvas').waitFor();
   await page.locator('#import-file').setInputFiles({ name: 'game.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ version: 1, mode: 'local', layout: 'standard', bot: true, moves: BLACK_WINS })) });
   await expect(page.locator('#unlock')).toBeVisible();
   const fills = await page.evaluate(() => ['unlock-world', 'unlock-dismiss'].map((id) => getComputedStyle(document.getElementById(id)!).backgroundColor));
   expect(fills[0]).not.toBe(fills[1]);
-  await expect(page.locator('#unlock')).toContainText('Leaderboard');
+  await expect(page.locator('#unlock')).toContainText('The Mess is open. Next: beat The Echo.');
 });

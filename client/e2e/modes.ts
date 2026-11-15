@@ -58,3 +58,9 @@ export function lowTierOnCi(): void {
     if (process.env.CI) await page.addInitScript(() => localStorage.setItem('ab-alone.tier', 'low'));
   });
 }
+
+/** A tower or a gate opens the ship on its bay with the confirm up (#1694): Enter starts the fight or the run. A town opens the ship on the Mess and asks nothing. The place cue (#1519) takes the first press, and a tap elsewhere would stay: Enter waits for the cue to end by itself. */
+export async function enterBay(page: Page): Promise<void> {
+  await expect(page.locator('body')).not.toHaveAttribute('data-place-transition', /.+/);
+  await page.locator('#hub-confirm-yes').click();
+}

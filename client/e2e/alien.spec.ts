@@ -44,8 +44,8 @@ const quiet = (page: Page, n: number) =>
       const to = (m: Move) => [m.cells[0]![0] + DIRS[m.dir]![0]!, m.cells[0]![1] + DIRS[m.dir]![1]!];
       const spare = w.__legal().filter((m: Move) => m.cells.length === 1 && !laid.includes(String(to(m))));
       const mv = spare.find((m: Move) => forward.includes(m.dir)) ?? spare[0];
-      w.__click(...mv.cells[0]);
-      w.__click(...to(mv));
+      w.__roll(...mv.cells[0]);
+      w.__roll(...to(mv));
     }
   }, n);
 
@@ -89,8 +89,8 @@ test('The Alien: a marble that ends its move on an egg crushes it, #588', async 
     const DIRS = [[1, 0], [-1, 0], [1, -1], [-1, 1], [0, -1], [0, 1]];
     const onto = (m: Move) => [m.cells[0]![0] + DIRS[m.dir]![0]!, m.cells[0]![1] + DIRS[m.dir]![1]!];
     const mv = w.__legal().find((m: Move) => m.cells.length === 1 && String(onto(m)) === String(target));
-    w.__click(...mv.cells[0]); // a Black marble onto the egg
-    w.__click(...target);
+    w.__roll(...mv.cells[0]); // a Black marble onto the egg
+    w.__roll(...target);
   }, egg);
   await expect(body).toHaveAttribute('data-eggs', '0');
   await expect(page.locator('#hud .boss .tell')).toHaveCount(0);

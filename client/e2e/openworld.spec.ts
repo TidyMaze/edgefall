@@ -43,7 +43,7 @@ shared('the hero rolls over the Open world, an obstacle stops it, and Escape lea
 // #1063: while the Open world is on, its arrows roll the hero and do not open the board's replay underneath; Escape leaves
 // the world for the Hub, as the exit of the dock does (#1605). The game (moves played) is loaded through the game file import.
 test('the arrows in the Open world do not open the board replay, and leaving the world opens no replay, #1063', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   const save = JSON.stringify({ version: 1, mode: 'local', layout: 'standard', bot: false, moves: BLACK_WINS });
   await page.locator('#import-file').setInputFiles({ name: 'game.json', mimeType: 'application/json', buffer: Buffer.from(save) });
@@ -176,7 +176,7 @@ for (const [look, query, [br, bg, bb], allowed] of [
 ] as const)
 test(`the widest zoom on a 32:9 screen shows no black background at its edges in the ${look} look, #976`, async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 270 }); // 32:9 at a quarter of the pixels: the ratio sets the reach, the software tier draws it faster
-  await page.goto(`./?bot=off&openworld=7&hub=classic${query}`);
+  await page.goto(`./?bot=off&openworld=7${query}`);
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   const box = (await page.locator('canvas:not(#openworld-minimap)').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -214,7 +214,7 @@ test(`the widest zoom on a 32:9 screen shows no black background at its edges in
 // #989: the props within 8 cells of the hero are drawn with their detailed models once those load, the low-poly ones beyond.
 test('the props near the hero are drawn detailed, the ones beyond low-poly, #989', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('ab-alone.tier', 'high')); // the detailed models are a high tier part: this spec keeps the tier it tests on CI too (#1436)
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe('7'); // entered: the world is drawn
   const drawn = () => page.evaluate(() => JSON.parse(document.body.dataset.openworldDrawn!) as Record<string, number>);
@@ -229,7 +229,7 @@ test('the props near the hero are drawn detailed, the ones beyond low-poly, #989
 
 // #1000: the entry is open to everyone, and enters a world with a random seed (the Airlock bay starts it, #1697).
 test('the Open world needs no flag, and its entry enters a random world, #1000', async ({ page }) => {
-  await page.goto('./?bot=off&hub=classic');
+  await page.goto('./?bot=off');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await startMode(page, 'world');
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toMatch(/^\d+$/);
@@ -269,7 +269,7 @@ shared('the troop pushes the enemy in front of it after a step, and the enemy mo
 // #967: with reduced motion the push is not drawn in between: the marbles jump to their cells, as before.
 test('with reduced motion the troop pushes the enemy at once, with no animation, #967', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe('7'); // entered: the world is drawn
   await page.evaluate(() =>
@@ -291,7 +291,7 @@ test.describe('the touch joystick', () => {
   test.use({ hasTouch: true });
   test('a drag on the left half walks the hero right until the thumb lifts, #1025', async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'needs a CDP session (newCDPSession), which only Chromium has');
-    await page.goto('./?bot=off&openworld=7&hub=classic');
+    await page.goto('./?bot=off&openworld=7');
     await page.locator('canvas:not(#openworld-minimap)').waitFor();
     const at = () => page.evaluate(() => document.body.dataset.openworldAt);
     await expect.poll(at).toBe('0,0');
@@ -313,7 +313,7 @@ test.describe('the touch joystick', () => {
 // #1051: the settings menu of the Open world opens on screen. The cog is at the right of the column, as in a normal game (#1032 hid
 // the dock), so the menu hangs from its right edge and stays inside the window at every size.
 async function openSettingsInOpenWorld(page: Page): Promise<void> {
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe('7');
   await page.locator('#settings').click();
@@ -352,7 +352,7 @@ test.describe('the Open world settings menu on a touch phone, #1051', () => {
 // #1026: Q and E turn the Open world camera round the hero by a step, R goes back to the default angle, and the turn is saved with
 // the world (saved and resumed: main.openworld.test.ts; the turn itself: openworldview.test.ts and openworldmode.test.ts).
 test('Q and E turn the Open world camera round the hero, R goes back, #1026', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   const yaw = () => page.evaluate(() => document.body.dataset.openworldYaw);
   await expect.poll(yaw).toBe('-30'); // the default faces a straight line of hexes (#1254)
@@ -483,7 +483,7 @@ shared('the Open world HUD plate folds after 3 steps and the chip reopens it, #1
 test('the Open world HUD plate follows the theme with four rivets, #1138, #1172', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await page.addInitScript(() => localStorage.setItem('ab-alone.theme', 'system')); // light really applies (#1184)
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   const plate = page.locator('#openworld-hud');
   await expect(plate).toBeVisible();

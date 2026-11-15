@@ -40,8 +40,8 @@ async function plies(page: Page, from: number, to: number): Promise<void> {
     await page.evaluate(
       ([cq, cr, d]) => {
         const step = [[1, 0], [-1, 0], [1, -1], [-1, 1], [0, -1], [0, 1]][d]!;
-        (window as any).__click(cq, cr);
-        (window as any).__click(cq + step[0]!, cr + step[1]!);
+        (window as any).__roll(cq, cr);
+        (window as any).__roll(cq + step[0]!, cr + step[1]!);
       },
       [q, r, dir],
     );

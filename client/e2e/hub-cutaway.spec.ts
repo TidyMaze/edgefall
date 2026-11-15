@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { startMode } from './modes';
 
-// The Hub Cutaway (#1689): `?hub=cutaway` draws the ship in place of the Hub's deck, the tall shell under 600 px wide or 500 px high, the wide one above,
-// one shell loaded at a time; the flag off asks for no cutaway file. Draw calls and triangles stay in the budget of the Open world (55, 31,000), measured by `bun run e2e:budget`.
+// The Hub Cutaway (#1689): the ship is drawn in place of the Hub's deck, the tall shell under 600 px wide or 500 px high, the wide one above,
+// one shell loaded at a time. Draw calls and triangles stay in the budget of the Open world (55, 31,000), measured by `bun run e2e:budget`.
 // body[data-hub-cutaway] is "true" while the ship is drawn.
 
 const BUDGET = { calls: 55, triangles: 31000 };
@@ -22,21 +22,21 @@ const cost = (page: Page) => page.evaluate(() => (window as unknown as { __rende
 
 test('a phone loads the tall shell only', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const files = await openHub(page, '?hub=cutaway&bot=off', ALL);
+  const files = await openHub(page, '?bot=off', ALL);
   await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');
   expect(files).toEqual(['tall']);
 });
 
 test('a window loads the wide shell only', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 700 });
-  const files = await openHub(page, '?hub=cutaway&bot=off');
+  const files = await openHub(page, '?bot=off');
   await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');
   expect(files).toEqual(['wide']);
 });
 
 test('a window that shrinks under 600 x 500 swaps the wide shell for the tall one', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 700 });
-  const files = await openHub(page, '?hub=cutaway&bot=off');
+  const files = await openHub(page, '?bot=off');
   await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');
   await page.setViewportSize({ width: 599, height: 700 });
   await expect.poll(() => files).toEqual(['wide', 'tall']);
@@ -47,7 +47,7 @@ test('a window that shrinks under 600 x 500 swaps the wide shell for the tall on
 for (const [layout, size] of [['tall', { width: 390, height: 844 }], ['wide', { width: 1000, height: 700 }]] as const) {
   test(`the ${layout} ship draws within the budget @budget`, async ({ page }) => {
     await page.setViewportSize(size);
-    await openHub(page, '?hub=cutaway&bot=off', ALL);
+    await openHub(page, '?bot=off', ALL);
     await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');
     await expect.poll(async () => (await cost(page)).triangles, { timeout: 30000 }).toBeLessThanOrEqual(BUDGET.triangles); // the first frames may still draw the deck
     const { calls, triangles } = await cost(page);
@@ -56,22 +56,13 @@ for (const [layout, size] of [['tall', { width: 390, height: 844 }], ['wide', { 
   });
 }
 
-test('?hub=classic asks for no cutaway file and keeps the deck', async ({ page }) => {
-  const files = await openHub(page, '?bot=off&hub=classic');
-  await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 0,0');
-  await page.waitForTimeout(500);
-  expect(files).toEqual([]);
-  await expect(page.locator('body')).not.toHaveAttribute('data-hub-cutaway', /.*/);
-  await expect(page.locator('#hub-labels')).toBeVisible();
-});
-
 // The bays as tap targets (#1691): a tap rolls the marble there and the room opens, a shut deck bumps, the arrow keys move it, a tap during a roll ends it, and the signs fit.
 const bay = (page: Page, key: string) => page.locator(`#ship-bays [data-bay="${key}"]`);
 const hubNow = (page: Page) => page.evaluate(() => document.body.dataset.hub ?? null);
 
 test('a tap on the House table rolls the marble there and starts the game', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await openHub(page, '?hub=cutaway&bot=off', ['echo']);
+  await openHub(page, '?bot=off', ['echo']);
   await expect(bay(page, 'mess:bot')).toBeVisible();
   await bay(page, 'mess:bot').click();
   await expect.poll(() => hubNow(page)).toBeNull(); // the Hub is left: a game is on
@@ -79,7 +70,7 @@ test('a tap on the House table rolls the marble there and starts the game', asyn
 
 test('a tap on a bay of a shut deck bumps at its hatch and Tally says her line', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 700 });
-  await openHub(page, '?hub=cutaway&bot=off');
+  await openHub(page, '?bot=off');
   await bay(page, 'bridge:pulsar').click();
   await expect(page.locator('#hud')).toContainText('locked');
   expect(await hubNow(page)).toMatch(/^mess /);
@@ -87,7 +78,7 @@ test('a tap on a bay of a shut deck bumps at its hatch and Tally says her line',
 
 test('the arrow keys move the marble along a floor, and bump the shut hatch', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); // the tall shell: the Mess has two floors, the lift is 0.58 left of the House table
-  await openHub(page, '?hub=cutaway&bot=off');
+  await openHub(page, '?bot=off');
   await expect(bay(page, 'mess:bot')).toBeVisible(); // the ship is drawn: before it, the keys roll the old deck's marble
   await page.keyboard.press('ArrowRight');
   await expect(bay(page, 'mess:bot')).toBeFocused();
@@ -101,7 +92,7 @@ test('the arrow keys move the marble along a floor, and bump the shut hatch', as
 
 test('a tap during a roll ends it: the first room does not open', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 700 });
-  await openHub(page, '?hub=cutaway&bot=off', ['echo']);
+  await openHub(page, '?bot=off', ['echo']);
   await bay(page, 'mess:daily').click();
   await bay(page, 'mess:logs').click({ force: true });
   await expect(page.locator('#reader')).toBeVisible(); // the logs, not the daily
@@ -143,7 +134,7 @@ const MEASURE = () => {
 for (const [w, h] of [[390, 844], [375, 667], [360, 640], [1000, 700]] as const) {
   test(`every bay is whole, under no panel, with a one line sign on ${w}x${h}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
-    await openHub(page, '?hub=cutaway&bot=off', ALL);
+    await openHub(page, '?bot=off', ALL);
     await expect(bay(page, 'mess:echo')).toBeVisible();
     const r = await page.evaluate(MEASURE);
     console.log(`${w}x${h}: ${r.shown} of ${r.n} bays shown, ${r.lifts} lift buttons, smallest ${r.minW.toFixed(0)} x ${r.minH.toFixed(0)} px, phone sign ${r.minFont}px`);
@@ -158,7 +149,7 @@ for (const [w, h] of [[390, 844], [375, 667], [360, 640], [1000, 700]] as const)
 test('the lift buttons ride the marble up and the camera follows: the bays on show stay whole, 44 px and uncovered, up to the Bridge', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); // a ride is a 150 ms fade: six of them in the time of the test
   await page.setViewportSize({ width: 360, height: 640 });
-  await openHub(page, '?hub=cutaway&bot=off', ALL);
+  await openHub(page, '?bot=off', ALL);
   await expect(bay(page, 'mess:echo')).toBeVisible();
   const lift = (dir: string) => page.locator(`#ship-lift [data-lift="${dir}"]`);
   await expect(lift('down')).toBeDisabled();
@@ -180,7 +171,7 @@ test('the lift buttons ride the marble up and the camera follows: the bays on sh
 for (const [w, h] of [[390, 844], [1000, 700]] as const) {
   test(`the ship is in the scene, whole at ${w}x${h}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
-    await openHub(page, '?hub=cutaway&bot=off', ALL);
+    await openHub(page, '?bot=off', ALL);
     await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');
     // The scene holds the ship from the first frame; the canvas shows it once its material is compiled: a slow software tier takes seconds (a screenshot polls the pixels, not a test).
     expect(await page.evaluate(() => (window as unknown as { __shipDrawn: boolean }).__shipDrawn)).toBe(true);

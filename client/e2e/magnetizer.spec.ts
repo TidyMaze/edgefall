@@ -50,8 +50,8 @@ async function plies(page: Page, from: number, to: number): Promise<void> {
       ([marbles, d]) => {
         const step = [[1, 0], [-1, 0], [1, -1], [-1, 1], [0, -1], [0, 1]][d as number]!;
         const group = marbles as Axial[];
-        for (const [q, r] of group) (window as any).__click(q, r);
-        (window as any).__click(group[0]![0] + step[0]!, group[0]![1] + step[1]!);
+        for (const [q, r] of group) (window as any).__roll(q, r);
+        (window as any).__roll(group[0]![0] + step[0]!, group[0]![1] + step[1]!);
       },
       [cells, dir] as const,
     );

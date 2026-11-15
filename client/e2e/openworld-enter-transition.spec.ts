@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { loseByRepetition } from './fight-end';
-import { lowTierOnCi } from './modes';
+import { lowTierOnCi, enterBay } from './modes';
 
 lowTierOnCi();
 
@@ -26,7 +26,7 @@ for (const { name, viewport, touch } of sizes) {
 
     for (const [kind, title, back] of [['tower', 'The Echo', 'exit'], ['dungeon', 'Mining cut · Rogue-lite run', 'exit']] as const) {
       test(`a ${kind} shows its transition with its title over the live place and the way back plays the matching one, #1519`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7&hub=classic');
+        await page.goto('./?bot=off&openworld=7');
         const body = page.locator('body');
         await expect(body).toHaveAttribute('data-openworld-at', '0,0');
         const [q, r] = await cellOf(page, kind);
@@ -40,6 +40,7 @@ for (const { name, viewport, touch } of sizes) {
         await page.mouse.click(5, 5); // a press skips it to its end
         await expect(body).not.toHaveAttribute('data-place-transition', /.*/);
         await expect(cue).toBeHidden();
+        await enterBay(page); // the bay asks first (#1694)
         if (kind === 'tower') await loseByRepetition(page); // The Echo, the first tower, is lost in a few moves: Back to the Open world shows
         await page.evaluate((id) => document.getElementById(id)!.click(), back); // the first slot of the dock (#1517); a click by script, as the tower's end light may cover it
         await expect(body).toHaveAttribute('data-openworld-at', `${q! - 1},${r}`);
@@ -51,7 +52,7 @@ for (const { name, viewport, touch } of sizes) {
 
       test(`under reduced motion a ${kind} keeps its title and cuts the rest, and the way back is a cut, #1519`, async ({ page }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.goto('./?bot=off&openworld=7&hub=classic');
+        await page.goto('./?bot=off&openworld=7');
         const body = page.locator('body');
         await expect(body).toHaveAttribute('data-openworld-at', '0,0');
         const [q, r] = await cellOf(page, kind);

@@ -2,8 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { boot, type Game } from './test/harness';
 
-// The Hub Cutaway (#1689): behind `?hub=cutaway`, off by default. With the flag off its files are never asked for and the deck is as it was.
-// The ship itself (bake, states, shells) is tested in hubcutaway.test.ts; here the wiring of the page: the flag, the shell asked for, the camera and the plates.
+// The Hub Cutaway (#1689), the only Hub (#1697). The ship itself (bake, states, shells) is tested in hubcutaway.test.ts; here the wiring of the page: the shell asked for, the camera and the plates.
 
 const byId = (id: string): HTMLElement => document.getElementById(id)!;
 function ship(game: Game): void {
@@ -14,30 +13,15 @@ const cutawayClass = async (): Promise<typeof import('./hubcutaway').Cutaway> =>
 const cutawayFiles = (game: Game): string[] => game.models().filter((m) => m.startsWith('hub-cutaway'));
 
 describe('the Hub Cutaway on the page (#1689)', () => {
-  it('asks for no cutaway file and leaves the deck as it is while the flag is off, also under ?look=cutaway', async () => {
-    for (const query of ['?bot=off', '?bot=off&look=cutaway']) {
-      const game = await boot(query);
-      ship(game);
-      await game.settle();
-      expect(cutawayFiles(game)).toEqual([]);
-      expect(document.body.dataset.hubCutaway).toBeUndefined();
-      expect(document.body.dataset.hub).toBe('mess 0,0');
-    }
-  });
-
-  it('is the default page (#1696): no query draws the ship, ?hub=classic keeps the deck', async () => {
-    const on = await boot('?bot=off', { defaultHub: true });
+  it('is the default page (#1696): no query draws the ship', async () => {
+    const on = await boot('?bot=off');
     ship(on);
     await on.settle();
     expect(cutawayFiles(on).length).toBeGreaterThan(0);
-    const off = await boot('?bot=off&hub=classic', { defaultHub: true });
-    ship(off);
-    await off.settle();
-    expect(cutawayFiles(off)).toEqual([]);
   });
 
-  it('asks for the shell of the window with the flag on, one at a time, and draws the ship in the Hub only', async () => {
-    const game = await boot('?bot=off&hub=cutaway');
+  it('asks for the shell of the window one at a time, and draws the ship in the Hub only', async () => {
+    const game = await boot('?bot=off');
     const sync = vi.spyOn((await cutawayClass()).prototype, 'sync');
     expect(cutawayFiles(game)).toEqual([]); // not in the Hub yet: nothing asked for
     ship(game);
@@ -48,7 +32,7 @@ describe('the Hub Cutaway on the page (#1689)', () => {
   });
 
   it('frames the whole ship while it is drawn, hides the plates, and gives the deck back when it goes', async () => {
-    const game = await boot('?bot=off&hub=cutaway&newplayer');
+    const game = await boot('?bot=off&newplayer');
     const sync = vi.spyOn((await cutawayClass()).prototype, 'sync').mockReturnValue(true);
     game.hook('__startMode', 'hub'); // the Ship entry of the menu is locked for a new player
     await game.settle();
@@ -66,7 +50,7 @@ describe('the Hub Cutaway on the page (#1689)', () => {
   it('says through window.__shipDrawn whether the ship is in the scene: not with the flag off, not outside the Hub', async () => {
     await boot('?bot=off');
     expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(false);
-    const game = await boot('?bot=off&hub=cutaway');
+    const game = await boot('?bot=off');
     ship(game);
     await game.settle();
     expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(true);
@@ -76,7 +60,7 @@ describe('the Hub Cutaway on the page (#1689)', () => {
   });
 
   it('points the ship at the next goal once the first win is not awaited', async () => {
-    const game = await boot('?bot=off&hub=cutaway');
+    const game = await boot('?bot=off');
     const sync = vi.spyOn((await cutawayClass()).prototype, 'sync').mockReturnValue(false);
     ship(game);
     await game.settle();

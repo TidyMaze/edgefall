@@ -81,7 +81,7 @@ test('a click on the console screen opens the reader, a click off it leaves, and
   await expect(page.locator('body')).toHaveAttribute('data-reading', 'mess-house-rule');
   // A move played while reading lands: the reader stays open.
   await page.evaluate(() => {
-    const click = (window as unknown as { __click: (q: number, r: number) => void }).__click;
+    const click = (window as unknown as { __roll: (q: number, r: number) => void }).__roll;
     click(0, 2);
     click(0, 1);
   });

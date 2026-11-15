@@ -77,7 +77,7 @@ describe('the Workshop station of the Hub (#1655)', () => {
   });
 
   it('the arrows of the Hub do not roll the marble while the sheet is open', async () => {
-    const game = await boot('?bot=off&openworld=7');
+    const game = await boot('?bot=off&openworld=7', { deck: true });
     await inTown(game, {});
     const at = data().hub;
     await open();
@@ -431,6 +431,7 @@ describe('the army in a lair fight walked into from the world (#1655)', () => {
     hooks().__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [], ...stock });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
     await settle();
     return game;
   }

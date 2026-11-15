@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// #1702: under `?hub=cutaway` no bay label overlaps another label or the marble's lift tag, no bay wears a blank plate, and a phone's labels are readable (cap height of 7 px or more),
+// #1702: no bay label overlaps another label or the marble's lift tag, no bay wears a blank plate, and a phone's labels are readable (cap height of 7 px or more),
 // at 390x844 and 1000x700. The ship draws from the bays' window rects, so the positions are read from the page (bounding boxes), not computed in a unit test.
 // One page, one load: the window is resized between the two sizes (the other shell loads) to stay under the 5 s of an e2e.
 
@@ -37,7 +37,7 @@ async function read(page: Page): Promise<{ boxes: Box[]; blank: string[]; cap: n
 test('phone and window: no bay label overlaps another label or the lift tag, no blank plate, readable phone labels', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [0, 0], beaten: ['echo'] })));
-  await page.goto('./?hub=cutaway&bot=off');
+  await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
   await page.evaluate(() => (window as unknown as { __enterMode: (m: string) => void }).__enterMode('hub'));
   await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');

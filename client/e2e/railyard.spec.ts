@@ -39,8 +39,8 @@ const quiet = (page: Page, n: number) =>
       const mv = w.__legal().find(
         (m: { cells: Axial[]; dir: number }) => m.cells.length === 1 && !rails.includes(String(m.cells[0])) && !rails.includes(String(to(m))),
       );
-      w.__click(...mv.cells[0]);
-      w.__click(...to(mv));
+      w.__roll(...mv.cells[0]);
+      w.__roll(...to(mv));
     }
   }, n);
 

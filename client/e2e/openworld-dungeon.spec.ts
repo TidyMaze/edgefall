@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { clickHud, lowTierOnCi } from './modes';
+import { clickHud, enterBay, lowTierOnCi } from './modes';
 import { shot } from './shot';
 
 lowTierOnCi();
@@ -7,7 +7,7 @@ lowTierOnCi();
 // #1291: the Dungeon button walks the hero to the nearest tower. The test hook stands the hero a few cells from a lair (no 150-cell
 // walk); the press walks the rest and the step onto the lair starts the boss fight.
 test('the Dungeon button walks the hero to the nearest tower and the fight starts, #1291', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworldAt)).toBe('0,0');
   const lairs = (await page.evaluate(() => document.body.dataset.openworldLairs))!.split(' ');
@@ -19,6 +19,7 @@ test('the Dungeon button walks the hero to the nearest tower and the fight start
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworldAt)).toBe(`${q - 4},${r}`);
   await shot(page, { path: process.env.DUNGEON_SHOT ?? 'test-results/dungeon.png' });
   await clickHud(page, '#openworld-dungeon');
+  await enterBay(page);
   await expect(page.locator('#openworld-dungeon-note')).toHaveText('');
   await expect(page.locator('body')).toHaveAttribute('data-boss', /.+/);
 });

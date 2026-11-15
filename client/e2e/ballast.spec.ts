@@ -18,8 +18,8 @@ async function plies(page: Page, n: number): Promise<void> {
     await page.evaluate(() => {
       const mv = ((window as any).__legal() as { cells: [number, number][]; dir: number }[]).find((m) => m.cells.length === 1)!;
       const step = [[1, 0], [-1, 0], [1, -1], [-1, 1], [0, -1], [0, 1]][mv.dir]!;
-      (window as any).__click(...mv.cells[0]!);
-      (window as any).__click(mv.cells[0]![0] + step[0]!, mv.cells[0]![1] + step[1]!);
+      (window as any).__roll(...mv.cells[0]!);
+      (window as any).__roll(mv.cells[0]![0] + step[0]!, mv.cells[0]![1] + step[1]!);
     });
   }
 }

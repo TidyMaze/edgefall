@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { lowTierOnCi } from './modes';
+import { lowTierOnCi, enterBay } from './modes';
 import { shot } from './shot';
 
 lowTierOnCi();
@@ -24,7 +24,7 @@ for (const { name, viewport, touch } of sizes) {
 
     for (const [kind, shown] of [['town', 'data-hub'], ['dungeon', 'data-run']] as const) {
       test(`rolling onto a ${kind} enters it, and Back to the Open world returns to the entrance cell, #1593`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7&hub=classic');
+        await page.goto('./?bot=off&openworld=7');
         const body = page.locator('body');
         await expect(body).toHaveAttribute('data-openworld-at', '0,0');
         const [q, r] = await placeOf(page, kind);
@@ -33,6 +33,7 @@ for (const { name, viewport, touch } of sizes) {
         await page.evaluate(() => (window as unknown as Hooks).__openworldTime(9 * 60_000));
         await shot(page, { path: `test-results/place-${kind}-${name}-night.png` });
         await page.keyboard.press('ArrowRight');
+        if (kind === 'dungeon') await enterBay(page);
         await expect(body).not.toHaveAttribute('data-openworld', /.*/);
         await expect(body).toHaveAttribute(shown, /.+/); // the Hub's deck and cell, the run's screen
         if (kind === 'town') await expect(page.locator('.hub-contract')).toHaveText(/^Contract: The [A-Za-z ]+, ring 1, \d+ cells?, (to the |straight )(upper |lower )?\w+\.$/); // the posted contract (#1618)
@@ -50,12 +51,13 @@ for (const { name, viewport, touch } of sizes) {
 
 // #1597: a gate's run begins in the biome of the ground the gate stands in, not the Meadow (body[data-biome] is absent in the Meadow).
 test('rolling onto a dungeon gate starts its run in the gate\'s biome, #1597', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   const body = page.locator('body');
   await expect(body).toHaveAttribute('data-openworld-at', '0,0');
   const [q, r] = await placeOf(page, 'dungeon');
   await page.evaluate(([q, r]) => (window as unknown as Hooks).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] }), [q!, r!]);
   await page.keyboard.press('ArrowRight');
+  await enterBay(page);
   await expect(body).toHaveAttribute('data-run', /.+/);
   await expect(body).toHaveAttribute('data-biome', /^(forest|tundra|desert|badlands|archipelago)$/);
   await shot(page, { path: 'test-results/gate-biome.png' });

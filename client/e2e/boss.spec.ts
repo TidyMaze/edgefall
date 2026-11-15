@@ -89,7 +89,7 @@ for (const tier of ['high', 'low']) {
         (window as any).__legal().find((m: any) => m.cells.length === 1 && (m.dir === 4 || m.dir === 2)),
       );
       const [q, r] = mv.cells[0];
-      const send = mouse ? click : (cq: number, cr: number) => page.evaluate(([x, y]) => (window as any).__click(x, y), [cq, cr]);
+      const send = mouse ? click : (cq: number, cr: number) => page.evaluate(([x, y]) => (window as any).__roll(x, y), [cq, cr]);
       await send(q, r);
       await send(mv.dir === 4 ? q : q + 1, r - 1);
     };

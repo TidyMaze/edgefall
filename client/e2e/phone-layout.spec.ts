@@ -181,7 +181,7 @@ const sharedPage = (viewport: { width: number; height: number }, mobile: boolean
   test.beforeAll(async ({ browser }, testInfo) => {
     page = await (await browser.newContext({ ...testInfo.project.use, viewport, isMobile: mobile, hasTouch: mobile })).newPage();
     await page.addInitScript((s) => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, v)), stored);
-    await page.goto('./?bot=off&net=hook&hub=classic');
+    await page.goto('./?bot=off&net=hook');
     await page.locator('canvas').waitFor();
   });
   test.afterAll(async () => {
@@ -190,7 +190,7 @@ const sharedPage = (viewport: { width: number; height: number }, mobile: boolean
   return () => page;
 };
 
-// A phone 390 by 844 held upright, one page (#1481): the board at boot (#1387), then the Hub (#1388).
+// A phone 390 by 844 held upright, one page (#1481): the board at boot (#1387), 
 test.describe('a phone 390 by 844 held upright', { tag: '@one-page' }, () => {
   test.skip(({ browserName }) => browserName === 'firefox', 'Firefox has no mobile emulation');
   const shared = sharedPage({ width: 390, height: 844 }, true);
@@ -204,9 +204,6 @@ test.describe('a phone 390 by 844 held upright', { tag: '@one-page' }, () => {
     expect(Math.abs(seen.centre - seen.height / 2)).toBeLessThan(0.05 * seen.height);
     expect(seen.bottom).toBeLessThan(seen.dock);
   });
-  test('the rail and the Bosses strip sit under the cog and above the board, #1388', async () => {
-    await hubUnderCog(shared(), { width: 390, height: 844 });
-  });
 });
 
 // #1567: the closer view of the board (one tap, stored per device): the plate, the dock, the zoom button and the settings menu
@@ -216,44 +213,13 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 800 }
     test.use({ viewport, isMobile: true, hasTouch: true });
     test('the HUD plate and the dock cover no cell, #1567', async ({ page }, testInfo) => {
       await page.addInitScript(() => localStorage.setItem('ab-alone.board-zoom', 'on'));
-      await page.goto('./?bot=off&net=hook&hub=classic');
+      await page.goto('./?bot=off&net=hook');
       await page.locator('canvas').waitFor();
       await expect(page.locator('#hud')).toContainText('Black to move');
       await expect(page.getByRole('button', { name: 'Zoom the board' })).toHaveAttribute('aria-pressed', 'true');
       await check(page, testInfo, 'the closer board view');
     });
   });
-}
-
-// #1388: on the Hub, held upright, the five-section rail and the Bosses strip sit just under the plate and the cog, clear of the board.
-// The 390 by 844 phone runs it on its shared page, above.
-for (const viewport of [{ width: 360, height: 640 }]) {
-  test.describe(`the Hub on a phone ${viewport.width} by ${viewport.height} held upright`, () => {
-    test.use({ viewport, isMobile: true, hasTouch: true });
-    test('the rail and the Bosses strip sit under the cog and above the board, #1388', async ({ page }) => {
-      await page.goto('./?bot=off&net=hook&hub=classic');
-      await page.locator('canvas').waitFor();
-      await hubUnderCog(page, viewport);
-    });
-  });
-}
-async function hubUnderCog(page: Page, viewport: { width: number; height: number }): Promise<void> {
-  await startMode(page, 'hub');
-  await expect(page.locator('body')).toHaveAttribute('data-hub', /^\w+ /);
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-  const seen = await page.evaluate(() => {
-    const box = (id: string) => document.getElementById(id)!.getBoundingClientRect();
-    const toScreen = (window as any).__cellToScreen as (q: number, r: number) => { y: number };
-    let board = Infinity;
-    for (let q = -3; q <= 3; q++) for (let r = -3; r <= 3; r++) if (Math.abs(q + r) <= 3) board = Math.min(board, toScreen(q, r).y);
-    return { cog: box('chrome').bottom, pips: box('hub-pips').top, pipsBottom: box('hub-pips').bottom, rail: box('hub-rail').top, railBottom: box('hub-rail').bottom, board };
-  });
-  console.log(`1388 ${viewport.width}x${viewport.height}`, JSON.stringify(seen));
-  expect(seen.pips).toBeGreaterThanOrEqual(seen.cog); // under the plate and the cog,
-  expect(seen.pips - seen.cog).toBeLessThan(24); // right under them,
-  expect(seen.rail).toBeGreaterThanOrEqual(seen.pipsBottom); // the rail under the strip
-  expect(seen.board).toBeGreaterThan(seen.railBottom);
-  expect(seen.board).toBeGreaterThan(seen.pipsBottom);
 }
 
 // One page per window (#1481): a page boot is most of a test's time on the GPU-less runner, so the states below are reached one after the
@@ -273,7 +239,7 @@ for (const { name, viewport, mobile } of sizes) {
       const context = await browser.newContext({ ...testInfo.project.use, viewport, isMobile: mobile, hasTouch: mobile });
       page = await context.newPage();
       await page.clock.install({ time: Date.parse('2026-10-23T08:00:00Z') });
-      await page.goto('./?bot=off&net=hook&hub=classic');
+      await page.goto('./?bot=off&net=hook');
       await page.locator('canvas').waitFor();
     });
     test.afterAll(async () => {
@@ -444,7 +410,7 @@ for (const { name, viewport, scale } of [
   test(`every settings row is on screen and reachable, ${name}, bug #427`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.addInitScript((s) => localStorage.setItem('ab-alone.ui-scale', s), scale);
-    await page.goto('./?bot=off&net=hook&hub=classic');
+    await page.goto('./?bot=off&net=hook');
     await page.locator('canvas').waitFor();
     await settingsReachable(page);
   });
@@ -479,7 +445,7 @@ for (const { name, viewport } of [
       const hud = page.locator('#hud');
       await page.emulateMedia({ reducedMotion: 'reduce' }); // the 7 moves of the defeat slide in no time: the layout is the same
       await page.clock.setFixedTime(new Date('2027-03-30T08:00:00Z'));
-      await page.goto('./?bot=off&net=hook&hub=classic');
+      await page.goto('./?bot=off&net=hook');
       await startMode(page, 'daily');
       await expect(hud).toContainText('Daily challenge 2027-03-30 · attempt 1');
       await loseByRepetition(page); // against the Echo's bonus mirrors (#859), e2e/fight-end.ts

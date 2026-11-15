@@ -21,7 +21,7 @@ async function startEcho(page: Page): Promise<void> {
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
 }
 
-const click = (page: Page, q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__click(cq, cr), [q, r]);
+const click = (page: Page, q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [q, r]);
 const read = (page: Page, key: string) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) ?? '{}'), key);
 
 test('the Medal room shows the wins of the attempts of each boss, and the first move of a fight is an attempt (#1538)', async ({ page }, testInfo) => {

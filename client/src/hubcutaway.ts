@@ -1,4 +1,4 @@
-// The Hub Cutaway (#1689): the ship as a diorama of decks and bays, behind `?hub=cutaway` (off by default). Two shells of one kit (art/blender/hub-cutaway.blend,
+// The Hub Cutaway (#1689): the ship as a diorama of decks and bays. Two shells of one kit (art/blender/hub-cutaway.blend,
 // exported by art/blender/export_cutaway.py): tall under 600 px wide or 500 px high, wide above. The file holds every state of every part, one node per part named
 // hub_<layout>_<part>_<deck>_<room>; the game picks the nodes of the state and bakes the whole ship into ONE mesh, the colour of a deck and a state a per-vertex
 // glow (no material per state). The marble and the lift's car are two more meshes (they move, hubship.ts, #1691); the bays are the tap targets (hubbays.ts).
@@ -11,12 +11,6 @@ import type { Bay, Pos } from './hubroll';
 import { NEON } from './neonlook';
 
 export type Layout = 'tall' | 'wide';
-
-/** On unless `?hub=classic` (the old Hub, kept one release for #1697; `?hub=cutaway` is a no-op). */
-export const cutawayOn = (search: string): boolean => new URLSearchParams(search).get('hub') !== 'classic';
-
-/** A page opened with no query, or with only the Hub switch (`?hub=classic`): a new player's landing is the same (#602, #1696). */
-export const plainSearch = (search: string): boolean => [...new URLSearchParams(search).keys()].every((k) => k === 'hub');
 
 /** The tall shell under 600 px wide or 500 px high, else the wide one. */
 export const shellFor = (width: number, height: number): Layout => (width < 600 || height < 500 ? 'tall' : 'wide');

@@ -14,8 +14,8 @@ test('The Stalker is a boss: start it, the veil and the sight show, a move gets 
   expect(fog.drawn).toEqual([]); // the boss is four cells away: all hidden
   const plies = async () => page.evaluate(() => (window as any).__plies() as number);
   const move = await page.evaluate(() => (window as any).__legal()[0] as { cells: [number, number][]; dir: number });
-  await page.evaluate((m) => (window as any).__click(...m.cells[0]!), move);
-  await page.evaluate((m) => (window as any).__click(...(window as any).__targets().find((t: any) => t.dir === m.dir).cell), move);
+  await page.evaluate((m) => (window as any).__roll(...m.cells[0]!), move);
+  await page.evaluate((m) => (window as any).__roll(...(window as any).__targets().find((t: any) => t.dir === m.dir).cell), move);
   await expect.poll(plies).toBe(2); // the move and the boss's reply
   await shot(page, { path: testInfo.outputPath('stalker-boss-fight.png') });
 });
@@ -27,8 +27,8 @@ test('A Stalker fight comes back under its fog after a reload, and no menu has a
   await expect(page.locator('#stalker')).toHaveCount(0);
   await startMode(page, 'stalker');
   const move = await page.evaluate(() => (window as any).__legal()[0] as { cells: [number, number][]; dir: number });
-  await page.evaluate((m) => (window as any).__click(...m.cells[0]!), move);
-  await page.evaluate((m) => (window as any).__click(...(window as any).__targets().find((t: any) => t.dir === m.dir).cell), move);
+  await page.evaluate((m) => (window as any).__roll(...m.cells[0]!), move);
+  await page.evaluate((m) => (window as any).__roll(...(window as any).__targets().find((t: any) => t.dir === m.dir).cell), move);
   await expect.poll(() => page.evaluate(() => (window as any).__plies() as number)).toBe(2);
   const history = await page.evaluate(() => (window as any).__history());
   await page.reload();

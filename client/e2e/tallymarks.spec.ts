@@ -27,7 +27,7 @@ test('an ejection scratches one mark on the frame at the losing side, with clear
   await expect(hud).toContainText('Black to move');
   expect(await tally(page)).toEqual([{ marked: 0, slots: 6 }, { marked: 0, slots: 6 }]);
 
-  for (const ply of PLIES) for (const [q, r] of ply) await page.evaluate(([x, y]) => (window as any).__click(x, y), [q, r]);
+  for (const ply of PLIES) for (const [q, r] of ply) await page.evaluate(([x, y]) => (window as any).__roll(x, y), [q, r]);
   await expect(hud).toContainText('Black ejected 1/6');
   expect(await tally(page)).toEqual([{ marked: 0, slots: 6 }, { marked: 1, slots: 6 }]); // White, side 2, lost one
   await expect(hud.locator('.pip.out')).toHaveCount(1); // the flat fallback stays

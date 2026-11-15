@@ -17,7 +17,7 @@ const run = (state: object) => ({ seed: 9, army: 14, path: HULL, fighting: true,
 test('an act boss fight places the special marbles on its board, fights with them and falls back, #1494', async ({ page }) => {
   const panel = page.locator('#run-map');
   const marks = () => page.evaluate(() => document.body.dataset.specials);
-  const click = (q: number, r: number) => page.evaluate(([a, b]) => (window as any).__click(a, b), [q, r]);
+  const click = (q: number, r: number) => page.evaluate(([a, b]) => (window as any).__roll(a, b), [q, r]);
   await page.goto('./?bot=off');
   await page.waitForFunction(() => (window as any).__run);
   await page.evaluate((state) => (window as any).__run(state), run({ tactics: [2, 4], relics: [0] }));
@@ -83,7 +83,7 @@ for (const [id, seed, path] of MOVERS) {
     await expect(page.locator('#run-map .run-line')).toHaveText('Place your special marbles');
     const [q, r] = await page.evaluate(() => (window as any).__legal()[0].cells[0] as [number, number]);
     await page.locator('#run-map').getByRole('button', { name: /Heavy/ }).click();
-    await page.evaluate(([a, b]) => (window as any).__click(a, b), [q, r]);
+    await page.evaluate(([a, b]) => (window as any).__roll(a, b), [q, r]);
     expect(await page.evaluate(() => document.body.dataset.specials)).toBe(`${q},${r},1`);
     if (id === 'pulsar') {
       await freshDraw(page);

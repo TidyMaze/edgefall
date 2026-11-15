@@ -27,6 +27,7 @@ async function walkOnto(game: Game, lair: number, open = true): Promise<Axial> {
   hooks().__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] });
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
   window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+  document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
   return [q - 1, r];
 }
 

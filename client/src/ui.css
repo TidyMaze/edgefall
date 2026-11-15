@@ -1630,7 +1630,7 @@ body[data-openworld] #openworld-ask:not([hidden]) { display: block; }
 #settings-menu .setting-reset button { padding-inline-start: 0.75rem; } /* no icon, no empty slot */
 #settings-menu button.danger { color: var(--danger); border-color: var(--danger); }
 #settings-menu button.danger:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
-/* The Hub Cutaway (#1689, ?hub=cutaway): the ship stands in place of the deck, so the plates over the deck's cells have nothing to label. */
+/* The Hub Cutaway (#1689): the ship stands in place of the deck, so the plates over the deck's cells have nothing to label. */
 body[data-hub-cutaway='true'] :is(#hub-labels, #hub-rail, #hub-board) { display: none; } /* the ship names its rooms and shows its decks locked or lit; the lift panel and the notice board stood over its bays (#1691) */
 /* The bays of the Cutaway (#1691): one button per bay over the ship, the rect of its bay, wall to wall. A phone shows the short name on a dark sign, a window the name and its line; a deck not open is dark and unnamed. */
 body[data-hub-cutaway='true'] #ship-bays { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
@@ -1702,6 +1702,7 @@ body[data-hub-cutaway='true'] #ship-goal { position: fixed; inset: 0; z-index: 1
 #ship-goal-line { position: fixed; left: 16px; right: 16px; z-index: 2; box-sizing: border-box; min-height: 44px; margin: 0; padding: 6px 12px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; align-items: center; text-align: left; cursor: pointer; border: 1px solid #ffb000; border-radius: 22px; background: rgba(14, 18, 20, 0.92); color: #ffd98a; font: 600 0.8125rem/1.25 var(--ui); }
 #ship-goal-line:disabled { cursor: default; border-color: #9aa3a8; color: #c9d1d6; }
 #ship-gocard { position: fixed; right: 12px; top: 4.5rem; z-index: 2; box-sizing: border-box; width: 11.5rem; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #ffb000; border-radius: 8px; background: rgba(14, 18, 20, 0.92); color: #c9d1d6; font: 400 0.75rem/1.25 var(--ui); }
+body:has(#dock-wrap :is(#lore, #goal-sheet, #trainer-card):not([hidden]), #settings-menu:not([hidden])) #ship-gocard { display: none; } /* a sheet over the dock stands above the Go card, not under it (#1697) */
 #ship-gocard > small { color: #ffb000; font: 700 0.625rem/1.2 var(--ui); letter-spacing: 0.12em; text-transform: uppercase; }
 #ship-gocard > small:last-child { color: #9aa3a8; font-weight: 400; letter-spacing: 0; text-transform: none; }
 #ship-gocard b { color: #fff; font-size: 0.875rem; }
@@ -1712,7 +1713,7 @@ body:not([data-hub-cutaway='true']) :is(#ship-goal-line, #ship-gocard) { display
 @media (min-width: 600px) and (min-height: 500px) { #ship-goal-line { display: none; } }
 @media (max-width: 599px), (max-height: 499px) { #ship-gocard { display: none; } }
 
-/* The bay sheet (#1693, ?hub=cutaway): the two rows of the Clamp list and the Shift crew bays, and the co-op boss list moved into it. */
+/* The bay sheet (#1693): the two rows of the Clamp list and the Shift crew bays, and the co-op boss list moved into it. */
 #dock-wrap #bay-sheet { display: flex; flex-direction: column; gap: 4px; align-items: stretch; min-width: 0; }
 #dock-wrap #bay-sheet[hidden] { display: none; }
 #dock-wrap #bay-sheet > button, #dock-wrap #bay-sheet #coop-list button { min-height: 44px; min-width: 44px; }

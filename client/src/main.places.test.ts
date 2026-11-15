@@ -31,6 +31,7 @@ async function rollOnto(game: Game, kind: 'town' | 'dungeon', open = true, nth =
   hooks().__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] });
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
   window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+  if (kind === 'dungeon') document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
   return [q - 1, r];
 }
 
@@ -58,10 +59,11 @@ describe('a town of the Open world (#1593)', () => {
   });
 
   it('a table entered from the Hub of a town and left by the Hub of the menu keeps the way back to the world', async () => {
-    const game = await boot('?bot=off&openworld=7');
+    const game = await boot('?bot=off&openworld=7', { deck: true });
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [-1, 0], beaten: [] }));
     const entrance = await rollOnto(game, 'town');
-    expect(data().hub).toBe('mess -1,0');
+    expect(data().hub).toBe('mess 0,0'); // a town's ship opens on the Mess (#1694)
+    game.click(-1, 0);
     game.click(-1, -1); // the hot-seat table
     expect(data().hub).toBeUndefined();
     expect(byId('exit').dataset.label).toBe('Hub'); // a game, not the Hub: it leads to the Hub
@@ -224,6 +226,7 @@ describe('the transition of a place (#1519)', () => {
     hooks().__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
     expect(data().boss).toBe('echo');
     expect(cue()!.dataset.kind).toBe('tower');
     expect(titled()).toBe('The Echo');

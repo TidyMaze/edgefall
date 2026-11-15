@@ -12,7 +12,7 @@ const freshDraw = async (page: Page) => {
   await page.waitForFunction((n) => (window as any).__draws() > n, asked);
 };
 
-const click = (page: Page, q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__click(cq, cr), [q, r]);
+const click = (page: Page, q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [q, r]);
 
 test('The Echo offers a free move: its marble ringed, a diamond on the selected target, taking it keeps the turn (#958)', async ({ page }) => {
   const body = page.locator('body');

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// #1695: under `?hub=cutaway` the next goal is always in sight: the beacon (two rings on the goal's bay), the dotted route and the marble's tag, then a goal line over the dock on a phone
+// #1695: in the ship the next goal is always in sight: the beacon (two rings on the goal's bay), the dotted route and the marble's tag, then a goal line over the dock on a phone
 // and a card with Go in a window; a tap rolls the marble there. The choice of the goal, the route and the tag are unit tests (hubgoal.test.ts, main.hubgoal.test.ts); this spec reads the page.
 
 const bay = (page: Page, key: string) => page.locator(`#ship-bays [data-bay="${key}"]`);
@@ -9,7 +9,7 @@ const bay = (page: Page, key: string) => page.locator(`#ship-bays [data-bay="${k
 async function ship(page: Page, size: { width: number; height: number }): Promise<void> {
   await page.setViewportSize(size);
   await page.addInitScript(() => localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [0, 0], beaten: ['echo'] })));
-  await page.goto('./?hub=cutaway&bot=off');
+  await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
   await page.evaluate(() => (window as unknown as { __enterMode: (m: string) => void }).__enterMode('hub'));
   await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');

@@ -16,8 +16,8 @@ const ECHO_DRAW: [number, number, number, number][] = [
   [-1, 1, 0, 1],
 ];
 export async function loseByRepetition(page: Page): Promise<void> {
-  // The test hook's click (main.ts __click): the same move as a mouse click, without the raycast and the frames of one (#1413).
-  const click = (q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__click(cq, cr), [q, r]);
+  // The test hook's click (main.ts __roll): the same move as a mouse click, without the raycast and the frames of one (#1413).
+  const click = (q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [q, r]);
   for (const [ply, [q, r, tq, tr]] of ECHO_DRAW.entries()) {
     await click(q, r);
     await click(tq, tr);

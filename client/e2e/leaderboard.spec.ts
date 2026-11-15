@@ -29,7 +29,7 @@ test('the leaderboard shows my position among the opponents I met, my row highli
     );
     localStorage.setItem('ab-alone.ranked.board', JSON.stringify({ version: 1, rank: 1 }));
   });
-  await page.goto('./?bot=off&hub=classic');
+  await page.goto('./?bot=off');
   await startMode(page, 'leaderboard');
   const board = page.getByRole('dialog', { name: 'Ranked 1v1' });
   await expect(board).toBeVisible();

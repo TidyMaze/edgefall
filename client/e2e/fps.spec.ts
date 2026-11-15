@@ -57,7 +57,7 @@ test('marble selection preserves framerate and causes no frame time spikes, bug 
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     // Select marble (0, 4)
-    (window as any).__click(0, 4);
+    (window as any).__roll(0, 4);
 
     // Track 10 frames post-click
     for (let i = 0; i < 10; i++) {

@@ -18,7 +18,7 @@ test('the daily challenge keeps its boss and seed all day, counts attempts, and 
     await page.goto('./');
     await expect(daily).toBeEnabled();
   };
-  const click = (q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__click(cq, cr), [q, r]); // the page's own click, no mouse round trip
+  const click = (q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [q, r]); // the page's own click, no mouse round trip
   // The first forward one-marble move (NW or NE), then the boss reply.
   const advance = async () => {
     const mv = await page.evaluate(() =>

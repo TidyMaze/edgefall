@@ -625,7 +625,7 @@ The Open world is the map of the whole game (openworld.md section 13). This sect
 meadow, a tower and a Hub table are one wreck and not three games. It adds no mechanic and no balance. Section 12 stays the source of
 what may be said when.
 
-**A tower is a section of the ship (#1698).** Rolling onto a tower shows that section from inside: the Hub Cutaway opens on the boss's deck and bay, its room amber with the confirm up (ui.md section 4.10). A gate opens the Mining cut and a town the Mess. The default since #1696 (`?hub=classic` for the old Hub).
+**A tower is a section of the ship (#1698).** Rolling onto a tower shows that section from inside: the Hub Cutaway opens on the boss's deck and bay, its room amber with the confirm up (ui.md section 4.10). A gate opens the Mining cut and a town the Mess. The default since #1696.
 
 **The crash.** The Ballast came down in **five pieces**, one per deck of section 1. Each deck stands upright in the regolith as a
 **section**. The old lift of a deck is the shaft of its tower. Hollow has no atmosphere; what looks like weather and ground is made of

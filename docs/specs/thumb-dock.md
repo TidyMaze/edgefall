@@ -43,7 +43,7 @@ Notes:
 
 ### Once the Hub Cutaway is on (#1698)
 
-The default since #1696; #1697 removed the Modes menu, Quick game, the dock's World button and the old rows above (`?hub=classic` is still the off switch until the old Hub code goes). Design: `cutaway-v2.html` on the `pr-screenshots` branch. The Modes menu goes, and with it Game modes, World and Quick game in the dock. The first slot is the exit on every screen but the Hub (ui.md section 4.10).
+The default since #1696; #1697 removed the Modes menu, Quick game, the dock's World button and the old rows above. Design: `cutaway-v2.html` on the `pr-screenshots` branch. The Modes menu goes, and with it Game modes, World and Quick game in the dock. The first slot is the exit on every screen but the Hub (ui.md section 4.10).
 
 | Screen | Dock |
 |---|---|

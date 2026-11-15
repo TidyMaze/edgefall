@@ -109,7 +109,7 @@ async function bootHub(url = '/'): Promise<{ game: Game; probe: Probe }> {
     return array;
   });
   const scene = catchScene();
-  const game = await boot(url);
+  const game = await boot(url, { deck: true });
   localStorage.setItem('ab-alone.board-consent', JSON.stringify({ v: 5, choice: 'declined' })); // the board asks at the first ranked entry (#1287)
   const probe = { scene, intervals: countIntervals() };
   await game.settle();
@@ -185,6 +185,7 @@ describe('a mode switch leaves nothing of the mode behind (#1275)', () => {
     game.hook('__openworldFixture', { hero: [q - 1, r], troop: [], enemies: [] });
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
     window.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true }));
+    document.getElementById('hub-confirm-yes')?.click(); // a tower or a gate opens its bay first: Enter starts the fight or the run (#1694)
     expect(document.body.dataset.boss).toBe('echo');
     await endFight(game, 2);
     byId('exit').click();

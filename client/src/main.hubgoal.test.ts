@@ -33,7 +33,7 @@ function frames(game: Game): (ms: number) => void {
     for (const cb of due) cb();
   };
 }
-async function ship(query = '?bot=off&hub=cutaway', beaten: string[] = [], options: Parameters<typeof boot>[1] = {}): Promise<Game> {
+async function ship(query = '?bot=off', beaten: string[] = [], options: Parameters<typeof boot>[1] = {}): Promise<Game> {
   const game = await boot(query, { ...options, storage: { ...progress(beaten), ...options.storage } });
   game.hook('__startMode', 'hub');
   await game.settle();
@@ -47,14 +47,14 @@ describe('the goal line and the card', () => {
     expect(line().textContent).toBe('Next goal: beat The Echo on the Mess deck.');
     expect(line().dataset.bay).toBe('mess:echo');
     expect(byId('ship-gocard').querySelector('b')!.textContent).toBe('Beat The Echo');
-    await ship('?bot=off&hub=cutaway', ['echo']);
+    await ship('?bot=off', ['echo']);
     expect(line().textContent).toBe('Next goal: start a rogue-lite run on the Cargo deck.');
     expect(line().dataset.bay).toBe('cargo:run');
     expect(go().dataset.bay).toBe('cargo:run');
   });
 
   it('name the first win for a new player, whose goal bay is the House table', async () => {
-    const game = await boot('?bot=off&hub=cutaway&newplayer');
+    const game = await boot('?bot=off&newplayer');
     game.hook('__startMode', 'hub');
     await game.settle();
     expect(line().textContent).toBe('Next goal: win your first game against the bot at the House table.');
@@ -62,7 +62,7 @@ describe('the goal line and the card', () => {
   });
 
   it('are idle once all five are beaten: the sentence of the game, nothing to roll to', async () => {
-    await ship('?bot=off&hub=cutaway', ['echo', 'hull', 'choir', 'chaplain', 'ballast'], { storage: RAN });
+    await ship('?bot=off', ['echo', 'hull', 'choir', 'chaplain', 'ballast'], { storage: RAN });
     expect(line().textContent).toBe('All bosses beaten. Try the Daily or a run.');
     expect(line().disabled).toBe(true);
     expect(rings().every((r) => r.hidden)).toBe(true);
@@ -70,7 +70,7 @@ describe('the goal line and the card', () => {
 
   it('roll the marble to the goal and start its room, from the line or from Go', async () => {
     for (const button of [line, go]) {
-      const game = await ship('?bot=off&hub=cutaway', ['echo']);
+      const game = await ship('?bot=off', ['echo']);
       const run = frames(game);
       button().click();
       run(400);
@@ -79,17 +79,8 @@ describe('the goal line and the card', () => {
     }
   });
 
-  it('are hidden with the flag off, and the overlay too', async () => {
-    const game = await boot('?bot=off', { storage: progress([]) });
-    game.hook('__startMode', 'hub');
-    await game.settle();
-    expect(line().hidden).toBe(true);
-    expect(byId('ship-gocard').hidden).toBe(true);
-    expect(byId('ship-goal').hidden).toBe(true);
-  });
-
   it('go with the ship: a game or the Open world leaves no goal line, card, route or tag behind', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const game = await ship('?bot=off', ['echo']);
     expect(line().hidden).toBe(false);
     game.hook('__startMode', 'arena');
     await game.settle();
@@ -110,7 +101,7 @@ describe('the goal line and the card', () => {
 
 describe('the beacon, the route and the marble\'s tag', () => {
   it('ring the goal bay, draw the dotted route from the marble and tag the way', async () => {
-    await ship('?bot=off&hub=cutaway', ['echo']);
+    await ship('?bot=off', ['echo']);
     expect(byId('ship-goal').hidden).toBe(false);
     expect(rings().map((r) => r.hidden)).toEqual([false, false]);
     const run = document.querySelector<HTMLElement>('#ship-bays [data-bay="cargo:run"]')!;
@@ -123,25 +114,25 @@ describe('the beacon, the route and the marble\'s tag', () => {
   });
 
   it("stand the marble's tag over the row of its deck, never over a bay's label (#1702)", async () => {
-    await ship('?bot=off&hub=cutaway', ['echo']);
+    await ship('?bot=off', ['echo']);
     const row = [...document.querySelectorAll<HTMLElement>('#ship-bays [data-bay^="mess:"]')].map((b) => parseFloat(b.style.top));
     expect(row.length).toBeGreaterThan(3);
     expect(parseFloat(tag().style.top) - 12).toBeLessThanOrEqual(Math.min(...row)); // the tag's foot (12 px above its anchor) is at or above the row's top
   });
 
   it('move to the new goal after a win', async () => {
-    await ship('?bot=off&hub=cutaway', []);
+    await ship('?bot=off', []);
     const echo = document.querySelector<HTMLElement>('#ship-bays [data-bay="mess:echo"]')!;
     expect(rings()[0]!.style.left).toBe(echo.style.left);
     expect(tag().textContent).toBe('The Echo'); // the goal is on the marble's deck, a floor up
     expect(tag().dataset.dir).toBe('up');
-    await ship('?bot=off&hub=cutaway', ['echo']);
+    await ship('?bot=off', ['echo']);
     const run = document.querySelector<HTMLElement>('#ship-bays [data-bay="cargo:run"]')!;
     expect(rings()[0]!.style.left).toBe(run.style.left);
   });
 
   it('wait for the roll to end: the beacon stays, the route and the tag come back at the goal', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const game = await ship('?bot=off', ['echo']);
     const run = frames(game);
     document.querySelector<HTMLButtonElement>('#ship-bays [data-bay="mess:bot"]')!.click();
     expect(byId('ship-goal').hidden).toBe(false);
@@ -153,7 +144,7 @@ describe('the beacon, the route and the marble\'s tag', () => {
   });
 
   it('draw no ring for a goal bay a small phone\'s camera leaves out of the room, and keep the route and the tag', async () => {
-    const game = await ship('?bot=off&hub=cutaway', ['echo', 'hull'], { storage: RAN });
+    const game = await ship('?bot=off', ['echo', 'hull'], { storage: RAN });
     vi.stubGlobal('innerWidth', 200);
     vi.stubGlobal('innerHeight', 300);
     onTestFinished(() => {

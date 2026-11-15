@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
-import { boot, type Game } from './test/harness';
+import { boot as bootShip, type Game } from './test/harness';
+
+/** The deck is drawn and takes the taps (as before the ship's file has loaded). */
+const boot: typeof bootShip = (query, options) => bootShip(query, { deck: true, ...options });
 
 // The first minutes in the Hub (#1522, docs/specs/ui.md sections 4.5 and 4.7): a coach line that says how to move, a tap on a plate that
 // walks the marble to its room, and a confirm the first time a mode is entered from the Hub. An automated browser shows none of it

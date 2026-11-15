@@ -13,7 +13,7 @@ const freshDraw = async (page: Page) => {
   await page.waitForFunction((n) => (window as any).__draws() > n, asked);
 };
 const body = (page: Page, key: string) => page.evaluate((k) => document.body.dataset[k], key);
-const click = (page: Page, cells: number[][]) => page.evaluate((all) => all.forEach(([q, r]) => (window as any).__click(q, r)), cells);
+const click = (page: Page, cells: number[][]) => page.evaluate((all) => all.forEach(([q, r]) => (window as any).__roll(q, r)), cells);
 
 test('a Bomb shows its fuse on the marble and in the HUD, one turn less after a move, #1490', async ({ page }) => {
   await load(page, [0, 0, 0, 0, 0, 0, 0, 0, 1, 0], [[0, 4, 9]], []);

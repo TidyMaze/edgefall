@@ -20,7 +20,7 @@ for (const { name, viewport, touch } of sizes) {
     const file = name.replaceAll(' ', '-');
 
     test('a marble the troop shoves into the water joins it as a recruit, told on the plate', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=1&hub=classic');
+      await page.goto('./?bot=off&openworld=1');
       await expect(page.locator('body')).toHaveAttribute('data-openworld-at', '0,0');
       await expect(page.locator('#openworld-recruits')).toBeHidden();
       await fixture(page, { hero: [11, -29], troop: [], enemies: [[12, -30]] });
@@ -40,7 +40,7 @@ for (const { name, viewport, touch } of sizes) {
     });
 
     test('a tower beaten through the world leaves a teleporter pad beside it, in the network', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7&hub=classic');
+      await page.goto('./?bot=off&openworld=7');
       await expect(page.locator('body')).toHaveAttribute('data-openworld-at', '0,0');
       const [q, r] = await page.evaluate(() => (window as unknown as Hooks).__openworldPads(7).slice(0, 2) as [number, number]);
       await fixture(page, { hero: [q, r + 1], troop: [], enemies: [] });

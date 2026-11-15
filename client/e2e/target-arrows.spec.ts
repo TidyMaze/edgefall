@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 const targets = (page: Page) => page.evaluate(() => (window as any).__targets());
 
 const select = (page: Page, cells: [number, number][]) =>
-  page.evaluate((list) => list.forEach(([q, r]) => (window as any).__click(q, r)), cells);
+  page.evaluate((list) => list.forEach(([q, r]) => (window as any).__roll(q, r)), cells);
 
 test('the targets of a selected group carry the direction of the move a click plays, task #390', async ({ page }) => {
   await page.goto('./?bot=off');

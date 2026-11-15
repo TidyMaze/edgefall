@@ -55,7 +55,7 @@ async function plies(page: Page, from: number, to: number): Promise<void> {
   if (to - 1 > from) await page.evaluate((list) => (window as any).__playMoves(list), RECORDS.slice(from, to - 1));
   for (const cells of FIXTURE.slice(to - 1, to)) {
     await expect(page.locator('body')).not.toHaveAttribute('data-sliding', '1');
-    await page.evaluate((list) => list.forEach(([q, r]) => (window as any).__click(q, r)), cells);
+    await page.evaluate((list) => list.forEach(([q, r]) => (window as any).__roll(q, r)), cells);
   }
   await expect(page.locator('body')).not.toHaveAttribute('data-sliding', '1');
 }

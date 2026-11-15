@@ -36,8 +36,8 @@ test('the rogue-lite rest site: rest or upgrade one special marble, #1458', asyn
   await hook(run({ army: 14, path: [0], fighting: true, specials: [0, 0, 0, 1, 1, 1], placed }));
   await page.evaluate(() => {
     const w = window as any;
-    w.__click(0, 2);
-    w.__click(0, 1);
+    w.__roll(0, 2);
+    w.__roll(0, 1);
   });
   await expect(panel).toBeHidden();
   expect(await page.evaluate(() => document.body.dataset.specials)).toBe('-1,3,6 0,4,4 1,3,5');

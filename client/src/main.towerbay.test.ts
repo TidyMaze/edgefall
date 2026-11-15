@@ -4,7 +4,7 @@ import type { Axial } from './board';
 import { BIOMES } from './roguelite';
 import { boot, type Game } from './test/harness';
 
-// A tower, a gate and a town of the Open world open the Hub Cutaway on their bay (#1694, `?hub=cutaway`): the boss's room amber with the confirm up (the Mining cut for a gate,
+// A tower, a gate and a town of the Open world open the Hub Cutaway on their bay (#1694): the boss's room amber with the confirm up (the Mining cut for a gate,
 // its biome kept), the town's ship on the Mess. Enter starts the fight or the run the tower or the gate started, Stay and the exit return to the tower or the gate.
 
 const byId = <T extends HTMLElement = HTMLButtonElement>(id: string): T => document.getElementById(id) as T;
@@ -33,7 +33,7 @@ function frames(game: Game): (ms: number) => void {
     for (const cb of due) cb();
   };
 }
-const QUERY = '?bot=off&openworld=7&hub=cutaway';
+const QUERY = '?bot=off&openworld=7';
 
 /** Rolls the hero onto the cell `[q, r]` from its west neighbour; the entrance cell is returned. */
 async function rollOnto(game: Game, at: () => Axial | Promise<Axial>, open = true): Promise<Axial> {
@@ -245,7 +245,7 @@ describe('the test hook opens a bay with no walk (#1694)', () => {
   });
 
   it('needs no ?openworld: the public world is the way back', async () => {
-    const game = await boot('?bot=off&hub=cutaway');
+    const game = await boot('?bot=off');
     game.hook('__openBay', 'gate');
     await settle();
     expect(byId('hub-confirm').hidden).toBe(false);
@@ -305,23 +305,5 @@ describe('a town opens the ship on the Mess (#1694)', () => {
     byId('exit').click();
     await settle();
     expect(data().openworldAt).toBe(entrance.join(','));
-  });
-});
-
-describe('with the flag off nothing changes (#1694)', () => {
-  it('a tower starts its fight at once, a gate its run, a town opens the saved deck', async () => {
-    const game = await boot('?bot=off&openworld=7');
-    await rollOnto(game, async () => tower(await lairOf('choir')));
-    expect(data().boss).toBe('choir');
-    expect(byId('hub-confirm').hidden).toBe(true);
-    byId('exit').click();
-    await settle();
-    await rollOnto(game, () => place('dungeon'), false);
-    expect(data().run).toBeTruthy();
-    byId('exit').click();
-    await settle();
-    await rollOnto(game, () => place('town'), false);
-    expect(data().hub).toBeTruthy();
-    expect(data().hubCutaway).toBeUndefined();
   });
 });

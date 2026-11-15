@@ -7,7 +7,7 @@ import { BLACK_WINS } from './end-games';
 
 /** A click on a cell without the raycast and the frames of a mouse click, to stay fast. */
 async function hookClick(page: Page, q: number, r: number): Promise<void> {
-  await page.evaluate(([q, r]) => (window as any).__click(q, r), [q, r]);
+  await page.evaluate(([q, r]) => (window as any).__roll(q, r), [q, r]);
 }
 
 const fits = async (page: Page, selector: string): Promise<void> => {

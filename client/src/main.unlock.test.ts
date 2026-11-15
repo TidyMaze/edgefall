@@ -111,32 +111,30 @@ describe('the first win', () => {
     const game = await boot('?newplayer');
     expect(card().hidden).toBe(true);
     await finish(game, BLACK_WINS);
-    expect(document.body.dataset.over).toBe('win');
     expect(flag()).toBe('1');
     expect(unlocked()).toBe('1');
     expect(card().hidden).toBe(false);
     expect(byId('unlock-title').textContent).toBe('You won.');
-    expect(byId('unlock-text').textContent).toBe('Unlocked: Open world, Bosses, Runs, Daily, Royale, Ranked, Leaderboard');
+    expect(byId('unlock-text').textContent).toBe('The Mess is open. Next: beat The Echo.');
     expect(card().getAttribute('role')).toBe('dialog');
     byId('unlock-dismiss').click();
     expect(card().hidden).toBe(true);
+    game.hook('__startMode', 'arena'); // the first win landed in the ship: a table again
     await finish(game, BLACK_WINS); // another win does not show it again
     expect(card().hidden).toBe(true);
   });
 
-  it('the card leads to the Hub or to the Open world', async () => {
+  it('the card leads to the Open world, and has no Hub button: the ship is where the player lands (#1692)', async () => {
     const game = await boot('?newplayer');
     await finish(game, BLACK_WINS);
-    byId('unlock-hub').click();
-    expect(card().hidden).toBe(true);
-    expect(document.body.dataset.hub).toBe('mess 0,0');
-    expect(document.querySelector('#hub-labels [data-cell="2,0"]')!.hasAttribute('data-mark')).toBe(false); // its doors are open
+    expect(document.getElementById('unlock-hub')).toBeNull(); // the ship is where the player lands (#1692)
+    expect(document.body.dataset.hub).toMatch(/^mess /);
     const again = await boot('?newplayer');
     await finish(again, BLACK_WINS);
     byId('unlock-world').click();
     expect(card().hidden).toBe(true);
     await again.settle();
-    expect(document.body.dataset.hub).toBeUndefined();
+    expect(document.body.dataset.openworld).toBeTruthy(); // the world opens over the ship
   });
 
   it('a loss unlocks nothing', async () => {
@@ -240,13 +238,13 @@ describe('the Hub names the first move', () => {
     const game = await boot('?newplayer');
     await finish(game, BLACK_WINS);
     expect(document.activeElement).toBe(byId('unlock-world'));
-    expect(byId('unlock-text').textContent).toContain('Leaderboard');
+    expect(byId('unlock-text').textContent).toBe('The Mess is open. Next: beat The Echo.');
   });
 });
 
 describe('the first win on the Hub Cutaway (#1692)', () => {
   it('lands in the ship, names the goal on the card, sparks the lit bays for a moment and drops the Hub button', async () => {
-    const game = await boot('?newplayer&hub=cutaway');
+    const game = await boot('?newplayer');
     vi.useFakeTimers({ toFake: ['setTimeout'] });
     try {
       const input = byId<HTMLInputElement>('import-file');
@@ -254,7 +252,7 @@ describe('the first win on the Hub Cutaway (#1692)', () => {
       input.dispatchEvent(new Event('change'));
       await vi.advanceTimersByTimeAsync(1);
       expect(byId('unlock-text').textContent).toBe('The Mess is open. Next: beat The Echo.');
-      expect(byId('unlock-hub').hidden).toBe(true);
+      expect(document.getElementById('unlock-hub')).toBeNull(); // the ship is where the player lands (#1692)
       expect(document.body.dataset.hub).toMatch(/^mess /); // the player lands in the ship
       expect(document.body.dataset.firstrun).toBeUndefined();
       await vi.advanceTimersByTimeAsync(3000); // the spark ends: the bays are rebuilt without it
@@ -268,7 +266,7 @@ describe('the first win on the Hub Cutaway (#1692)', () => {
 
 describe('leaving before the first win lands in the ship (#1692)', () => {
   it('a player who starts another mode within the tick is not pulled back, and one who leaves the ship ends the spark', async () => {
-    const game = await boot('?newplayer&hub=cutaway');
+    const game = await boot('?newplayer');
     const held = new Map<number, () => void>(); // the first win's two timers (the landing and the spark's end), held to be run by hand
     let id = 1000;
     const real = { set: window.setTimeout, clear: window.clearTimeout };
@@ -291,7 +289,7 @@ describe('leaving before the first win lands in the ship (#1692)', () => {
   });
 
   it('lands, sparks, and leaving the ship drops the spark timer', async () => {
-    const game = await boot('?newplayer&hub=cutaway');
+    const game = await boot('?newplayer');
     const held = new Map<number, () => void>();
     let id = 1000;
     const real = { set: window.setTimeout, clear: window.clearTimeout };

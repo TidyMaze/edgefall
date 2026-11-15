@@ -36,7 +36,7 @@ test('an ejected boss marble puts a phase notch out on the frame, with clear boa
   expect(await notches()).toEqual({ lit: 3, dark: 0, glyph: true }); // P2 after 3 ejections
   await expect(page.locator('#hud .notch')).toHaveCount(2); // the flat P1 P2 fallback stays
 
-  for (const ply of PLIES) for (const [q, r] of ply) await page.evaluate(([x, y]) => (window as any).__click(x, y), [q, r]);
+  for (const ply of PLIES) for (const [q, r] of ply) await page.evaluate(([x, y]) => (window as any).__roll(x, y), [q, r]);
   await expect(hud).toContainText('White ejected 1/6');
   expect(await notches()).toEqual({ lit: 2, dark: 1, glyph: true });
 });

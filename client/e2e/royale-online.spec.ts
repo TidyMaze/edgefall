@@ -67,7 +67,7 @@ test('three players: a round resolves at its deadline, the silent player holds (
   await a.getByRole('button', { name: 'Start' }).click();
   for (const p of [a, b, c]) await expect(p.locator('body')).toHaveAttribute('data-net', 'choosing');
   // a orders (-2, 6) NW, b holds, c says nothing.
-  await a.evaluate(() => [(window as any).__click(-2, 6), (window as any).__click(-2, 5)]);
+  await a.evaluate(() => [(window as any).__roll(-2, 6), (window as any).__roll(-2, 5)]);
   await b.getByRole('button', { name: 'Hold' }).click();
   await expect(a.locator('#hud .presence')).toHaveText('Order locked, waiting for the others...');
   await kept(1, 2);

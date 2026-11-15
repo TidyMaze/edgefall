@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { BLACK_WINS } from './end-games';
 
-// #1692: under `?hub=cutaway` a new player (`?newplayer`) sees the ship in its locked look, and the first win lights the Mess with a card on the ship.
+// #1692: a new player (`?newplayer`) sees the ship in its locked look, and the first win lights the Mess with a card on the ship.
 
 const GAME = { version: 1, mode: 'local', layout: 'standard', bot: true, moves: BLACK_WINS };
 const bay = (page: Page, key: string) => page.locator(`#ship-bays [data-bay="${key}"]`);
 
 async function lockedShip(page: Page): Promise<void> {
-  await page.goto('./?hub=cutaway&newplayer&bot=off');
+  await page.goto('./?newplayer&bot=off');
   await page.locator('canvas').waitFor();
   await page.evaluate(() => (window as unknown as { __enterMode: (m: string) => void }).__enterMode('hub'));
   await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');
@@ -40,7 +40,7 @@ test('a tap on a locked bay says why and starts nothing', async ({ page }) => {
 
 for (const size of [{ width: 390, height: 844 }, { width: 1000, height: 700 }]) test(`the first win lands in the ship, lights the Mess with a spark and a card names the goal, ${size.width}`, async ({ page }) => {
   await page.setViewportSize(size);
-  await page.goto('./?hub=cutaway&newplayer'); // the guided first match is a game on the board: its win is imported here
+  await page.goto('./?newplayer'); // the guided first match is a game on the board: its win is imported here
   await page.locator('canvas').waitFor();
   await page.locator('#import-file').setInputFiles({ name: 'game.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(GAME)) });
   await expect(page.locator('#unlock')).toContainText('The Mess is open. Next: beat The Echo.');
@@ -49,7 +49,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 1000, height: 700 }]) 
   await expect(bay(page, 'mess:daily')).toHaveAttribute('data-state', 'lit');
   await expect(bay(page, 'mess:echo')).toHaveAttribute('data-state', 'goal');
   await expect(bay(page, 'mess:daily')).toHaveAttribute('data-spark', '1');
-  await expect(page.locator('#unlock-hub')).toBeHidden();
+  await expect(page.locator('#unlock-hub')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => (window as unknown as { __shipDrawn: boolean }).__shipDrawn)).toBe(true);
   await page.waitForTimeout(2500);
   await page.screenshot({ path: `test-results/first-win-ship-${size.width}.png` });

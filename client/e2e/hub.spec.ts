@@ -39,11 +39,11 @@ async function clickCell(page: Page, q: number, r: number): Promise<void> {
 
 /** The same click without the raycast and the frames of a mouse click, to stay fast. */
 async function hookClick(page: Page, q: number, r: number): Promise<void> {
-  await page.evaluate(([q, r]) => (window as any).__click(q, r), [q, r]);
+  await page.evaluate(([q, r]) => (window as any).__roll(q, r), [q, r]);
 }
 
 test('a new player opening the main URL lands directly on the Hub, #602', async ({ page }) => {
-  await page.goto('./?hub=classic');
+  await page.goto('./');
   await page.locator('canvas').waitFor();
   await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 0,0');
   await expect(page.locator('#hud')).toContainText('Hub · Mess');
@@ -51,43 +51,8 @@ test('a new player opening the main URL lands directly on the Hub, #602', async 
   await expect(page.locator('#hint')).toBeHidden();
 });
 
-test('the marble walks the Mess past its rooms, and a reload lands it on the same cell, #521', async ({ page }) => {
-  await page.goto('./?bot=off&hub=classic');
-  await page.locator('canvas').waitFor();
-  const body = page.locator('body');
-  const hud = page.locator('#hud');
-  await ship(page);
-  await expect(body).toHaveAttribute('data-hub', 'mess 0,0');
-  await expect(hud).toContainText('Hub · Mess');
-
-  const rooms: [number, number, string][] = [
-    [1, 1, 'Galley log'],
-    [0, 2, 'Medal wall'], // #812
-  ];
-  // One mouse click, then the same click without the raycast and the frames of a mouse click (__click), to stay fast.
-  await clickCell(page, 1, 0);
-  await expect(body).toHaveAttribute('data-hub', 'mess 1,0');
-  const path: [number, number][] = [[1, 1], [0, 2], [-1, 2]];
-  for (const [q, r] of path) {
-    await hookClick(page, q, r);
-    await expect(body).toHaveAttribute('data-hub', `mess ${q},${r}`);
-    const room = rooms.find(([rq, rr]) => rq === q && rr === r);
-    if (room) {
-      await expect(hud).toContainText(room[2]);
-      if (await body.getAttribute('data-reading')) await page.keyboard.press('Escape');
-    }
-  }
-  await page.keyboard.press('ArrowUp');
-  await expect(body).toHaveAttribute('data-hub', 'mess 0,1');
-
-  await page.reload();
-  await page.locator('canvas').waitFor();
-  await ship(page);
-  await expect(body).toHaveAttribute('data-hub', 'mess 0,1');
-});
-
 test('the boss door starts the Echo, and Back to the hub after the defeat lands on the door, #522', async ({ page }, testInfo) => {
-  await shipAt(page, './?bot=off&hub=classic', [1, 0]);
+  await shipAt(page, './?bot=off', [1, 0]);
   await shot(page, { path: testInfo.outputPath('hub-before-door.png') });
   await hookClick(page, 2, 0);
   const body = page.locator('body');
@@ -112,7 +77,7 @@ test('the boss door starts the Echo, and Back to the hub after the defeat lands 
 });
 
 test('the evaluation bar and Hint are off in the hub and back once a table leaves it, #583', async ({ page }, testInfo) => {
-  await page.goto('./?bot=off&hub=classic');
+  await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
   const bar = page.locator('#eval');
   const hint = page.getByRole('button', { name: 'Hint' });
@@ -131,7 +96,7 @@ test('the evaluation bar and Hint are off in the hub and back once a table leave
 });
 
 test('Export game and Import game are off in the hub and back once a table leaves it, #589', async ({ page }, testInfo) => {
-  await page.goto('./?bot=off&hub=classic');
+  await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
   const cog = page.getByRole('button', { name: 'Settings' });
   const menu = page.locator('#settings-menu');
@@ -153,14 +118,14 @@ test('Export game and Import game are off in the hub and back once a table leave
 });
 
 test('the hot-seat table starts a game for two at one table, #522', async ({ page }) => {
-  await shipAt(page, './?hub=classic', [-1, 0]);
+  await shipAt(page, './', [-1, 0]);
   await hookClick(page, -1, -1);
   await expect(page.locator('body')).not.toHaveAttribute('data-hub');
   await expect(page.locator('#hud')).toContainText('Two players, one board.');
 });
 
 test('the bot table starts a game the bot answers, #522', async ({ page }) => {
-  await shipAt(page, './?nodes=100&hub=classic', [-1, 0]);
+  await shipAt(page, './?nodes=100', [-1, 0]);
   await hookClick(page, -2, 0);
   await expect(page.locator('#hud')).toContainText('You vs Bot.');
   await hookClick(page, 0, 2); // Black (0, 2) to (0, 1)
@@ -169,7 +134,7 @@ test('the bot table starts a game the bot answers, #522', async ({ page }) => {
 });
 
 test('the online table opens a room with its invite link, as Play online does, #522', async ({ page }) => {
-  await shipAt(page, './?bot=off&net=hook&hub=classic', [-1, 1]);
+  await shipAt(page, './?bot=off&net=hook', [-1, 1]);
   await hookClick(page, -2, 1);
   await expect(page.locator('#invite')).toBeVisible();
   expect(await inviteLink(page)).toMatch(/#room=[\w-]+&key=[\w-]{8}$/);
@@ -177,7 +142,7 @@ test('the online table opens a room with its invite link, as Play online does, #
 });
 
 test('the battle royale door starts battle royale, and Back to the hub lands on the door, #593', async ({ page }, testInfo) => {
-  await shipAt(page, './?bot=off&hub=classic', [-2, 2]);
+  await shipAt(page, './?bot=off', [-2, 2]);
   const body = page.locator('body');
   await hookClick(page, -3, 2);
   await expect(body).not.toHaveAttribute('data-hub');
@@ -211,34 +176,8 @@ test('the battle royale door starts battle royale, and Back to the hub lands on 
 });
 
 
-test('a locked lift keeps the marble out with a Tally line, and a boss win opens it, #523', async ({ page }) => {
-  await shipAt(page, './?bot=off&hub=classic', [1, -1]);
-  const body = page.locator('body');
-  await expect(body).toHaveAttribute('data-lifts', 'cargo locked');
-  await expect(page.locator('#hub-rail [data-deck="cargo"]')).toHaveAttribute('data-state', 'locked'); // #1249
-  await expect(page.locator('#hub-labels [data-cell="1,-2"]')).toHaveAttribute('data-mark', 'locked');
-  await page.keyboard.press('ArrowUp');
-  await expect(page.locator('#hud .tally')).toHaveText("Lift to Cargo: locked. This deck's boss is still on the books.");
-  await expect(body).toHaveAttribute('data-hub', 'mess 1,-1');
-
-  // The win as a won fight saves it (progress.ts recordWin), then Ship again.
-  await page.evaluate(() => {
-    const progress = JSON.parse(localStorage.getItem('ab-alone.progress')!);
-    localStorage.setItem('ab-alone.progress', JSON.stringify({ ...progress, beaten: ['echo'] }));
-  });
-  await ship(page);
-  await expect(body).toHaveAttribute('data-lifts', 'cargo open');
-  await expect(page.locator('#hub-rail [data-deck="cargo"]')).toHaveAttribute('data-state', 'open'); // #1249
-  await expect(page.locator('#hub-rail [data-deck="mess"]')).toHaveAttribute('data-state', 'beaten');
-  await expect(page.locator('#hud .tally')).toHaveCount(0);
-  await page.keyboard.press('ArrowUp');
-  await expect(body).toHaveAttribute('data-hub', 'cargo -1,2');
-  await expect(body).toHaveAttribute('data-lifts', 'furnace locked,mess open');
-  await expect(page.locator('#hub-rail [aria-current]')).toHaveAttribute('data-deck', 'cargo'); // #1249
-});
-
 test('a terminal room opens its lore entry in the reader, and Esc gives the hub back, #524', async ({ page }, testInfo) => {
-  await shipAt(page, './?bot=off&hub=classic', [0, 1]);
+  await shipAt(page, './?bot=off', [0, 1]);
   const body = page.locator('body');
   await expect(body).toHaveAttribute('data-console', /^mess-house-rule /); // the console's web fonts are in
   await shot(page, { path: testInfo.outputPath('terminal-before.png') });
@@ -256,7 +195,7 @@ test('a terminal room opens its lore entry in the reader, and Esc gives the hub 
 });
 
 test('the Medal room lists every boss with its medal in the reader, and Esc gives the hub back, #812', async ({ page }, testInfo) => {
-  await shipAt(page, './?bot=off&hub=classic', [0, 1]);
+  await shipAt(page, './?bot=off', [0, 1]);
   const body = page.locator('body');
   await expect(body).toHaveAttribute('data-console', /^mess-house-rule /); // the console's web fonts are in
   await page.evaluate(() => localStorage.setItem('ab-alone.medals', JSON.stringify({ echo: 14 })));
@@ -270,7 +209,7 @@ test('the Medal room lists every boss with its medal in the reader, and Esc give
 });
 
 test('the tension drones calm to 0 over the hub, #586', async ({ page }) => {
-  await page.goto('./?nodes=100&hub=classic');
+  await page.goto('./?nodes=100');
   await page.locator('canvas').waitFor(); // the page hooks are set (#585)
   await page.evaluate(async () => {
     for (let t = 1; t <= 30; t++) {
@@ -284,56 +223,6 @@ test('the tension drones calm to 0 over the hub, #586', async ({ page }) => {
   expect(await page.evaluate(() => (window as any).__tension().level)).toBe(0);
 });
 
-test('every room wears its label plate without a hover, and a hover still names the target, #628, #1249', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 1280, height: 720 }); // a window where no plate lies over cell (1, 0): plates take the pointer (#1522)
-  await page.goto('./?hub=classic');
-  await page.locator('canvas').waitFor();
-  await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 0,0');
-
-  // The plates are always shown: the boss door, the lift and the marble's YOU, no hover needed (#1249).
-  await expect(page.locator('#hub-labels [data-cell="2,0"]')).toBeVisible();
-  await expect(page.locator('#hub-labels [data-cell="2,0"]')).toContainText('The Echo');
-  await expect(page.locator('#hub-labels [data-cell="1,-2"]')).toContainText('Lift ▲ Cargo');
-  await expect(page.locator('#hub-labels .you')).toHaveText(/you/i);
-  await expect(page.locator('#hub-pips')).toContainText('Medals 0 / 15');
-  await shot(page, { path: testInfo.outputPath('1249-hub-plan.png') });
-
-  // Hover over adjacent cell [1, 0]
-  const p1 = await page.evaluate(() => (window as any).__cellToScreen(1, 0));
-  await page.mouse.move(p1.x, p1.y);
-  await expect(page.locator('body')).toHaveAttribute('data-hub-hover', '1,0');
-  await expect(page.locator('#hud .hub-preview')).toContainText('Target: Deck floor');
-  await expect(page.locator('#hud .hub-preview')).toContainText('(Click to move)');
-
-  // Hover over boss door [2, 0]
-  const p2 = await page.evaluate(() => (window as any).__cellToScreen(2, 0));
-  await page.mouse.move(p2.x, p2.y);
-  await expect(page.locator('body')).toHaveAttribute('data-hub-hover', '2,0');
-  await expect(page.locator('#hud .hub-preview')).toContainText('Target: The Echo · boss, Mess seat');
-  await expect(page.locator('#hud .hub-preview')).toContainText('(Out of reach (roll closer))');
-});
-
-test('on a phone every plate and the rail fit the window, short labels only, #1249', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('./?hub=classic');
-  await page.locator('canvas').waitFor();
-  await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 0,0');
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-  const boxes = await page.locator('#hub-labels .hub-label, #hub-rail, #hub-pips').evaluateAll((els) =>
-    els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect),
-  );
-  expect(boxes.length).toBe(15); // the twelve rooms of the Mess, YOU, the rail and the pips
-  for (const box of boxes) {
-    expect(box.left).toBeGreaterThanOrEqual(0);
-    expect(box.right).toBeLessThanOrEqual(390);
-    expect(box.top).toBeGreaterThanOrEqual(0);
-    expect(box.bottom).toBeLessThanOrEqual(844);
-  }
-  await expect(page.locator('#hub-labels [data-cell="2,0"] .short')).toBeVisible();
-  await expect(page.locator('#hub-labels [data-cell="2,0"] b')).toBeHidden();
-  await shot(page, { path: testInfo.outputPath('1249-hub-plan-phone.png') });
-});
-
 /** Ship, with the marble saved on `cell` of `deck` and the Echo beaten. */
 async function shipOn(page: Page, deck: string, cell: [number, number]): Promise<void> {
   await page.evaluate(([deck, cell]) => {
@@ -344,7 +233,7 @@ async function shipOn(page: Page, deck: string, cell: [number, number]): Promise
 }
 
 test('a gallery boss door starts its own boss, and a mode room opens its mode, #1249', async ({ page }, testInfo) => {
-  await page.goto('./?bot=off&hub=classic');
+  await page.goto('./?bot=off');
   await page.locator('canvas').waitFor();
   const body = page.locator('body');
   await shipOn(page, 'cargo', [2, -2]);

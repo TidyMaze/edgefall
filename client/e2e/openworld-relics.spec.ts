@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { lowTierOnCi } from './modes';
+import { lowTierOnCi, enterBay } from './modes';
 import { shot } from './shot';
 
 lowTierOnCi();
@@ -23,7 +23,7 @@ for (const { name, viewport, touch } of sizes) {
     const file = name.replaceAll(' ', '-');
 
     test('the Workshop upgrades a Heavy for shards and ore, and buys a relic for shards and parts', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7&hub=classic');
+      await page.goto('./?bot=off&openworld=7');
       const body = page.locator('body');
       await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const listed = (await body.getAttribute('data-openworld-places'))!.split(' ');
@@ -47,7 +47,7 @@ for (const { name, viewport, touch } of sizes) {
     });
 
     test('a lair fight walked into places the special marbles and sets the relics the army brings, and Back keeps them all', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7&hub=classic');
+      await page.goto('./?bot=off&openworld=7');
       const body = page.locator('body');
       await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const lairs = (await body.getAttribute('data-openworld-lairs'))!.split(' ').map((c) => c.split(',').map(Number) as [number, number]);
@@ -55,6 +55,7 @@ for (const { name, viewport, touch } of sizes) {
       const walked = `${q - 1},${r}`;
       await fixture(page, { hero: [q - 1, r], troop: [], enemies: [], ...stock });
       await page.keyboard.press('ArrowRight');
+      await enterBay(page);
       await expect(body).not.toHaveAttribute('data-openworld', /.*/);
       await expect(body).toHaveAttribute('data-boss', 'hull');
       const kinds = (): Promise<number[]> => page.evaluate(() => (document.body.dataset.specials ?? '').split(' ').filter(Boolean).map((s) => Number(s.split(',')[2])).sort());

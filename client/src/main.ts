@@ -344,7 +344,7 @@ import { NO_ARMY, NO_RESOURCES, type Army, type Resources } from './openworldres
 import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hullKeeps, leave as leaveBrought, leaveRelic, lose, placeBrought, relicsMask, sell, sellRelic, thrownOff, upgrade as upgradeMarble, wildFoes, withoutKinds, type Stock } from './openworldworkshop';
 import { workshopHtml } from './workshopview';
 import { labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, type Goal } from './hubview';
-import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, plainSearch, shellFor, shipState } from './hubcutaway';
+import { Cutaway, CUTAWAY_VIEW, goalRoom, shellFor, shipState } from './hubcutaway';
 import { bayButtons, bayRect, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { goalBay, goalLabel, goalWords, paintGoalText, placeGoal, wayTag } from './hubgoal';
 import { ShipWalk } from './hubship';
@@ -509,7 +509,7 @@ const RUN_POINTS = boardPoints(CELLS, 1, [0, 0.5]);
 const DUAL_BOARD_POINTS = boardPoints(DUAL_CELLS, 1, [0, 0.5]);
 const blenderBoard = (): boolean => fight?.id === 'ballast' || fight?.id === 'dual' || (run !== null && !fight); // the boards framed like the hub's (#1374)
 const terraceFramed = (): boolean => tableZeroActive({ room: keepRoom, ready: terraceReady });
-let cutawayShown = false; // the Hub Cutaway ship is drawn in place of the deck (#1689, `?hub=cutaway`)
+let cutawayShown = false; // the Hub Cutaway ship is drawn in place of the deck (#1689)
 const fightView = (): View => {
   if (hub && cutawayShown) return CUTAWAY_VIEW; // a fixed camera on the whole ship
   if (hub && terraceFramed()) return fitTerrace(HUB_POINTS, innerWidth < innerHeight ? 3.4 : 3.6, innerWidth, innerHeight);
@@ -1315,7 +1315,7 @@ applyView(); // camera and fog
 const lobbyButton = document.getElementById('lobby') as HTMLButtonElement;
 const lobbySheet = document.getElementById('lobby-sheet')!;
 let lobbyOpen = false;
-// The bay sheet (#1693, `?hub=cutaway`): the Clamp list bay offers Ranked and Leaderboard, the Shift crew bay Boss with a partner and Boss vs a player (and the co-op boss list). One sheet at a time.
+// The bay sheet (#1693): the Clamp list bay offers Ranked and Leaderboard, the Shift crew bay Boss with a partner and Boss vs a player (and the co-op boss list). One sheet at a time.
 const baySheet = document.getElementById('bay-sheet')!;
 let baySheetOpen = false;
 function closeBay(): void {
@@ -1408,11 +1408,9 @@ function unlockFirstWin(): void {
   syncLocks();
   const card = document.getElementById('unlock')!;
   document.getElementById('unlock-title')!.textContent = UNLOCK_CARD.title;
-  document.getElementById('unlock-text')!.textContent = cutaway ? SHIP_UNLOCK_TEXT(nextBossTitle(loadProgress(store).beaten)) : UNLOCK_CARD.text;
-  document.getElementById('unlock-hub')!.hidden = !!cutaway; // the ship is where the player lands (#1692)
+  document.getElementById('unlock-text')!.textContent = SHIP_UNLOCK_TEXT(nextBossTitle(loadProgress(store).beaten));
   card.hidden = false;
   document.getElementById('unlock-world')!.focus();
-  if (!cutaway) return;
   landTimer = setTimeout(() => {
     // after this game over is handled: the first win lands in the ship, the card over it, the five bays sparkling for a moment
     landTimer = undefined;
@@ -1423,7 +1421,7 @@ function unlockFirstWin(): void {
     refresh();
   });
 }
-for (const [id, press] of [['unlock-world', () => openWorldButton.click()], ['unlock-hub', () => shipButton.click()], ['unlock-dismiss', () => undefined]] as const) {
+for (const [id, press] of [['unlock-world', () => openWorldButton.click()], ['unlock-dismiss', () => undefined]] as const) {
   document.getElementById(id)!.addEventListener('click', () => {
     document.getElementById('unlock')!.hidden = true;
     press();
@@ -2902,7 +2900,7 @@ matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyPale
 let hover: Axial | null = null;
 let roomOf: HubSpot | null = null; // the hub room that started the game, for Back to the hub (#522)
 let lairFrom: { seed: number; lair: number; phase: Phase; placed: number[][]; relics: number[] } | null = null; // the Open world lair that started the fight, for Back to the Open world (#1170), and the phase of the world it was entered in (#1496)
-/** The bay a tower or a gate of the Open world opened the ship on (#1694, `?hub=cutaway`): amber with the first-entry confirm up until Enter; `lair` is the fight a tower started and `biome` the ground of a gate. Left with the mode. */
+/** The bay a tower or a gate of the Open world opened the ship on (#1694): amber with the first-entry confirm up until Enter; `lair` is the fight a tower started and `biome` the ground of a gate. Left with the mode. */
 let bayEntry: (BayEntry & { place: { seed: number; kind: PlaceKind }; lair: { seed: number; lair: number; phase: Phase; brought: number[]; relics: number[] } | null; biome: number; confirmed: boolean }) | null = null;
 let placeFrom: { seed: number; kind: PlaceKind } | null = null; // the Open world a town or a dungeon gate was entered from: the Hub or the run it opened has a way back (#1593)
 /** Dresses the board for the phase the lair or the wild marble was met in (#1496, #1511): day, dusk or night, `body[data-fight-board]` reading the same. A fight that is neither has the ordinary board. */
@@ -4334,10 +4332,10 @@ function wearKit(mesh: THREE.Mesh, kit: THREE.Mesh, y: number): void {
   mesh.position.y = y - TERRACE_LIFT; // the marbles' group stands 0.11 higher on the terrace
 }
 const terraceFile = (name: string) => meshoptLoader().loadAsync(`${import.meta.env.BASE_URL}assets/pbr/${name}.glb`);
-// The Hub Cutaway (#1689): behind `?hub=cutaway`, off by default; with the flag off its file is never asked for. One shell is loaded at a time, the window's.
+// The Hub Cutaway (#1689): the ship. One shell is loaded at a time, the window's.
 const cutawaySpace = new THREE.Color(NEON.sky);
-const cutaway = cutawayOn(location.search) ? new Cutaway(terraceFile, () => refresh()) : null;
-if (cutaway) sceneRenderer.terrace.add(cutaway.group);
+const cutaway = new Cutaway(terraceFile, () => refresh());
+sceneRenderer.terrace.add(cutaway.group);
 /** Draws the ship in the Hub of the terrace, and the deck again anywhere else; the camera follows when the ship comes or goes. */
 const shipNow = (beaten: readonly string[]) => {
   const state = shipState(beaten, locked && !bayEntry, bayEntry ? bayEntry.room : locked ? null : goalRoom(nextGoal(beaten, ranRun(store))));
@@ -4347,8 +4345,7 @@ const shipNow = (beaten: readonly string[]) => {
 const shipBays = document.getElementById('ship-bays')!;
 const shipLift = document.getElementById('ship-lift')!;
 const shipVeil = document.getElementById('ship-veil')!;
-const ship = cutaway
-  ? new ShipWalk({
+const ship = new ShipWalk({
       bays: () => cutaway.bays,
       lift: () => cutaway.lift,
       open: () => shipNow(loadProgress(store).beaten).open,
@@ -4364,8 +4361,7 @@ const ship = cutaway
       frame: (cb) => requestAnimationFrame(cb),
       unframe: (id) => cancelAnimationFrame(id),
       settle: (bay) => (focusBay(shipBays, bay), placeShipGoal()), // the route and the tag come back where the marble stands
-    })
-  : null;
+    });
 /** The roll ended on a room of the old Hub (or its shut hatch): the marble of the old model is put beside it and rolls on, so the confirm, the save, the lift's bump and the room's start are the plate's own. */
 function shipArrive({ deck, cell }: HubSpot): void {
   shipFrom = hub!.at;
@@ -4376,13 +4372,13 @@ function shipArrive({ deck, cell }: HubSpot): void {
 }
 shipLift.addEventListener('click', (e) => {
   cancelHubWalk();
-  ship!.ride((e.target as Element).closest<HTMLElement>('[data-lift]')!.dataset.lift === 'up' ? 1 : -1);
+  ship.ride((e.target as Element).closest<HTMLElement>('[data-lift]')!.dataset.lift === 'up' ? 1 : -1);
 });
 /** A tap on a bay, or on the goal line or its Go: the marble rolls there. */
 const rollTo = (key: string): void => {
   if (bayEntry && key !== `${bayEntry.deck}:${bayEntry.room}`) return; // a visit's other bays take no tap (#1694)
   cancelHubWalk();
-  ship!.tap(key);
+  ship.tap(key);
 };
 shipBays.addEventListener('click', (e) => rollTo((e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!));
 // The next goal (#1695): the goal line on a phone, the card's Go in a window; the beacon, the route and the tag on the overlay.
@@ -4402,15 +4398,15 @@ function paintShipGoal(goal: Goal): void {
 /** The beacon on the goal's bay, the dotted route from the marble and its tag; the route and the tag wait while the marble rolls (it is between two floors). */
 function placeShipGoal(): void {
   const at = shipGoalAt;
-  const stage = ship?.stage;
-  const target = at && cutaway!.bays.find((b) => b.deck === at.deck && b.room === at.room); // none while another shell loads
-  const box = at && cutaway!.bayBoxes().find((b) => b.deck === at.deck && b.room === at.room);
-  const rect = box && bayRect(box.box, shipProject, cutaway!.follow);
-  const point = (p: { x: number; y: number }): { x: number; y: number } => { const w = cutaway!.worldPoint(p); return shipProject(w.x, w.y, w.z); };
+  const stage = ship.stage;
+  const target = at && cutaway.bays.find((b) => b.deck === at.deck && b.room === at.room); // none while another shell loads
+  const box = at && cutaway.bayBoxes().find((b) => b.deck === at.deck && b.room === at.room);
+  const rect = box && bayRect(box.box, shipProject, cutaway.follow);
+  const point = (p: { x: number; y: number }): { x: number; y: number } => { const w = cutaway.worldPoint(p); return shipProject(w.x, w.y, w.z); };
   const way = target && stage ? rollRoute(stage.floors, stage.at, target) : null;
   // The tag stands over the top of its deck's row of bays, clear of the bays' labels (#1702): its foot is 12 px above its anchor.
   const deckNow = stage?.floors.find((f) => f.y === stage.at.y)?.deck;
-  const rowTop = !way ? 0 : Math.min(...cutaway!.bayBoxes().filter((b) => b.deck === deckNow).map((b) => bayRect(b.box, shipProject, cutaway!.follow)).filter((r) => !r.hidden).map((r) => r.y));
+  const rowTop = !way ? 0 : Math.min(...cutaway.bayBoxes().filter((b) => b.deck === deckNow).map((b) => bayRect(b.box, shipProject, cutaway.follow)).filter((r) => !r.hidden).map((r) => r.y));
   placeGoal(shipGoalLayer, {
     route: way && way.points.map(point),
     ring: rect && !rect.hidden ? rect : null,
@@ -4437,20 +4433,19 @@ const shipProject = (x: number, y: number, z: number): { x: number; y: number } 
 };
 /** The bays' buttons and the lift's two on the window: a small phone's camera frames the floors around the marble (`cutaway.follow`), the others show the whole ship. */
 function placeShip(): void {
-  const lift = cutaway!.liftWorld();
-  placeBays(shipBays, cutaway!.bayBoxes(), shipProject, cutaway!.follow, { deck: cutaway!.deck, bay: bayAt(cutaway!.bays, ship!.at) });
-  placeVeil(shipVeil, cutaway!.follow, innerHeight);
+  const lift = cutaway.liftWorld();
+  placeBays(shipBays, cutaway.bayBoxes(), shipProject, cutaway.follow, { deck: cutaway.deck, bay: bayAt(cutaway.bays, ship.at) });
+  placeVeil(shipVeil, cutaway.follow, innerHeight);
   placeShipGoal();
-  placeLift(shipLift, cutaway!.follow, shipProject(lift.x, lift.y, lift.z).x, innerWidth);
+  placeLift(shipLift, cutaway.follow, shipProject(lift.x, lift.y, lift.z).x, innerWidth);
 }
 function syncCutaway(): void {
-  if (!cutaway) return;
   if (!hub) closeBay(); // the Hub is left: no sheet of its bays
   const { beaten } = loadProgress(store);
   const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipNow(beaten), shipInset(), shipSolid());
   if (shown) {
     sceneRenderer.scene.background = cutawaySpace; // the ship floats in the dark, not in the deck's sky
-    ship!.sync(hub!.at); // the marble on the spot the Hub saved, once per ship
+    ship.sync(hub!.at); // the marble on the spot the Hub saved, once per ship
   }
   if (shown === cutawayShown) return;
   cutawayShown = shown;
@@ -4600,7 +4595,7 @@ function refresh(): void {
     syncDishes();
     const goal = locked ? { text: LOCK_BANNER, deck: null, room: null } : nextGoal(beaten, ranRun(store)); // the next thing to do (#1524); the first win while the lock is on
     hubLabels.innerHTML = labelsHtml(hub.at, beaten, loadMedals(store), goal, locked); // a beaten boss's door shows its medal (#1249)
-    paintBays(shipBays, cutawayShown ? bayButtons(cutaway!.bays, shipNow(beaten), beaten, loadMedals(store), locked, shipSpark) : '');
+    paintBays(shipBays, cutawayShown ? bayButtons(cutaway.bays, shipNow(beaten), beaten, loadMedals(store), locked, shipSpark) : '');
     paintShipGoal(goal);
     document.getElementById('hub-rail')!.innerHTML = railHtml(hub.at.deck, beaten, goal, locked);
     document.getElementById('hub-pips')!.innerHTML = pipsHtml(beaten, loadMedals(store));
@@ -5744,6 +5739,12 @@ hookHost.__pulsarRects = () => {
 };
 // Used by the browser checks to play their setup plies: the same click, without the raycast and the frames of a mouse click.
 hookHost.__click = (q: number, r: number) => click(q, r);
+// A cell by the test hook, in the Hub too: the marble rolls on the model beneath the ship, as the bays' arrival does (the player's taps are the bays', #1691, #1697).
+hookHost.__roll = (q: number, r: number) => {
+  if (!hub || !cutawayShown) return click(q, r);
+  cancelHubWalk();
+  walk([q, r]);
+};
 
 // Used by the browser checks to read the turn of the marble on a cell (#345, #346), null when it has none.
 hookHost.__marbleTurn = (q: number, r: number) =>
@@ -6283,7 +6284,7 @@ function enterHub(at: HubSpot): void {
   roomOf = null;
   hub = new HubController(at);
   hub.enter(at);
-  ship?.reset(); // the ship's marble on the spot entered (#1691)
+  ship.reset(); // the ship's marble on the spot entered (#1691)
   hubPlan.hidden = false;
   hubCoach.hidden = !(helpOn && hubCoachDue(store, loadProgress(store).beaten));
   view = fitted = fightView(); // the deck plan, framed closer (#1249)
@@ -6312,7 +6313,7 @@ let askedFor: Axial | null = null; // the cell whose room the confirm asks about
 function cancelHubWalk(): void {
   if (hubWalking !== null) clearTimeout(hubWalking);
   hubWalking = null;
-  ship?.cancel(); // the roll of the ship's marble too (#1691)
+  ship.cancel(); // the roll of the ship's marble too (#1691)
   if (shipFrom) {
     applyDeck(shipFrom.deck); // Stay on the confirm: the spot and the deck the roll started from, as the old plate left them
     hub!.at = shipFrom;
@@ -6382,7 +6383,7 @@ function enterRoom(at: HubSpot): void {
   const entry = bayEntry; // a tower's or a gate's bay (#1694)
   if (entry?.lair && door?.kind === 'boss') return beginLair(entry.lair); // the fight of the lair, its exit the tower's
   if (locked && door && doorLocked(door.kind) && !entry) {
-    if (cutaway) (hub!.bumped = LOCKED_BAY_LINE), refresh(); // a tap on a bay that waits says why, no start (#1692)
+    (hub!.bumped = LOCKED_BAY_LINE), refresh(); // a tap on a bay that waits says why, no start (#1692)
     return; // the Hub stays as it is: its boss and mode doors wait for the first win (#1665)
   }
   if (cutawayShown && (door?.kind === 'ranked' || door?.kind === 'together')) return openBaySheet(door.kind); // their bay offers two rows (#1693)
@@ -6501,7 +6502,7 @@ addEventListener('keydown', (e) => {
   if (!to) return;
   e.preventDefault(); // no page scroll
   cancelHubWalk();
-  if (cutawayShown) return ship!.key(e.key); // along a floor, up and down the lift (#1691)
+  if (cutawayShown) return ship.key(e.key); // along a floor, up and down the lift (#1691)
   walk(to);
 });
 addEventListener('keydown', (e) => {
@@ -6982,7 +6983,7 @@ coopButton.addEventListener('click', () => {
   listIsDuel = false;
   showCoopList(open); // hidden or opened by Boss duel: open it
 });
-// The two-row sheets of the Clamp list and the Shift crew bays (#1693, `?hub=cutaway`): the rows press the starter buttons that stay behind them.
+// The two-row sheets of the Clamp list and the Shift crew bays (#1693): the rows press the starter buttons that stay behind them.
 const BAY_ROWS = { ranked: { name: 'Clamp list', rows: ['Ranked', 'Leaderboard'] }, together: { name: 'Shift crew', rows: ['Boss with a partner', 'Boss vs a player'] } } as const;
 const bayRows = [document.getElementById('bay-row-1'), document.getElementById('bay-row-2')] as HTMLButtonElement[];
 function syncBayRows(): void {
@@ -7007,7 +7008,7 @@ function openBaySheet(kind: keyof typeof BAY_ROWS): void {
   if (kind === 'together') syncBayRows();
   bayRows[0]!.focus();
 }
-if (cutaway) {
+{
   baySheet.append(coopList); // the boss list of Boss with a partner and Boss vs a player is the sheet's
   bayRows[0]!.addEventListener('click', () => {
     if (baySheet.dataset.bay === 'together') return coopButton.click();
@@ -7458,26 +7459,19 @@ const openWorld = new OpenWorldHandle(async () =>
     // The lights node the renderer keeps per scene holds GPU textures (clustered lighting: 2 per scene) that nothing else frees, so
     // each world entered leaked them (#1258).
     releaseScene: (scene) => void (renderer.lighting.getNode(scene) as { dispose?(): void }).dispose?.(),
-    startLair: (seed, lair, phase, brought, relics) => {
-      if (cutaway) return openBay(towerBay(boss_ids()[lair % boss_ids().length]!), { seed, kind: 'tower' }, { seed, lair, phase, brought, relics }, 0); // the tower opens the ship on the boss's bay (#1694)
-      beginLair({ seed, lair, phase, brought, relics });
-    },
+    startLair: (seed, lair, phase, brought, relics) => openBay(towerBay(boss_ids()[lair % boss_ids().length]!), { seed, kind: 'tower' }, { seed, lair, phase, brought, relics }, 0), // the tower opens the ship on the boss's bay (#1694)
     onPlace: (seed, kind, index, biome, contract) => {
-      // A town opens the Hub and a gate the rogue-lite run, as their mode menu entries do (#1593): every town the same Hub for now.
-      if (cutaway && kind === 'dungeon') return openBay(gateBay(), { seed, kind }, null, BIOMES.findIndex(({ id }) => id === biome)); // the gate opens the ship on the Mining cut, its biome kept for Enter (#1694)
-      gateBiome = kind === 'dungeon' ? BIOMES.findIndex(({ id }) => id === biome) : 0; // the run begins in the gate's biome (#1597)
-      if (cutaway && kind === 'town') (pickMode(), enterHub(START)); // a town's ship opens on the Mess (#1694)
-      else (kind === 'town' ? shipButton : runButton).click();
+      // A town opens the ship on the Mess, a gate on the Mining cut (#1593, #1694): every town the same ship for now.
+      if (kind === 'dungeon') return openBay(gateBay(), { seed, kind }, null, BIOMES.findIndex(({ id }) => id === biome)); // the gate opens the ship on the Mining cut, its biome kept for Enter (#1694)
+      (pickMode(), enterHub(START)); // a town's ship opens on the Mess (#1694)
       placeFrom = { seed, kind };
       syncExit();
-      if (kind === 'town') {
-        storyEvent({ on: 'town' }); // the first town visited is stage 3 (#1586), before the line of this town is chosen
-        hub!.bumped = townLine(index, storyStage(store)); // Tally's ledger line of this town on the plate, once its stage is reached (#1516)
-        hub!.contract = contract; // the posted contract of the nearest tower of the ring to beat (#1618)
-        hub!.banked = bankedTownLine(lastBanked); // the blueprints the last dungeon banked (#1622)
-        sawLines(hub!.bumped);
-        hud();
-      }
+      storyEvent({ on: 'town' }); // the first town visited is stage 3 (#1586), before the line of this town is chosen
+      hub!.bumped = townLine(index, storyStage(store)); // Tally's ledger line of this town on the plate, once its stage is reached (#1516)
+      hub!.contract = contract; // the posted contract of the nearest tower of the ring to beat (#1618)
+      hub!.banked = bankedTownLine(lastBanked); // the blueprints the last dungeon banked (#1622)
+      sawLines(hub!.bumped);
+      hud();
     },
     online: () => worldOnline,
     lairCells,
@@ -8053,8 +8047,8 @@ else if (duelInvite && boss_ids().includes(duelInvite.boss)) void goOnline(duelI
 else if (coopInvite && boss_ids().includes(coopInvite.boss)) void goOnline(coopInvite.room, 2, coopInvite, creator); // an unknown boss starts nothing
 else if (resumedRun) resumeRun(resumedRun); // a run saved in progress, over the local game; an invite link wins
 else if (!resumed && (!locked || new URLSearchParams(location.search).has('firstrun')) && firstRunDue(store, location.search, navigator.webdriver, location.hash, loadProgress(store).beaten.length > 0)) startFirstRun(); // a fresh profile plays the first run (#1521); a locked one only when ?firstrun asks (the landing below is its first match, #1663)
-else if (!resumed && locked && plainSearch(location.search) && !location.hash) beginFirstMatch(); // a new player lands in the guided first match, no cold open (#1663)
-else if (!resumed && !locked && plainSearch(location.search) && !location.hash) enterHub(loadProgress(store).at); // a new player arrives on the Hub (#602)
+else if (!resumed && locked && !location.search && !location.hash) beginFirstMatch(); // a new player lands in the guided first match, no cold open (#1663)
+else if (!resumed && !locked && !location.search && !location.hash) enterHub(loadProgress(store).at); // a new player arrives on the Hub (#602)
 else analyse(); // the start position
 
 // Browser Back and the Android Back gesture (#1564, backnav.ts, ui.md "Browser Back"): the screens other than the one the page started on
@@ -8127,7 +8121,7 @@ const renderCost = (): RenderCost => {
 };
 // With ?gpustats the GPU time per mode is in it too (#1581), the capture docs/specs/tech.md section 5.6 checks.
 /** The Hub Cutaway ship is in the scene (read by the e2e tests; the canvas shows it a frame later, a slow software tier several seconds). */
-Object.defineProperty(window, '__shipDrawn', { configurable: true, get: () => !!cutaway && cutaway.group.visible });
+Object.defineProperty(window, '__shipDrawn', { configurable: true, get: () => cutaway.group.visible });
 Object.defineProperty(window, '__renderCost', { configurable: true, get: () => ({ ...renderCost(), text: renderCostText(renderCost()), gpu: gpu.snapshot() }) });
 copyButton.addEventListener('click', async () => {
   const text = diag.text({

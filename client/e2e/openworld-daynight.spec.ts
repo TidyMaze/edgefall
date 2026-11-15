@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { lowTierOnCi } from './modes';
+import { lowTierOnCi, enterBay } from './modes';
 import { shot } from './shot';
 
 lowTierOnCi();
@@ -12,7 +12,7 @@ const PHASES = [['day', 3 * MIN], ['dusk', 6.75 * MIN], ['night', 9 * MIN]] as c
 const shots = process.env.DAYNIGHT_SHOTS ?? 'test-results';
 
 const enter = async (page: Page): Promise<void> => {
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe('7');
 };
@@ -27,6 +27,7 @@ const intoLair = async (page: Page): Promise<void> => {
     [q, r],
   );
   await page.keyboard.press('ArrowRight');
+  await enterBay(page);
 };
 
 test('the world reads day, dusk and night as the time of day is set, and starts at the start of day, #1496', async ({ page }) => {

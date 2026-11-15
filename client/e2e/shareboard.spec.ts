@@ -19,7 +19,7 @@ async function watch(page: Page): Promise<{ sockets: string[]; sent: string[] }>
 
 test('the ranked entry asks first, joining and leaving the board are as easy, and nothing is sent', async ({ page }) => {
   const { sockets, sent } = await watch(page);
-  await page.goto('./?bot=off&net=hook&hub=classic');
+  await page.goto('./?bot=off&net=hook');
   await startMode(page, 'ranked');
   const dialog = page.getByRole('dialog', { name: 'Shared ranked board' });
   await expect(dialog).toBeVisible();

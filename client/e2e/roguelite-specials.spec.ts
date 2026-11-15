@@ -18,7 +18,7 @@ test('the rogue-lite special marbles: placement, looks and reward, #961', async 
   await page.evaluate((state) => (window as any).__run(state), run({ specials: [3, 2, 1] }));
   await expect(panel.locator('.run-line')).toHaveText('Place your special marbles');
   await panel.getByRole('button', { name: /Heavy/ }).click();
-  await page.evaluate(() => (window as any).__click(0, 4));
+  await page.evaluate(() => (window as any).__roll(0, 4));
   await expect(panel.getByRole('button', { name: /Heavy/ })).toHaveText('Heavy · 2 left');
   await expect.poll(marks).toBe('0,4,1'); // set by the next draw
   await freshDraw(page);
@@ -33,8 +33,8 @@ test('the rogue-lite special marbles: placement, looks and reward, #961', async 
   await page.evaluate((state) => (window as any).__run(state), run({ specials: [2, 2, 2], placed, moves: [] }));
   await page.evaluate(() => {
     const w = window as any;
-    w.__click(0, 2);
-    w.__click(0, 1);
+    w.__roll(0, 2);
+    w.__roll(0, 1);
   });
   await expect(panel).toBeHidden();
   await expect.poll(async () => (await marks())!.split(' ').length).toBe(6);

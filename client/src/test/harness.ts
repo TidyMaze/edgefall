@@ -28,8 +28,8 @@ export interface BootOptions {
   /** A fake AudioContext (src/test/audio.ts), read back with `game.hook('__audio')`; none by default, as in a browser
    * without Web Audio. */
   audio?: boolean;
-  /** The Cutaway is the default page (#1696). A boot is the old Hub unless the query says `hub=cutaway` or this is true. */
-  defaultHub?: boolean;
+  /** The deck is drawn and takes the taps, as before the ship's file has loaded: the ship is never drawn. */
+  deck?: boolean;
   /** The texture files under assets/ that fail to load, as a missing file would, `spaceship-bay.glb` included. The others
    * load, each a texture named after its file. */
   missing?: string[];
@@ -348,12 +348,18 @@ export async function boot(url = '/', options: BootOptions = {}): Promise<Game> 
   // The online room: main.ts gets one end of a local pair, the test holds the other.
   let peer: Transport | null = null;
   let room: string | null = null;
-  if (!options.defaultHub) {
-    vi.doMock('../hubcutaway', async (importOriginal) => ({
-      ...(await importOriginal<typeof import('../hubcutaway')>()),
-      cutawayOn: (search: string): boolean => new URLSearchParams(search).get('hub') === 'cutaway',
-    }));
-  } else vi.doUnmock('../hubcutaway');
+  if (options.deck) {
+    // The ship's file never loads: the deck stands as it does while the ship loads, and its cells take the taps.
+    vi.doMock('../hubcutaway', async (importOriginal) => {
+      const mod = await importOriginal<typeof import('../hubcutaway')>();
+      class Unloaded extends mod.Cutaway {
+        override sync(): boolean {
+          return (this.group.visible = false);
+        }
+      }
+      return { ...mod, Cutaway: Unloaded };
+    });
+  }
   vi.doMock('../p2p', async (importOriginal) => {
     const { localPair } = await import('../transport');
     return {

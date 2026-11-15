@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { lowTierOnCi, startMode } from './modes';
+import { lowTierOnCi, startMode, enterBay } from './modes';
 import { loseByRepetition } from './fight-end';
 import { shot } from './shot';
 
@@ -19,7 +19,7 @@ const hubShown = (page: Page) => expect(body(page)).toHaveAttribute('data-hub', 
 const besideTheTable = (page: Page) => page.addInitScript(() => localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [-1, 0], beaten: [] })));
 /** From the Hub, rolls onto the hot-seat table: a game with the exit, New game, Hint and the rest in the dock. */
 const rollOntoTable = async (page: Page): Promise<void> => {
-  await page.evaluate(() => (window as any).__click(-1, -1));
+  await page.evaluate(() => (window as any).__roll(-1, -1));
   await expect(body(page)).not.toHaveAttribute('data-hub', /.*/);
 };
 const hubTable = async (page: Page): Promise<void> => {
@@ -81,7 +81,7 @@ const MENU_MODES: [string, (page: Page) => Promise<void>, (page: Page) => Promis
 
 for (const [name, enter, shown] of MENU_MODES) {
   test(`${name} is left by the first slot of the dock, labelled Hub, #1517`, async ({ page }) => {
-    await page.goto('./?bot=off&net=hook&hub=classic');
+    await page.goto('./?bot=off&net=hook');
     await expect(page.locator('#hud')).toContainText('Black to move');
     await exitIs(page, 'Hub'); // the plain table leaves by the exit too (#1697)
     await enter(page);
@@ -96,7 +96,7 @@ for (const [name, enter, shown] of MENU_MODES) {
 
 test('a table of a Hub door is left by the first slot, and the Hub puts the marble back on the door, #1517', async ({ page }) => {
   await besideTheTable(page);
-  await page.goto('./?bot=off&net=hook&hub=classic');
+  await page.goto('./?bot=off&net=hook');
   await pick(page, 'hub');
   await hubShown(page);
   await noDock(page);
@@ -116,12 +116,13 @@ for (const { name, viewport, touch } of sizes) {
 
     for (const [kind, shown] of [['town', 'data-hub'], ['dungeon', 'data-run'], ['tower', 'data-boss']] as const) {
       test(`a ${kind} of the world is left by the first slot, labelled World, and the hero is on the entrance cell, #1517`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7&hub=classic');
+        await page.goto('./?bot=off&openworld=7');
         await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
         await exitIs(page, 'Hub'); // the world's own exit is in the same slot
         const [q, r] = await cellOf(page, kind);
         await page.evaluate(([q, r]) => (window as unknown as Hooks).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] }), [q!, r!]);
         await page.keyboard.press('ArrowRight');
+        if (kind !== 'town') await enterBay(page);
         await expect(body(page)).not.toHaveAttribute('data-openworld', /.*/);
         await expect(body(page)).toHaveAttribute(shown, /.+/);
         await exitIs(page, 'World');
@@ -136,19 +137,21 @@ for (const { name, viewport, touch } of sizes) {
 }
 
 test('a lair fight with a ply played asks for a second press, labelled Sure?, as New game does; Back asks nothing, #1517', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7&hub=classic');
+  await page.goto('./?bot=off&openworld=7');
   await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
   const [q, r] = await cellOf(page, 'tower');
   await page.evaluate(([q, r]) => (window as unknown as Hooks).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] }), [q!, r!]);
   await page.keyboard.press('ArrowRight');
+  await enterBay(page);
   await expect(body(page)).toHaveAttribute('data-boss', /.+/);
   await page.mouse.click(5, 5); // a press skips the transition of the place to its end (#1519)
   await firstSlot(page).click(); // no ply played: nothing to lose, the first press leaves at once
   await expect(body(page)).toHaveAttribute('data-openworld-at', `${q! - 1},${r}`);
   await page.keyboard.press('ArrowRight'); // back onto the tower
+  await enterBay(page);
   await expect(body(page)).toHaveAttribute('data-boss', /.+/);
   await page.mouse.click(5, 5);
-  const click = (a: number, b: number) => page.evaluate(([cq, cr]) => (window as any).__click(cq, cr), [a, b]);
+  const click = (a: number, b: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [a, b]);
   await click(0, 2);
   await click(0, 1); // the Echo's board, Black up one
   await expect.poll(() => page.evaluate(() => (window as any).__plies())).toBeGreaterThan(0);
@@ -160,6 +163,7 @@ test('a lair fight with a ply played asks for a second press, labelled Sure?, as
   await expect(body(page)).toHaveAttribute('data-openworld-at', `${q! - 1},${r}`);
   await exitIs(page, 'Hub');
   await page.keyboard.press('ArrowRight');
+  await enterBay(page);
   await expect(body(page)).toHaveAttribute('data-boss', /.+/);
   await page.mouse.click(5, 5);
   await click(0, 2);
@@ -170,7 +174,7 @@ test('a lair fight with a ply played asks for a second press, labelled Sure?, as
 });
 
 test('a wild fight is left by the first slot too: Flee, and the hero is back in the world, #1517', async ({ page }) => {
-  await page.goto('./?openworld=3&nodes=200&hub=classic');
+  await page.goto('./?openworld=3&nodes=200');
   await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
   await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
   const [q, r] = (await page.evaluate(() => (window as unknown as Hooks).__openworldEnemies()))[0]!;
@@ -193,7 +197,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
     for (const [[name, enter], lose] of states) {
       test(`the dock with the exit in ${name}${lose ? ' after a defeat' : ''} fits the window, clipped by nothing, #1517`, async ({ page }) => {
         await besideTheTable(page);
-        await page.goto('./?bot=off&net=hook&hub=classic');
+        await page.goto('./?bot=off&net=hook');
         await enter(page);
         if (lose) await loseByRepetition(page); // the first boss of the list is The Echo: Retry, Goal and the rest join the exit
         await dockFits(page);
@@ -204,17 +208,17 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
     // The column of a phone held sideways scrolls from six buttons on (thumb-dock.md section 2): the seventh is measured where it fits.
     if (!sideways) test('the dock with the exit holds the seventh button, Auto-play, at the table of the bot, #1517', async ({ page }) => {
       await besideTheTable(page);
-      await page.goto('./?net=hook&hub=classic'); // the bot plays: Auto-play joins
+      await page.goto('./?net=hook'); // the bot plays: Auto-play joins
       await pick(page, 'hub');
       await hubShown(page);
-      await page.evaluate(() => (window as any).__click(-2, 0)); // the bot's table
+      await page.evaluate(() => (window as any).__roll(-2, 0)); // the bot's table
       await expect(body(page)).not.toHaveAttribute('data-hub', /.*/);
       expect(await dockFits(page)).toContain('auto-play');
       await shot(page, { path: `test-results/door-dock-bot-table-${viewport.width}.png` });
     });
 
     test('the dock in the world is the exit alone, clear of the stick, the plate and the map button, #1517', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7&hub=classic');
+      await page.goto('./?bot=off&openworld=7');
       await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
       await exitIs(page, 'Hub');
       expect(await page.locator('#dock > button:visible').count()).toBe(1);
@@ -237,7 +241,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
 
 for (const [from, start] of [['the plain table', async (_p: Page) => undefined], ['the Hub', async (p: Page) => { await pick(p, 'hub'); await hubShown(p); }]] as const) {
   test(`Escape in the Open world presses the exit and lands in the Hub, opened from ${from}, #1605`, async ({ page }) => {
-    await page.goto('./?bot=off&net=hook&hub=classic');
+    await page.goto('./?bot=off&net=hook');
     await expect(page.locator('#hud')).toContainText('Black to move');
     await start(page);
     await pick(page, 'world');
