@@ -3,7 +3,7 @@
 import type { Deck } from './deck';
 import { roomAt } from './hub';
 import { cellOf, type Bay } from './hubroll';
-import { roomState, type Follow, type ShipState } from './hubcutaway';
+import { roomState, waitsFirstWin, type Follow, type ShipState } from './hubcutaway';
 import { roomLabel } from './hubview';
 
 const title = (deck: Deck): string => deck[0]!.toUpperCase() + deck.slice(1);
@@ -11,15 +11,15 @@ const title = (deck: Deck): string => deck[0]!.toUpperCase() + deck.slice(1);
 const PHONE: Readonly<Record<string, string>> = { ballast: 'Ballast', railyard: 'Rails', magnetizer: 'Magnet', assembly: 'Line', core: 'Core', dual: 'Dual', chaplain: 'Chaplain', hotseat: 'Crew', 'bridge:logs': 'Notice', 'cargo:logs': 'Assay' };
 const LOCK = '<svg class="cut-lock" viewBox="0 0 12 14" aria-hidden="true"><rect x="1" y="6" width="10" height="8" rx="1.5"/><path d="M3.5 6V4.5a2.5 2.5 0 0 1 5 0V6" fill="none"/></svg>';
 
-/** The buttons of `bays`, from the state of the ship (`st`) and what the old Hub plates say (`roomLabel`): the bosses beaten, their `medals`, and whether the first win is `waiting`. */
-export function bayButtons(bays: readonly Bay[], st: ShipState, beaten: readonly string[], medals: Readonly<Record<string, number>>, waiting: boolean): string {
+/** The buttons of `bays`, from the state of the ship (`st`) and what the old Hub plates say (`roomLabel`): the bosses beaten, their `medals`, and whether the first win is `waiting`, and `spark` for the moment of the first win. */
+export function bayButtons(bays: readonly Bay[], st: ShipState, beaten: readonly string[], medals: Readonly<Record<string, number>>, waiting: boolean, spark = false): string {
   const locked = new Set<string>(); // the decks that already show their padlock: one on the beam of each
   return bays
     .flatMap(({ deck, room }) => {
       const cell = cellOf(deck, room);
       if (!cell) return [];
       const state = roomState(room, deck, st);
-      const key = `data-bay="${deck}:${room}" data-state="${state}"`;
+      const key = `data-bay="${deck}:${room}" data-state="${state}"${spark && state !== 'dark' && waitsFirstWin(room) ? ' data-spark="1"' : ''}`; // the bays the first win just lit sparkle (#1692)
       if (state === 'dark') {
         const lock = locked.has(deck) ? '' : LOCK;
         locked.add(deck);
@@ -28,7 +28,7 @@ export function bayButtons(bays: readonly Bay[], st: ShipState, beaten: readonly
       const door = roomAt(deck, cell)!;
       const { name, state: line } = roomLabel(deck, door, beaten, medals, waiting);
       const short = PHONE[`${deck}:${room}`] ?? PHONE[room] ?? roomLabel(deck, door, beaten, medals, false).short; // the phone's sign is the name alone: the dim and the aria-label say locked
-      return [`<button type="button" class="cut-bay" ${key} aria-label="${name}, ${line}"><b>${name}</b><small>${line}</small><span class="short">${short}</span></button>`];
+      return [`<button type="button" class="cut-bay" ${key} aria-label="${name}, ${line}"><b>${name}</b><small>${line}</small><span class="short">${short}</span>${state === 'locked' ? LOCK : ''}</button>`];
     })
     .join('');
 }

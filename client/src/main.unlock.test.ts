@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { IDBFactory } from 'fake-indexeddb';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { BLACK_WINS, WHITE_WINS } from '../e2e/end-games';
 import { gameFileText } from './gamefile';
 import { boot, type Game } from './test/harness';
@@ -282,5 +282,77 @@ describe('the menu and the Hub name the first move', () => {
     await finish(game, BLACK_WINS);
     expect(document.activeElement).toBe(byId('unlock-world'));
     expect(byId('unlock-text').textContent).toContain('Leaderboard');
+  });
+});
+
+describe('the first win on the Hub Cutaway (#1692)', () => {
+  it('lands in the ship, names the goal on the card, sparks the lit bays for a moment and drops the Hub button', async () => {
+    const game = await boot('?newplayer&hub=cutaway');
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    try {
+      const input = byId<HTMLInputElement>('import-file');
+      Object.defineProperty(input, 'files', { value: [new File([gameFileText({ bot: true, moves: BLACK_WINS })], 'g.json')], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      await vi.advanceTimersByTimeAsync(1);
+      expect(byId('unlock-text').textContent).toBe('The Mess is open. Next: beat The Echo.');
+      expect(byId('unlock-hub').hidden).toBe(true);
+      expect(document.body.dataset.hub).toMatch(/^mess /); // the player lands in the ship
+      expect(document.body.dataset.firstrun).toBeUndefined();
+      await vi.advanceTimersByTimeAsync(3000); // the spark ends: the bays are rebuilt without it
+      expect(byId('ship-bays').querySelector('[data-spark]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+    await game.settle();
+  });
+});
+
+describe('leaving before the first win lands in the ship (#1692)', () => {
+  it('a player who starts another mode within the tick is not pulled back, and one who leaves the ship ends the spark', async () => {
+    const game = await boot('?newplayer&hub=cutaway');
+    const held = new Map<number, () => void>(); // the first win's two timers (the landing and the spark's end), held to be run by hand
+    let id = 1000;
+    const real = { set: window.setTimeout, clear: window.clearTimeout };
+    vi.stubGlobal('setTimeout', (fn: () => void, ms?: number, ...rest: unknown[]) => (/landTimer|sparkTimer/.test(String(fn)) ? (held.set(++id, fn), id) : real.set.call(window, fn, ms, ...rest)));
+    vi.stubGlobal('clearTimeout', (h?: number) => (held.delete(h as number) ? undefined : real.clear.call(window, h)));
+    try {
+      const input = byId<HTMLInputElement>('import-file');
+      Object.defineProperty(input, 'files', { value: [new File([gameFileText({ bot: true, moves: BLACK_WINS })], 'g.json')], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      await vi.waitFor(() => expect(held.size).toBe(1)); // the landing is waiting
+      game.hook('__startMode', 'arena'); // leaves within the tick
+      expect(held.size).toBe(0);
+      expect(document.body.dataset.hub).toBeUndefined();
+      game.hook('__startMode', 'hub');
+      expect(held.size).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    await game.settle();
+  });
+
+  it('lands, sparks, and leaving the ship drops the spark timer', async () => {
+    const game = await boot('?newplayer&hub=cutaway');
+    const held = new Map<number, () => void>();
+    let id = 1000;
+    const real = { set: window.setTimeout, clear: window.clearTimeout };
+    vi.stubGlobal('setTimeout', (fn: () => void, ms?: number, ...rest: unknown[]) => (/landTimer|sparkTimer/.test(String(fn)) ? (held.set(++id, fn), id) : real.set.call(window, fn, ms, ...rest)));
+    vi.stubGlobal('clearTimeout', (h?: number) => (held.delete(h as number) ? undefined : real.clear.call(window, h)));
+    try {
+      const input = byId<HTMLInputElement>('import-file');
+      Object.defineProperty(input, 'files', { value: [new File([gameFileText({ bot: true, moves: BLACK_WINS })], 'g.json')], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      await vi.waitFor(() => expect(held.size).toBe(1));
+      const [landing, run] = [...held][0]!;
+      held.delete(landing); // it fires once
+      run(); // the landing
+      expect(document.body.dataset.hub).toMatch(/^mess /);
+      expect(held.size).toBe(1); // the spark's end
+      game.hook('__startMode', 'arena');
+      expect(held.size).toBe(0); // dropped with the ship
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    await game.settle();
   });
 });

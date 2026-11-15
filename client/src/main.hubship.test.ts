@@ -249,3 +249,21 @@ describe('the arrow keys', () => {
     expect(hub()).toBe('mess 0,0');
   });
 });
+
+describe('a locked bay of a new player (#1692)', () => {
+  it('says why on a tap and on the keyboard, starts nothing and leaves the Hub as it is', async () => {
+    const game = await ship('?bot=off&hub=cutaway&newplayer', [], { storage: { 'ab-alone.progress': '' } }); // no record of play: a new player
+    const run = frames(game);
+    const at = hub();
+    for (const room of ['mess:daily', 'mess:echo']) {
+      byId('hud').textContent = '';
+      if (room === 'mess:echo') bay(room).focus(); // a keyboard press on a focused button is a click
+      bay(room).click();
+      run(2000);
+      expect(byId('hud').textContent).toContain('Locked until your first win');
+      expect(hub()).toBeDefined();
+      expect(hub()).toMatch(/^mess /);
+    }
+    expect(at).toMatch(/^mess /);
+  });
+});

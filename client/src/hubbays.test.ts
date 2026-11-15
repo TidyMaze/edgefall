@@ -6,9 +6,9 @@ import { shipState } from './hubcutaway';
 
 // The bays of the Hub Cutaway as tap targets (#1691): a button per bay with its name and state, a locked deck dark and unnamed, set pieces none.
 
-const html = (beaten: string[] = [], waiting = false, goal: string | null = null, medals: Record<string, number> = {}): HTMLElement => {
+const html = (beaten: string[] = [], waiting = false, goal: string | null = null, medals: Record<string, number> = {}, spark = false): HTMLElement => {
   const root = document.createElement('div');
-  root.innerHTML = bayButtons(TALL_BAYS, { ...shipState(beaten, waiting, goal) }, beaten, medals, waiting);
+  root.innerHTML = bayButtons(TALL_BAYS, { ...shipState(beaten, waiting, goal) }, beaten, medals, waiting, spark);
   return root;
 };
 const bay = (root: HTMLElement, key: string): HTMLElement => root.querySelector<HTMLElement>(`[data-bay="${key}"]`)!;
@@ -36,7 +36,7 @@ describe('the bay buttons', () => {
     const waiting = html([], true);
     expect(bay(waiting, 'mess:echo').dataset.state).toBe('locked');
     expect(bay(waiting, 'mess:echo').getAttribute('aria-label')).toMatch(/win/i);
-    expect(bay(waiting, 'mess:bot').dataset.state).toBe('lit');
+    expect(bay(waiting, 'mess:bot').dataset.state).toBe('goal'); // the House table is the goal while the first win is awaited (#1692)
   });
   it('give a phone one short name per bay, cut down where the plate\'s is too long, and never the locked line', () => {
     const waiting = html([], true);
@@ -186,5 +186,23 @@ describe('painting', () => {
     expect(root.querySelector('button')).not.toBe(first);
     paintBays(root, '');
     expect(root.innerHTML).toBe('');
+  });
+});
+
+describe('the locked look and the first-win spark (#1692)', () => {
+  it('a bay that waits for the first win has a padlock of its own, a lit one none', () => {
+    const waiting = html([], true);
+    expect(bay(waiting, 'mess:echo').querySelector('.cut-lock')).not.toBeNull();
+    expect(bay(waiting, 'mess:daily').querySelector('.cut-lock')).not.toBeNull();
+    expect(bay(waiting, 'mess:bot').querySelector('.cut-lock')).toBeNull();
+    expect(bay(waiting, 'mess:logs').querySelector('.cut-lock')).toBeNull();
+  });
+  it('the spark marks the bays the first win lit, not the tables or the dark decks', () => {
+    const lit = html([], false, 'echo', {}, true);
+    expect(bay(lit, 'mess:daily').dataset.spark).toBe('1');
+    expect(bay(lit, 'mess:echo').dataset.spark).toBe('1');
+    expect(bay(lit, 'mess:bot').dataset.spark).toBeUndefined();
+    expect(bay(lit, 'cargo:hull').dataset.spark).toBeUndefined(); // a dark deck
+    expect(bay(html(), 'mess:daily').dataset.spark).toBeUndefined();
   });
 });

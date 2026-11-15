@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { firstWon, existingPlayer, LOCK_BANNER, LOCK_NOTE, isLocked, markFirstWin, paintLocks, doorLocked, firstWinGame, LOCKED_IDS, LOCK_LINE, LOCK_SHORT, UNLOCK_CARD } from './unlock';
+import { firstWon, existingPlayer, LOCK_BANNER, LOCK_NOTE, isLocked, markFirstWin, paintLocks, doorLocked, firstWinGame, LOCKED_IDS, LOCK_LINE, LOCK_SHORT, UNLOCK_CARD, SHIP_UNLOCK_TEXT, LOCKED_BAY_LINE } from './unlock';
 import type { Store } from './quality';
 
 // The first-win lock (#1665, docs/specs/ui.md section 4.10): a new player plays the normal game first; the modes unlock after the first win.
@@ -149,5 +149,13 @@ describe('the unlock card', () => {
   it('says what opened', () => {
     expect(UNLOCK_CARD.title).toBe('You won.');
     expect(UNLOCK_CARD.text).toBe('Unlocked: Open world, Bosses, Runs, Daily, Royale, Ranked, Leaderboard');
+  });
+});
+
+describe('the unlock card on the ship (#1692)', () => {
+  it('names the Mess and the next goal, and a locked bay says why', () => {
+    expect(SHIP_UNLOCK_TEXT('The Echo')).toBe('The Mess is open. Next: beat The Echo.');
+    expect(SHIP_UNLOCK_TEXT(null)).toBe('The Mess is open.');
+    expect(LOCKED_BAY_LINE).toMatch(/locked.*first win/i);
   });
 });

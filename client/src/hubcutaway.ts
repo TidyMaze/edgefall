@@ -58,15 +58,18 @@ type RoomState = 'dark' | 'locked' | 'goal' | 'beaten' | 'lit';
 /** The state of a room: dark when its deck is shut, locked while the first win is awaited (the bosses and the mode rooms), the goal, beaten, else lit. */
 export function roomState(room: string, deck: string, st: ShipState): RoomState {
   if (!st.open.has(deck)) return 'dark';
-  if (st.waiting && (BOSSES.has(room) || WAITS.has(room))) return 'locked';
+  if (st.waiting && waitsFirstWin(room)) return 'locked';
   if (st.goal === room) return 'goal';
   return st.beaten.has(room) ? 'beaten' : 'lit';
 }
 
+/** Whether a room waits for the first win (a boss or a mode room): the ones that light up with a spark at it. */
+export const waitsFirstWin = (room: string): boolean => BOSSES.has(room) || WAITS.has(room);
+
 /** The state of a ship from the game's progress: Mess is open, a deck opens once the boss of the deck below it is beaten (hub.ts canEnter). */
 export function shipState(beaten: readonly string[], locked: boolean, goal: string | null): ShipState {
   const open = DECK_NAMES.filter((_, i) => i === 0 || beaten.includes(SEATS[i - 1]!));
-  return { open: new Set(open), beaten: new Set(beaten), goal, waiting: locked };
+  return { open: new Set(open), beaten: new Set(beaten), goal: locked ? 'bot' : goal, waiting: locked }; // until the first win the House table is the goal (#1692)
 }
 
 /** The room the next goal points to: the seat boss of its deck, or the Rogue-lite room; none when it points to none. */

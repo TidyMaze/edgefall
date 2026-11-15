@@ -45,7 +45,7 @@ describe('the Hub Cutaway on the page (#1689)', () => {
     expect(document.body.dataset.hubCutaway).toBe('true');
     const state = sync.mock.calls.at(-1)![3];
     expect(state.waiting).toBe(true); // a new player: the first win awaited
-    expect(state.goal).toBeNull();
+    expect(state.goal).toBe('bot'); // the House table (#1692)
     expect([...state.open]).toEqual(['mess']);
     sync.mockReturnValue(false);
     dispatchEvent(new Event('resize'));

@@ -48,7 +48,7 @@ describe('the state of the ship (#1689)', () => {
   it('tells a room dark, locked, goal, beaten or lit', () => {
     expect(roomState('hull', 'cargo', NEW)).toBe('dark'); // a shut deck
     expect(roomState('echo', 'mess', NEW)).toBe('locked'); // a boss, the first win awaited
-    expect(roomState('bot', 'mess', NEW)).toBe('lit'); // not a boss nor a waiting mode: playable at once
+    expect(roomState('bot', 'mess', NEW)).toBe('goal'); // the first win's goal (#1692); not a boss nor a waiting mode: playable at once
     expect(roomState('run', 'cargo', MID)).toBe('goal');
     expect(roomState('echo', 'mess', MID)).toBe('beaten');
     expect(roomState('dual', 'mess', MID)).toBe('lit');
@@ -70,7 +70,8 @@ describe('the parts of the file (#1689)', () => {
   });
 
   it('lights a deck with its lamp, off while it is dark', () => {
-    expect(glow('hub_tall_bay_mess_bot', NEW)).toBe(col(0xffe3bf));
+    expect(glow('hub_tall_bay_mess_bot', NEW)).toBe(col(0xffb000)); // the House table: the goal (#1692)
+    expect(glow('hub_tall_bay_mess_hotseat', NEW)).toBe(col(0xffe3bf));
     expect(glow('hub_tall_bay_cargo_hull', LATE)).toBe(col(0x7fd6e8));
     expect(glow('hub_tall_bay_furnace_core', LATE)).toBe(col(0xd9822b));
     expect(glow('hub_tall_bay_chapel_stalker', LATE)).toBe(col(0x9a6bff));
@@ -87,7 +88,8 @@ describe('the parts of the file (#1689)', () => {
   });
 
   it('gives a prop its state', () => {
-    expect(glow('hub_tall_prop_mess_bot', NEW)).toBe(col(0x19e6ff)); // a mode room
+    expect(glow('hub_tall_prop_mess_bot', NEW)).toBe(col(0xffb000)); // the goal while the first win is awaited (#1692)
+    expect(glow('hub_tall_prop_mess_hotseat', NEW)).toBe(col(0x19e6ff)); // a mode room
     expect(glow('hub_tall_prop_mess_medals', NEW)).toBe(col(0xffd43b));
     expect(glow('hub_tall_prop_mess_dual', MID)).toBe(col(0x9a6bff)); // a boss room
     expect(glow('hub_tall_prop_cargo_run', MID)).toBe(col(0xffb000)); // the goal
@@ -324,5 +326,13 @@ describe('the exported files (#1689)', () => {
     const lateTris = bakeShip(scene, LATE)!.geometry.getIndex()!.count;
     const newTris = bakeShip(scene, NEW)!.geometry.getIndex()!.count;
     expect(lateTris).not.toBe(newTris);
+  });
+});
+
+describe('the goal while the first win is awaited (#1692)', () => {
+  it('is the House table, whatever goal is given; after it the given goal', () => {
+    expect(shipState([], true, null).goal).toBe('bot');
+    expect(shipState([], true, 'echo').goal).toBe('bot');
+    expect(shipState([], false, 'echo').goal).toBe('echo');
   });
 });

@@ -93,3 +93,8 @@ export const firstWinGame = (anim: string | undefined, game: GameKind): boolean 
 
 /** The card of the first win. */
 export const UNLOCK_CARD = { title: 'You won.', text: 'Unlocked: Open world, Bosses, Runs, Daily, Royale, Ranked, Leaderboard', world: 'Open world', hub: 'Hub', dismiss: 'Dismiss' } as const;
+
+/** The card of the first win on the Hub Cutaway (#1692): the Mess is lit, and the next boss is the goal (`next`, null when none is left). */
+export const SHIP_UNLOCK_TEXT = (next: string | null): string => (next ? `The Mess is open. Next: beat ${next}.` : 'The Mess is open.');
+/** Tally's line when a tap on a bay that waits for the first win starts nothing (#1692). */
+export const LOCKED_BAY_LINE = 'Locked until your first win. Beat the bot at the House table.';

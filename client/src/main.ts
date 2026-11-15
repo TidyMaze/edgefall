@@ -33,7 +33,7 @@ import { GUIDE, guideDue, guideStep, writeGuideSeen, type GuideEvent } from './g
 import { firstBotMove } from './firstbot';
 import { COACH, COLD_OPEN, PRACTICE_BOT, firstRunDue, isPush, markFirstRunDone, nextStep, stepLine, type MatchStep } from './firstrun';
 import { openWorldLeads } from './menuorder';
-import { doorLocked, existingPlayer, firstWinGame, isLocked, LOCK_BANNER, markFirstWin, paintLocks, UNLOCK_CARD } from './unlock';
+import { doorLocked, existingPlayer, firstWinGame, isLocked, LOCK_BANNER, LOCKED_BAY_LINE, markFirstWin, paintLocks, SHIP_UNLOCK_TEXT, UNLOCK_CARD } from './unlock';
 import { worldSaves } from './openworldsave';
 import { askBot, askEval, BOT_NODES, botBudget, encounterFor, engineFor, WILD_NODES } from './bot';
 import { askMirror } from './traitchoice';
@@ -344,7 +344,7 @@ import { noticeBoard } from './hubboard';
 import { NO_ARMY, NO_RESOURCES, type Army, type Resources } from './openworldresources';
 import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hullKeeps, leave as leaveBrought, leaveRelic, lose, placeBrought, relicsMask, sell, sellRelic, thrownOff, upgrade as upgradeMarble, wildFoes, withoutKinds, type Stock } from './openworldworkshop';
 import { workshopHtml } from './workshopview';
-import { bossLockLine, labelsHtml, nextGoal, pipsHtml, railHtml } from './hubview';
+import { bossLockLine, labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml } from './hubview';
 import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, shipState } from './hubcutaway';
 import { bayButtons, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { ShipWalk } from './hubship';
@@ -1389,15 +1389,30 @@ function syncLocks(): void {
   paintLocks(document, locked);
   document.body.dataset.unlocked = locked ? '0' : '1';
 }
+let landTimer: ReturnType<typeof setTimeout> | undefined; // the landing in the ship, and the spark's end
+let sparkTimer: ReturnType<typeof setTimeout> | undefined;
+let shipSpark = false; // the first-win moment on the ship: the bays it lit sparkle for a moment (#1692)
+const SPARK_MS = 2200;
 function unlockFirstWin(): void {
   markFirstWin(store);
   locked = false;
   syncLocks();
   const card = document.getElementById('unlock')!;
   document.getElementById('unlock-title')!.textContent = UNLOCK_CARD.title;
-  document.getElementById('unlock-text')!.textContent = UNLOCK_CARD.text;
+  document.getElementById('unlock-text')!.textContent = cutaway ? SHIP_UNLOCK_TEXT(nextBossTitle(loadProgress(store).beaten)) : UNLOCK_CARD.text;
+  document.getElementById('unlock-hub')!.hidden = !!cutaway; // the ship is where the player lands (#1692)
   card.hidden = false;
   document.getElementById('unlock-world')!.focus();
+  if (!cutaway) return;
+  landTimer = setTimeout(() => {
+    // after this game over is handled: the first win lands in the ship, the card over it, the five bays sparkling for a moment
+    landTimer = undefined;
+    dropFirstRun();
+    enterHub(loadProgress(store).at);
+    shipSpark = true;
+    sparkTimer = setTimeout(() => ((sparkTimer = undefined), (shipSpark = false), refresh()), SPARK_MS);
+    refresh();
+  });
 }
 for (const [id, press] of [['unlock-world', () => openWorldButton.click()], ['unlock-hub', () => shipButton.click()], ['unlock-dismiss', () => undefined]] as const) {
   document.getElementById(id)!.addEventListener('click', () => {
@@ -4559,7 +4574,7 @@ function refresh(): void {
     syncDishes();
     const goal = locked ? { text: LOCK_BANNER, deck: null, room: null } : nextGoal(beaten, ranRun(store)); // the next thing to do (#1524); the first win while the lock is on
     hubLabels.innerHTML = labelsHtml(hub.at, beaten, loadMedals(store), goal, locked); // a beaten boss's door shows its medal (#1249)
-    paintBays(shipBays, cutawayShown ? bayButtons(cutaway!.bays, shipNow(beaten), beaten, loadMedals(store), locked) : '');
+    paintBays(shipBays, cutawayShown ? bayButtons(cutaway!.bays, shipNow(beaten), beaten, loadMedals(store), locked, shipSpark) : '');
     document.getElementById('hub-rail')!.innerHTML = railHtml(hub.at.deck, beaten, goal, locked);
     document.getElementById('hub-pips')!.innerHTML = pipsHtml(beaten, loadMedals(store));
     const day = utcDay(Date.now());
@@ -6388,7 +6403,10 @@ function enterRoom(at: HubSpot): void {
   const door = roomAt(at.deck, at.cell);
   const entry = bayEntry; // a tower's or a gate's bay (#1694)
   if (entry?.lair && door?.kind === 'boss') return beginLair(entry.lair); // the fight of the lair, its exit the tower's
-  if (locked && door && doorLocked(door.kind) && !entry) return; // the Hub stays as it is: its boss and mode doors wait for the first win (#1665)
+  if (locked && door && doorLocked(door.kind) && !entry) {
+    if (cutaway) (hub!.bumped = LOCKED_BAY_LINE), refresh(); // a tap on a bay that waits says why, no start (#1692)
+    return; // the Hub stays as it is: its boss and mode doors wait for the first win (#1665)
+  }
   if (door?.kind === 'terminal') return openReader(door.lore);
   if (door?.kind === 'medals') return openReader(MEDAL_ROOM);
   if (door?.kind === 'boss') startBoss(door.boss, crypto.getRandomValues(new Uint32Array(1))[0]!);
@@ -6491,6 +6509,10 @@ exitButton.addEventListener('click', () => {
 // exit(), each other mode by its leave, then clears what no mode owns (modeswitch.ts). Nothing of a mode stays in the next.
 // The Open world opens over the page instead (#1063): Esc gives the game beneath back as it was, and the next mode leaves it.
 function leaveMode(): void {
+  clearTimeout(landTimer); // the first win's landing, not yet made, and its spark: a player who leaves is not pulled back to the ship (#1692)
+  clearTimeout(sparkTimer);
+  landTimer = sparkTimer = undefined;
+  shipSpark = false;
   askExit(null); // a question of the exit lapses with the mode
   dropFirstRun();
   needBoard(); // a lair, a town or a gate has left the world already: the board is what shows next
