@@ -308,11 +308,25 @@ describe('world_visit', () => {
     expect(value(await worldRoom.visit({ hero: 'p' }))).toMatchObject({ steps: 0, arrived: true, hero: '(0,0)' });
   });
 
-  test('a cell the hero is on, or no way to a cell, is no_path', async () => {
+  test('the cell the hero is on is arrived with no step (#1677); no way to a cell is no_path', async () => {
     const { worldRoom } = setup();
     value(worldRoom.join({}));
-    expect(failure(await worldRoom.visit({ q: 0, r: 0 })).code).toBe('no_path');
+    expect(value(await worldRoom.visit({ q: 0, r: 0 }))).toMatchObject({ steps: 0, arrived: true, hero: '(0,0)', target: '(0,0)' });
     expect(failure(await worldRoom.visit({ q: 30000, r: 30000 })).code).toBe('no_path');
+  });
+
+  test('a 40th step that lands on the cell is arrived, not "call again" (#1677)', async () => {
+    const { worldRoom, world } = setup();
+    value(worldRoom.join({}));
+    const [q, r] = reachable(4);
+    let calls = 0;
+    world.walk = () => (calls++, { ok: true, value: { steps: 1, pushes: [], state: {} as never } }); // stuck, then the 40th step lands
+    const state = world.state.bind(world);
+    world.state = (input) => {
+      const real = state(input);
+      return calls < 40 || !real.ok ? real : { ok: true, value: { ...(real.value as object), hero: `(${q},${r})` } } as typeof real;
+    };
+    expect(value(await worldRoom.visit({ q, r }))).toMatchObject({ steps: 40, arrived: true, hero: `(${q},${r})` });
   });
 
   test('stops after 40 steps and says it has not arrived, so the agent calls again', async () => {

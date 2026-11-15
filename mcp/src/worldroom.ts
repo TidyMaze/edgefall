@@ -192,13 +192,10 @@ export class WorldRoom {
       const at = this.at();
       if (!at) return changed();
       const done = (arrived: boolean): Result<Visited> => ok({ steps, hero: text(at), target: text(target), arrived });
-      if (hero !== undefined && hexDistance(at, target) <= 1) return done(true);
+      if (hexDistance(at, target) <= (hero !== undefined ? 1 : 0)) return done(true); // next to a hero, on a cell: before the step limit (#1677)
       if (steps === MAX_STEPS) return done(false);
       const path = this.rules.world_path(PUBLIC_SEED, at[0], at[1], target[0], target[1], new Int32Array(), new Int32Array());
-      if (path.length === 0) {
-        if (steps > 0 && hexDistance(at, target) === 0) return done(true);
-        return fail('no_path', `no way to ${text(target)}: it is the hero's cell, off the world, farther than 40 cells or walled in`);
-      }
+      if (path.length === 0) return fail('no_path', `no way to ${text(target)}: off the world, farther than 40 cells or walled in`);
       await this.opts.sleep(SEND_MS);
       if (this.running !== run) return none(); // left while walking
       const step = this.world.walk({ q: path[0]!, r: path[1]! });
