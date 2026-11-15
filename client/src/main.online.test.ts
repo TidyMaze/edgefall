@@ -19,8 +19,10 @@ const data = (): DOMStringMap => document.body.dataset;
 const presence = (): string => document.querySelector('#hud .presence')?.textContent ?? '';
 
 /** Settles until `ok` holds: signatures are checked on the real Web Crypto, which takes a few tasks. */
+/** Settles until `ok`, for 5 s of real time at most: a count of turns ran out on a loaded CI runner before the room's key was made (main red on e325e8d3). */
 async function until(game: Game, ok: () => boolean): Promise<void> {
-  for (let i = 0; i < 50 && !ok(); i++) await game.settle();
+  const end = Date.now() + 5000;
+  while (!ok() && Date.now() < end) await game.settle();
   expect(ok()).toBe(true);
 }
 
