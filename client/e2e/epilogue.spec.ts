@@ -49,7 +49,7 @@ for (const { name, viewport, touch } of sizes) {
       await expect(page.locator('#epilogue')).toBeHidden();
       await expect(page.locator('body')).not.toHaveAttribute('data-epilogue', /.+/);
       await page.locator('#settings').click();
-      await page.locator('#setting-log-archive').click();
+      await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
       await page.locator('.setting-archive').getByRole('button', { name: EPILOGUE.title }).click();
       await expect(page.locator('body')).toHaveAttribute('data-reading', EPILOGUE.id);
       await expect(page.locator('#reader')).toContainText(EPILOGUE.pages[0]!.lines[0]!);
@@ -64,7 +64,7 @@ for (const { name, viewport, touch } of sizes) {
         await page.goto('./?bot=off');
         await page.locator('canvas').waitFor();
         await page.locator('#settings').click();
-        await page.locator('#setting-log-archive').click();
+        await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
         await page.locator('.setting-archive').getByRole('button', { name: CLAMP_OPEN.title }).click();
         await expect(page.locator('#reader')).toContainText(text);
       }

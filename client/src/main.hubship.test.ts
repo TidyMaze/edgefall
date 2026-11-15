@@ -151,7 +151,8 @@ describe('a tap on a bay', () => {
     run(40);
     bay('mess:logs').click(); // the first roll ends, the new one starts
     run(800);
-    expect(byId('reader').hidden).toBe(false); // the logs terminal opens the reader, the daily did not start
+    expect(byId('bay-sheet').hidden).toBe(false); // the Logs bay opens its sheet (#1693), the daily did not start
+    expect(hub()).toBeDefined();
   });
 
   it('fades in where it goes under reduced motion', async () => {
@@ -165,11 +166,12 @@ describe('a tap on a bay', () => {
 });
 
 describe('the logs bay', () => {
-  it('opens the first log of the deck not read yet, the first one when none is read', async () => {
+  it('its Read the log row opens the first log of the deck not read yet, the first one when none is read (#1693)', async () => {
     const game = await ship('?bot=off', ['echo']);
     const run = frames(game);
     bay('mess:logs').click();
     run(800);
+    byId('bay-row-1').click();
     expect(document.body.dataset.reading).toBe('mess-house-rule');
   });
   it('skips a log already read', async () => {
@@ -177,6 +179,7 @@ describe('the logs bay', () => {
     const run = frames(game);
     bay('mess:logs').click();
     run(800);
+    byId('bay-row-1').click();
     expect(document.body.dataset.reading).toBe('mess-corner-table');
   });
 });

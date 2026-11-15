@@ -95,7 +95,8 @@ test('a tap during a roll ends it: the first room does not open', async ({ page 
   await openHub(page, '?bot=off', ['echo']);
   await bay(page, 'mess:daily').click();
   await bay(page, 'mess:logs').click({ force: true });
-  await expect(page.locator('#reader')).toBeVisible(); // the logs, not the daily
+  await expect(page.locator('#bay-sheet')).toBeVisible(); // the Logs bay's sheet (#1693), not the daily
+  await expect(page.locator('body')).toHaveAttribute('data-hub', /^mess /);
 });
 
 /** What the bays and the lift buttons on show measure: the smallest size, and everything that is clipped, under a panel or covered. */

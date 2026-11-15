@@ -72,7 +72,7 @@ for (const { name, viewport, touch } of sizes) {
       // And it is in the log archive of the settings menu.
       await page.keyboard.press('Escape'); // back to the page's own menu: the world is left
       await page.locator('#settings').click();
-      await page.locator('#setting-log-archive').click();
+      await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
       await expect(page.locator('.setting-archive')).toContainText('Stake: the clearing');
     });
   });
@@ -84,7 +84,7 @@ test('Escape closes the terminal reader opened from the log archive in the world
   await expect(page.locator('body')).toHaveAttribute('data-openworld-at', '3,1');
   await page.evaluate(() => localStorage.setItem('ab-alone.lore-read', 'cargo-assay')); // one entry read: the archive lists it
   await page.locator('#settings').click();
-  await page.locator('#setting-log-archive').click();
+  await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
   await page.locator('.setting-archive button').first().click();
   await expect(page.locator('body')).toHaveAttribute('data-reading', 'cargo-assay');
   await expect(page.locator('#reader')).toBeVisible();

@@ -48,8 +48,8 @@ for (const { name, width, height } of sizes) {
       for (const id of ['setting-fps', 'setting-free-cam', 'setting-export-game', 'setting-import-game', 'copy-diagnostics']) await expect(page.locator(`#${id}`)).toBeHidden();
       await expect(page.locator('#setting-reduced-motion')).toBeVisible();
       await expect(page.locator('#setting-sound')).toBeVisible();
-      await expect(page.locator('#setting-log-archive')).toBeVisible();
-      await expect(page.locator('#setting-ledger')).toBeVisible();
+      await expect(page.locator('#setting-log-archive')).toBeHidden(); // Logs and the Ledger live in the ship: the Logs bays and the Medal wall (#1693)
+      await expect(page.locator('#setting-ledger')).toBeHidden();
       await openAdvanced(page);
       for (const id of ['setting-fps', 'setting-free-cam', 'setting-export-game', 'setting-import-game', 'copy-diagnostics']) await expect(page.locator(`#${id}`)).toBeVisible();
       await shot(page, { path: `test-results/screenshots/1566-settings-${name}.png` });

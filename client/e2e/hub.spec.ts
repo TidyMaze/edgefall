@@ -182,6 +182,7 @@ test('a terminal room opens its lore entry in the reader, and Esc gives the hub 
   await expect(body).toHaveAttribute('data-console', /^mess-house-rule /); // the console's web fonts are in
   await shot(page, { path: testInfo.outputPath('terminal-before.png') });
   await hookClick(page, 1, 1);
+  await page.locator('#bay-row-1').click(); // the Logs bay's sheet: Read the log (#1693)
   await expect(body).toHaveAttribute('data-reading', 'mess-corner-table');
   await expect(page.locator('#reader')).toContainText('Galley log, unsigned');
   await expect(page.getByRole('button', { name: 'Play log' })).toBeVisible();
@@ -200,6 +201,7 @@ test('the Medal room lists every boss with its medal in the reader, and Esc give
   await expect(body).toHaveAttribute('data-console', /^mess-house-rule /); // the console's web fonts are in
   await page.evaluate(() => localStorage.setItem('ab-alone.medals', JSON.stringify({ echo: 14 })));
   await hookClick(page, 0, 2);
+  await page.locator('#bay-row-1').click(); // the Medal wall's sheet: Medal wall (#1693)
   await expect(body).toHaveAttribute('data-reading', 'medal-room');
   await expect(page.locator('#reader')).toContainText('The Echo: 14 turns. The Hull: Not beaten.');
   await shot(page, { path: testInfo.outputPath('medal-room.png') });

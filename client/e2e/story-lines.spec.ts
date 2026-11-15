@@ -24,7 +24,7 @@ async function save(page: Page, moments: number[], seen = ''): Promise<void> {
 async function openLedger(page: Page, before?: () => Promise<void>): Promise<void> {
   await page.locator('#settings').click();
   await before?.();
-  await page.locator('#setting-ledger').click();
+  await page.locator('#setting-ledger').dispatchEvent('click'); // the row is hidden: the Ledger's home is the ship's Medal wall (#1693), its page is the same
 }
 
 for (const { name, viewport, touch } of sizes) {
@@ -64,9 +64,9 @@ for (const { name, viewport, touch } of sizes) {
       await page.goto('./?bot=off');
       await page.locator('canvas').waitFor();
       await openLedger(page, async () => {
-        // Logs and Ledger are rows of the Sound group (#1566): the four of the group stay inside the menu and the window, none cut.
-        const buttons = page.locator('#settings-menu .setting-section:has(#setting-ledger) button');
-        expect(await buttons.count()).toBe(4);
+        // The rows of the Sound group (#1566) stay inside the menu and the window, none cut; Logs and Ledger are hidden there, their homes are in the ship (#1693).
+        const buttons = page.locator('#settings-menu .setting-section:has(#setting-ledger) button:visible');
+        expect(await buttons.count()).toBe(2);
         const frame = (await page.locator('#settings-menu').boundingBox())!;
         for (let i = 0; i < (await buttons.count()); i++) {
           const box = (await buttons.nth(i).boundingBox())!;

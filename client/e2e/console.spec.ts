@@ -112,7 +112,7 @@ test('the log archive rereads an entry read on another deck, #513', async ({ pag
   await page.evaluate(() => (window as unknown as { __deck: (deck: string) => void }).__deck('mess'));
   await expect(body).toHaveAttribute('data-console', /^mess-house-rule 1\/\d$/);
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Logs' }).click();
+  await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
   const entry = page.getByRole('button', { name: 'Assay note, ore bay two' });
   await expect(entry).toBeVisible();
   await shot(page, { path: testInfo.outputPath('log-archive.png') });

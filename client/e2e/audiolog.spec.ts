@@ -60,7 +60,7 @@ test('collect a log from the recorder, then replay it from the log archive, #517
   await page.getByRole('button', { name: 'Skip log' }).click();
   await expect(body).not.toHaveAttribute('data-log');
   await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: 'Logs', exact: true }).click();
+  await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
   await page.getByRole('button', { name: logOf('mess').title }).click();
   await expect(body).toHaveAttribute('data-log', 'mess-first-game');
   await expect(page.locator('#transcript')).toHaveText(logOf('mess').lines[0]!.text);

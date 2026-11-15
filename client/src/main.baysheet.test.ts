@@ -33,13 +33,16 @@ function frames(game: Game): (ms: number) => void {
     for (const cb of due) cb();
   };
 }
-/** The test shell has no Clamp list and no Shift crew bay (test/harness.ts): they are added to the bays of the shell once it is loaded, as the file of the ship has them. */
+/** The test shell has no Clamp list, Shift crew or Medal wall bay (test/harness.ts): they are added to the bays of the shell once it is loaded, as the file of the ship has them. */
 async function withBays(): Promise<void> {
   const { Cutaway } = await import('./hubcutaway'); // the class of the page just booted
   const sync = Cutaway.prototype.sync;
   const at = (deck: 'furnace' | 'bridge', room: string, x: number, y: number) => ({ deck, room, x, y, box: new THREE.Box3(new THREE.Vector3(x - 0.5, y - 0.4, -0.1), new THREE.Vector3(x + 0.5, y + 0.4, 0.1)) });
   vi.spyOn(Cutaway.prototype, 'sync').mockImplementation(function (this: InstanceType<typeof Cutaway>, ...args) {
-    if (this.bays.length && !this.bays.some((b) => b.room === 'ranked')) this.bays = [...this.bays, at('furnace', 'coop', -1, 5.32), at('bridge', 'ranked', 0.58, 6.7)];
+    if (this.bays.length && !this.bays.some((b) => b.room === 'ranked')) {
+      const logs = this.bays.find((b) => b.deck === 'mess' && b.room === 'logs')!; // the Medal wall stands next to the Mess's Logs bay, as in the file
+      this.bays = [...this.bays, at('furnace', 'coop', -1, 5.32), at('bridge', 'ranked', 0.58, 6.7), { ...at('furnace', 'medals', logs.x - 1, logs.y), deck: 'mess' }];
+    }
     return sync.apply(this, args);
   });
 }
@@ -56,6 +59,41 @@ function visit(run: (ms: number) => void, key: string): void {
   bay(key).click();
   for (let i = 0; i < 6; i++) run(400);
 }
+
+describe('the Logs bay and the Medal wall (#1693, part 2)', () => {
+  it('the Logs bay of a deck opens a sheet: Read the log opens its entry, All logs the log archive; the Settings rows are gone', async () => {
+    const { run } = await open();
+    expect(byId('setting-log-archive').hidden).toBe(true);
+    expect(byId('setting-ledger').hidden).toBe(true);
+    visit(run, 'mess:logs');
+    expect(sheet().hidden).toBe(false);
+    expect(sheet().getAttribute('aria-label')).toBe('Logs');
+    expect(rows()).toEqual(['Read the log', 'All logs']);
+    byId('bay-row-1').click();
+    expect(sheet().hidden).toBe(true);
+    expect(byId('reader').hidden).toBe(false); // the deck's next log in the terminal reader
+    const again = await open();
+    visit(again.run, 'mess:logs');
+    byId('bay-row-2').click();
+    expect(sheet().hidden).toBe(true);
+    expect(byId('settings-menu').hidden).toBe(false);
+    expect(byId('settings-menu').dataset.page).toBe('archive');
+  });
+
+  it('the Medal wall opens a sheet: Medal wall reads the medals, Ledger opens the story lines', async () => {
+    const { run } = await open();
+    visit(run, 'mess:medals');
+    expect(sheet().getAttribute('aria-label')).toBe('Medal wall');
+    expect(rows()).toEqual(['Medal wall', 'Ledger']);
+    byId('bay-row-1').click();
+    expect(byId('reader').hidden).toBe(false);
+    const again = await open();
+    visit(again.run, 'mess:medals');
+    byId('bay-row-2').click();
+    expect(byId('settings-menu').dataset.page).toBe('archive');
+    expect(document.querySelector('#settings-menu .setting-archive')!.classList.contains('ledger')).toBe(true);
+  });
+});
 
 describe('the Clamp list sheet', () => {
   it('opens on the bay with Ranked and Leaderboard, starts nothing, and stays in the Hub', async () => {

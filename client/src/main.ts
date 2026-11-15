@@ -1247,6 +1247,7 @@ const archiveButton = Object.assign(document.createElement('button'), {
 const ledgerButton = Object.assign(document.createElement('button'), { id: 'setting-ledger', type: 'button', title: 'Ledger', innerHTML: `${icon('ledger')}<span>Ledger</span>` });
 ledgerButton.setAttribute('aria-label', 'Ledger');
 menu.append(archiveButton, ledgerButton);
+archiveButton.hidden = ledgerButton.hidden = true; // their homes are the ship's Logs bays and Medal wall (#1693): the rows stay for the pages they open
 archiveButton.addEventListener('click', openArchive);
 ledgerButton.addEventListener('click', openLedger);
 groupSettings(menu); // the items under their headings (#1566), Copy diagnostics from the page into Advanced
@@ -6387,6 +6388,8 @@ function enterRoom(at: HubSpot): void {
     return; // the Hub stays as it is: its boss and mode doors wait for the first win (#1665)
   }
   if (cutawayShown && (door?.kind === 'ranked' || door?.kind === 'together')) return openBaySheet(door.kind); // their bay offers two rows (#1693)
+  if (cutawayShown && door?.kind === 'terminal') return (bayLore = door.lore), openBaySheet('logs'); // the deck's log, or all of them (#1693)
+  if (cutawayShown && door?.kind === 'medals') return openBaySheet('medals'); // the medals, or the Ledger
   if (door?.kind === 'terminal') return openReader(door.lore);
   if (door?.kind === 'medals') return openReader(MEDAL_ROOM);
   if (door?.kind === 'boss') startBoss(door.boss, crypto.getRandomValues(new Uint32Array(1))[0]!);
@@ -6984,7 +6987,13 @@ coopButton.addEventListener('click', () => {
   showCoopList(open); // hidden or opened by Boss duel: open it
 });
 // The two-row sheets of the Clamp list and the Shift crew bays (#1693): the rows press the starter buttons that stay behind them.
-const BAY_ROWS = { ranked: { name: 'Clamp list', rows: ['Ranked', 'Leaderboard'] }, together: { name: 'Shift crew', rows: ['Boss with a partner', 'Boss vs a player'] } } as const;
+const BAY_ROWS = {
+  ranked: { name: 'Clamp list', rows: ['Ranked', 'Leaderboard'] },
+  together: { name: 'Shift crew', rows: ['Boss with a partner', 'Boss vs a player'] },
+  logs: { name: 'Logs', rows: ['Read the log', 'All logs'] }, // the Logs bay of a deck: its next log, or the archive (#1693, part 2)
+  medals: { name: 'Medal wall', rows: ['Medal wall', 'Ledger'] }, // the Ledger joins the Medal wall
+} as const;
+let bayLore = ''; // the log the Logs bay opened on: the deck's first one not read
 const bayRows = [document.getElementById('bay-row-1'), document.getElementById('bay-row-2')] as HTMLButtonElement[];
 function syncBayRows(): void {
   const together = baySheet.dataset.bay === 'together';
@@ -7000,7 +7009,7 @@ function openBaySheet(kind: keyof typeof BAY_ROWS): void {
   baySheet.setAttribute('aria-label', name);
   bayRows.forEach((row, i) => {
     row.textContent = rows[i]!;
-    if (kind === 'ranked') row.removeAttribute('aria-expanded');
+    if (kind !== 'together') row.removeAttribute('aria-expanded');
   });
   showCoopList(false);
   baySheetOpen = true;
@@ -7010,7 +7019,15 @@ function openBaySheet(kind: keyof typeof BAY_ROWS): void {
 }
 {
   baySheet.append(coopList); // the boss list of Boss with a partner and Boss vs a player is the sheet's
+  /** A row of the Logs or the Medal wall sheet: the sheet closes, then the reader or a page of Settings opens. */
+  const page = (open: () => void): void => {
+    closeBay();
+    open();
+  };
+  const settingsPage = (open: () => void): void => page(() => (moveMenu('button'), open()));
   bayRows[0]!.addEventListener('click', () => {
+    if (baySheet.dataset.bay === 'logs') return page(() => openReader(bayLore));
+    if (baySheet.dataset.bay === 'medals') return page(() => openReader(MEDAL_ROOM));
     if (baySheet.dataset.bay === 'together') return coopButton.click();
     if (rankedButton.disabled) return;
     const at = hub!.at;
@@ -7022,6 +7039,8 @@ function openBaySheet(kind: keyof typeof BAY_ROWS): void {
     syncExit();
   });
   bayRows[1]!.addEventListener('click', () => {
+    if (baySheet.dataset.bay === 'logs') return settingsPage(openArchive);
+    if (baySheet.dataset.bay === 'medals') return settingsPage(openLedger);
     if (baySheet.dataset.bay === 'together') return duelButton.click();
     if (boardButton.hasAttribute('disabled')) return;
     closeBay();
