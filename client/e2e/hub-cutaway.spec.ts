@@ -107,35 +107,82 @@ test('a tap during a roll ends it: the first room does not open', async ({ page 
   await expect(page.locator('#reader')).toBeVisible(); // the logs, not the daily
 });
 
+/** What the bays and the lift buttons on show measure: the smallest size, and everything that is clipped, under a panel or covered. */
+const MEASURE = () => {
+  const panels = ['hud', 'hub-pips', 'hub-rail', 'hub-board', 'dock', 'settings'].map((id) => document.getElementById(id)!).filter((e) => getComputedStyle(e).display !== 'none');
+  const all = [...document.querySelectorAll<HTMLElement>('#ship-bays .cut-bay')];
+  const bays = all.filter((b) => !b.hidden); // a small phone frames the floors around the marble: a bay not whole in the room is no button
+  const bad: string[] = [];
+  let minW = 999, minH = 999, minFont = 99;
+  for (const b of bays) {
+    const q = b.getBoundingClientRect();
+    minW = Math.min(minW, q.width); minH = Math.min(minH, q.height);
+    const sign = [...b.querySelectorAll<HTMLElement>('.short, b')].find((e) => getComputedStyle(e).display !== 'none')!;
+    const fs = parseFloat(getComputedStyle(sign).fontSize);
+    const sr = sign.getBoundingClientRect();
+    if (innerWidth < 600) minFont = Math.min(minFont, fs);
+    if (sign.scrollWidth > sign.clientWidth + 1 || sr.right > q.right + 1 || sr.left < q.left - 1 || (innerWidth < 600 && sr.height > fs * 1.6)) bad.push(`${b.dataset.bay}: sign`);
+    const hit = panels.find((p) => { const o = p.getBoundingClientRect(); return o.left < q.right && o.right > q.left && o.top < q.bottom && o.bottom > q.top; });
+    if (hit) bad.push(`${b.dataset.bay}: under ${hit.id}`);
+    const top = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+    if (top !== b && !b.contains(top)) bad.push(`${b.dataset.bay}: covered by ${(top as HTMLElement | null)?.id}`);
+    if (q.left < 0 || q.right > innerWidth || q.top < 0 || q.bottom > innerHeight) bad.push(`${b.dataset.bay}: off the window (${q.left.toFixed(0)}..${q.right.toFixed(0)} x ${q.top.toFixed(0)}..${q.bottom.toFixed(0)} of ${innerWidth} x ${innerHeight})`);
+  }
+  const lift = [...document.querySelectorAll<HTMLElement>('#ship-lift button')].filter((b) => b.offsetParent !== null);
+  for (const b of lift) {
+    const q = b.getBoundingClientRect();
+    if (q.width < 44 || q.height < 44) bad.push(`lift ${b.dataset.lift}: ${q.width} x ${q.height}`);
+    const hit = panels.find((p) => { const o = p.getBoundingClientRect(); return o.left < q.right && o.right > q.left && o.top < q.bottom && o.bottom > q.top; });
+    if (hit) bad.push(`lift ${b.dataset.lift}: under ${hit.id}`);
+    const top = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+    if (top !== b) bad.push(`lift ${b.dataset.lift}: covered by ${(top as HTMLElement | null)?.id}`);
+  }
+  return { n: all.length, shown: bays.length, lifts: lift.length, bad, minW, minH, minFont };
+};
+
 for (const [w, h] of [[390, 844], [375, 667], [360, 640], [1000, 700]] as const) {
   test(`every bay is whole, under no panel, with a one line sign on ${w}x${h}`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await openHub(page, '?hub=cutaway&bot=off', ALL);
     await expect(bay(page, 'mess:echo')).toBeVisible();
-    const r = await page.evaluate(() => {
-      const panels = ['hud', 'hub-pips', 'hub-rail', 'hub-board', 'dock', 'settings'].map((id) => document.getElementById(id)!).filter((e) => getComputedStyle(e).display !== 'none');
-      const bays = [...document.querySelectorAll<HTMLElement>('#ship-bays .cut-bay')];
-      const bad: string[] = [];
-      let minW = 999, minH = 999, minFont = 99;
-      for (const b of bays) {
-        const q = b.getBoundingClientRect();
-        minW = Math.min(minW, q.width); minH = Math.min(minH, q.height);
-        const sign = [...b.querySelectorAll<HTMLElement>('.short, b')].find((e) => getComputedStyle(e).display !== 'none')!;
-        const fs = parseFloat(getComputedStyle(sign).fontSize);
-        const sr = sign.getBoundingClientRect();
-        if (innerWidth < 600) minFont = Math.min(minFont, fs);
-        if (sign.scrollWidth > sign.clientWidth + 1 || sr.right > q.right + 1 || sr.left < q.left - 1 || (innerWidth < 600 && sr.height > fs * 1.6)) bad.push(`${b.dataset.bay}: sign`);
-        const hit = panels.find((p) => { const o = p.getBoundingClientRect(); return o.left < q.right && o.right > q.left && o.top < q.bottom && o.bottom > q.top; });
-        if (hit) bad.push(`${b.dataset.bay}: under ${hit.id}`);
-        const top = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
-        if (top !== b && !b.contains(top)) bad.push(`${b.dataset.bay}: covered by ${(top as HTMLElement | null)?.id}`);
-        if (q.left < 0 || q.right > innerWidth || q.top < 0 || q.bottom > innerHeight) bad.push(`${b.dataset.bay}: off the window`);
-      }
-      return { n: bays.length, bad, minW, minH, minFont };
-    });
-    console.log(`${w}x${h}: ${r.n} bays, smallest ${r.minW.toFixed(0)} x ${r.minH.toFixed(0)} px, phone sign ${r.minFont}px`);
+    const r = await page.evaluate(MEASURE);
+    console.log(`${w}x${h}: ${r.shown} of ${r.n} bays shown, ${r.lifts} lift buttons, smallest ${r.minW.toFixed(0)} x ${r.minH.toFixed(0)} px, phone sign ${r.minFont}px`);
     expect(r.n).toBe(31);
     expect(r.bad).toEqual([]);
     if (w < 600) expect(r.minFont).toBeGreaterThanOrEqual(10);
+    expect(Math.min(r.minW, r.minH)).toBeGreaterThanOrEqual(44); // every bay on show is a tap target (owner, 2026-11-15)
+    expect(r.shown).toBeGreaterThanOrEqual(r.lifts ? 9 : 31); // a small phone frames three floors at least: nine bays or more
+  });
+}
+
+test('the lift buttons ride the marble up and the camera follows: the bays on show stay whole, 44 px and uncovered, up to the Bridge', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); // a ride is a 150 ms fade: six of them in the time of the test
+  await page.setViewportSize({ width: 360, height: 640 });
+  await openHub(page, '?hub=cutaway&bot=off', ALL);
+  await expect(bay(page, 'mess:echo')).toBeVisible();
+  const lift = (dir: string) => page.locator(`#ship-lift [data-lift="${dir}"]`);
+  await expect(lift('down')).toBeDisabled();
+  await expect(bay(page, 'mess:echo')).toHaveAttribute('data-here', 'true'); // the marble's deck has a bright edge
+  await expect(bay(page, 'bridge:ballast')).toBeHidden(); // three floors around the marble: the Bridge is off
+  for (let i = 0; i < 6; i++) {
+    await lift('up').click();
+    await page.waitForTimeout(250);
+    const r = await page.evaluate(MEASURE);
+    expect(r.bad).toEqual([]);
+    expect(Math.min(r.minW, r.minH)).toBeGreaterThanOrEqual(44);
+  }
+  await expect(bay(page, 'bridge:ballast')).toBeVisible({ timeout: 2000 });
+  await expect(lift('up')).toBeDisabled();
+  await expect(bay(page, 'mess:world')).toBeHidden();
+  await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true'); // nothing opened: still in the Hub
+});
+
+for (const [w, h] of [[390, 844], [1000, 700]] as const) {
+  test(`the ship is in the scene, whole at ${w}x${h}`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await openHub(page, '?hub=cutaway&bot=off', ALL);
+    await expect(page.locator('body')).toHaveAttribute('data-hub-cutaway', 'true');
+    // The scene holds the ship from the first frame; the canvas shows it once its material is compiled: a slow software tier takes seconds (a screenshot polls the pixels, not a test).
+    expect(await page.evaluate(() => (window as unknown as { __shipDrawn: boolean }).__shipDrawn)).toBe(true);
   });
 }

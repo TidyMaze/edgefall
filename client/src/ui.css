@@ -1725,6 +1725,19 @@ body[data-hub-cutaway='true'] #hub-confirm .actions { gap: 8px; }
 body[data-hub-cutaway='true'] #hub-confirm .actions button { min-height: 44px; white-space: nowrap; }
 @media (orientation: portrait) { body[data-hub-cutaway='true'] #hub-confirm { top: calc(8.25rem + env(safe-area-inset-top)); bottom: auto; } }
 
+/* A small phone's Cutaway (#1691): the camera frames the floors around the marble, so a bay bigger than the whole ship allows stays whole; a bay not whole in the room is no button, and two
+   lift buttons stand over the shaft above and below the room. */
+body[data-hub-cutaway='true'] .cut-bay[hidden], #ship-lift[hidden], #ship-veil[hidden] { display: none; }
+body[data-hub-cutaway='true'] #ship-veil { position: fixed; inset: 0; z-index: 1; pointer-events: none; } /* sky over the ship above and below the room: no bay under the plate or the dock */
+#ship-veil i { position: absolute; left: 0; right: 0; background: #04050c; }
+#ship-veil i:first-child { top: 0; mask-image: linear-gradient(to bottom, #000 calc(100% - 10px), transparent); }
+#ship-veil i:last-child { mask-image: linear-gradient(to top, #000 calc(100% - 10px), transparent); }
+body[data-hub-cutaway='true'] #ship-lift { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+#ship-lift button { position: absolute; box-sizing: border-box; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; pointer-events: auto; cursor: pointer; border: 1px solid #7fd6e8; border-radius: 22px; background: rgba(14, 18, 20, 0.86); color: #7fd6e8; font: 600 1rem/1 var(--ui); }
+body[data-hub-cutaway='true'] .cut-bay[data-here='true'] { box-shadow: inset 0 -3px 0 #fff, inset 0 0 0 1px rgba(255, 255, 255, 0.55); } /* the marble's deck: a bright edge on its floors, the others at half light */
+#ship-lift button[data-seen='true']:not(:disabled) { opacity: 0.45; }
+#ship-lift button:disabled { opacity: 0.3; cursor: default; }
+#ship-lift button:focus-visible { outline: 2px solid #ffb000; outline-offset: 1px; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

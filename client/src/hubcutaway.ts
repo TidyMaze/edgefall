@@ -147,11 +147,19 @@ export interface Mover {
   origin: THREE.Vector3;
 }
 
+/** The vertices of a part of the merged geometry, in order, and its deck (null for the hull and the outside): the light of a deck is set from them. */
+export interface Span {
+  deck: Deck | null;
+  count: number;
+}
+export const DIM = 0.5; // the light of the decks the marble is not on (cutaway-v2 says 70 %, the review of #1691 found it too subtle: the eye lands where the marble is)
+
 /** The ship and its marble as one geometry: the nodes of the state baked into world space, `color` the base and `emit` the glow (the glow mask of the file times the
  * colour of the state, times GLOW). `hull` is the bounding box of the hull alone, the frame of the camera. */
-export function bakeShip(root: THREE.Object3D, st: ShipState, apart = false): { geometry: THREE.BufferGeometry; hull: THREE.Box3; marble: Mover | null; car: Mover | null } | null {
+export function bakeShip(root: THREE.Object3D, st: ShipState, apart = false): { geometry: THREE.BufferGeometry; hull: THREE.Box3; marble: Mover | null; car: Mover | null; spans: Span[] } | null {
   root.updateMatrixWorld(true);
   const parts: THREE.BufferGeometry[] = [];
+  const spans: Span[] = [];
   const movers: { marble: Mover | null; car: Mover | null } = { marble: null, car: null };
   const hull = new THREE.Box3();
   root.traverse((node) => {
@@ -180,11 +188,14 @@ export function bakeShip(root: THREE.Object3D, st: ShipState, apart = false): { 
     geometry.setIndex(source.index);
     geometry.applyMatrix4(mesh.matrixWorld);
     if (apart && (part.kind === 'marble' || part.kind === 'car')) movers[part.kind] = { geometry, origin: new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld) }; // apart: they move
-    else parts.push(geometry);
+    else {
+      parts.push(geometry);
+      spans.push({ deck: part.deck, count: n });
+    }
     if (part.kind === 'hull') hull.expandByObject(mesh);
   });
   if (!parts.length) return null;
-  return { geometry: mergeGeometries(parts, false), hull, ...movers };
+  return { geometry: mergeGeometries(parts, false), hull, spans, ...movers };
 }
 
 let material: THREE.MeshStandardNodeMaterial | null = null;
@@ -218,6 +229,50 @@ export function cutawayFrame(box: THREE.Box3, layout: Layout, width: number, hei
   const position = new THREE.Vector3(-middle.x, -middle.y, -box.max.z).multiplyScalar(scale); // the cut, not the middle of the hull's depth, at the target of the camera
   position.y -= ((inset.top - inset.bottom) / 2) * (seenH / height); // and the middle of the room left, not of the window
   return { scale, position };
+}
+
+export const MIN_BAY = 46; // a bay is never drawn smaller than this on a phone (44 px to touch, and a pixel of margin for the rounding)
+export const STRIP = 48; // the window height kept at the top and at the bottom of the room, for the lift's two buttons
+export interface Follow {
+  top: number; // the window rect (y) where a bay is a button: a bay not whole in it is not drawn as one
+  bottom: number;
+  up: boolean; // the marble has a floor above it, below it
+  down: boolean;
+  seenUp: boolean; // the floor above, below is whole in the room already: its lift button fades
+  seenDown: boolean;
+}
+/** The camera of a small phone: when the whole ship (`wholeScale`) leaves a bay under `MIN_BAY` px, the ship is drawn as large as the width of the bays and three floors allow,
+ * and its floors slide so that the floor at `y` stands at the middle of the room, no further than the ends of the ship. Null when the whole ship does. */
+export function followFrame(hull: THREE.Box3, bays: readonly { box: THREE.Box3 }[], wholeScale: number, y: number, width: number, height: number, inset: Inset = NO_INSET): { scale: number; position: THREE.Vector3; top: number; bottom: number; lo: number; hi: number } | null {
+  const seenH = 2 * CUTAWAY_VIEW.distance * Math.tan((framing(width, height) * Math.PI) / 360);
+  const seenW = seenH * (width / height);
+  const size = new THREE.Vector3();
+  const tiny = Math.min(...bays.map(({ box }) => Math.min(box.getSize(size).x, size.y)));
+  if (tiny * wholeScale * (height / seenH) >= MIN_BAY) return null;
+  const all = new THREE.Box3();
+  for (const { box } of bays) all.union(box);
+  all.getSize(size);
+  const rows = new Map<number, { bottom: number; top: number }>(); // the floors: a row of bays, its bottom and its top
+  for (const { box } of bays) {
+    const row = rows.get(Math.round(box.min.y * 1000)) ?? { bottom: box.min.y, top: box.max.y };
+    row.top = Math.max(row.top, box.max.y);
+    rows.set(Math.round(box.min.y * 1000), row);
+  }
+  const floors = [...rows.values()].sort((a, b) => a.bottom - b.bottom);
+  const three = Math.max(...floors.map((_, i) => floors[Math.min(i + 1, floors.length - 1)]!.top - floors[Math.max(i - 1, 0)]!.bottom)); // the most that three floors in a row stand over
+  const top = inset.top + STRIP;
+  const bottom = height - inset.bottom - STRIP;
+  const room = Math.max(1, bottom - top);
+  const scale = Math.max(wholeScale, Math.min((FILL.tall * seenW) / size.x, (room / height) * seenH / three));
+  const halfView = room / (scale * (height / seenH)) / 2; // half the height of the room, in the units of the file
+  const near = floors.reduce((a, f) => (Math.abs(f.bottom - y) < Math.abs(a.bottom - y) ? f : a));
+  const slack = halfView * 0.1; // the camera looks down on the ship: what is above its target is a little nearer, so a little bigger; the ends of the ship keep a margin of the room
+  const lo = all.min.y + halfView - slack;
+  const hi = all.max.y - halfView + slack;
+  const centre = lo > hi ? (all.min.y + all.max.y) / 2 : Math.min(Math.max((near.bottom + near.top) / 2, lo), hi);
+  const position = new THREE.Vector3(-(all.min.x + all.max.x) / 2, -centre, -hull.max.z).multiplyScalar(scale);
+  position.y -= ((inset.top - inset.bottom) / 2) * (seenH / height);
+  return { scale, position, top, bottom, lo: centre - halfView, hi: centre + halfView };
 }
 
 /** The bays of a shell as the file places them: each with the floor point the marble stands on and its box (in the file's units), the tap target. */
@@ -261,6 +316,11 @@ export class Cutaway {
   private movers: { marble: Mover | null; car: Mover | null } = { marble: null, car: null };
   private at: { pos: Pos; scale: number } | null = null;
   private carY: number | null = null;
+  private spans: Span[] = [];
+  private base: { color: Float32Array; emit: Float32Array } | null = null; // the colour and the glow of the ship at full light, dimmed in place for the decks the marble is not on
+  private focus: Deck | null = null;
+  private view: { width: number; height: number; inset: Inset; solid: Inset } = { width: 1, height: 1, inset: NO_INSET, solid: NO_INSET };
+  private small: Follow | null = null;
   /** The bays of the shell loaded, a new array for each shell (the marble's host tells a new ship by it); empty before the file is loaded. */
   bays: readonly BayBox[] = [];
   /** The column of the lift shaft (the x of the car's node), the file puts it in the middle of the ship. */
@@ -275,7 +335,8 @@ export class Cutaway {
   }
 
   /** Shows the ship of the window's shell in `state`, or hides it (`on` false); true when the ship is drawn. A file that does not load leaves the ship off. */
-  sync(on: boolean, width: number, height: number, state: ShipState, inset: Inset = NO_INSET): boolean {
+  /** `inset` is what the whole ship leaves to the plate and the dock (the dome may stand behind the plate); `solid` what a small phone's camera leaves, no bay drawn under it. */
+  sync(on: boolean, width: number, height: number, state: ShipState, inset: Inset = NO_INSET, solid: Inset = inset): boolean {
     if (!on) return (this.group.visible = false);
     const layout = shellFor(width, height);
     if (layout !== this.layout) {
@@ -305,13 +366,66 @@ export class Cutaway {
         this.marble = baked.marble && this.add(baked.marble.geometry, 'hub-cutaway-marble');
         this.car = baked.car && this.add(baked.car.geometry, 'hub-cutaway-car');
         this.hull = baked.hull;
+        this.spans = baked.spans;
+        const attrs = baked.geometry.attributes as Record<string, THREE.BufferAttribute>;
+        this.base = { color: attrs.color!.array.slice() as Float32Array, emit: attrs.emit!.array.slice() as Float32Array };
+        this.light();
         this.put();
       }
     }
-    const frame = cutawayFrame(this.hull, layout, width, height, inset);
-    this.group.scale.setScalar(frame.scale);
-    this.group.position.copy(frame.position);
+    this.view = { width, height, inset, solid };
+    this.frame();
     return (this.group.visible = this.mesh !== null);
+  }
+
+  /** The window's frame: the whole ship, or on a small phone the floors around the marble (`follow`). */
+  private frame(): void {
+    const { width, height, inset, solid } = this.view;
+    const whole = cutawayFrame(this.hull, this.layout!, width, height, inset);
+    const near = this.at ? followFrame(this.hull, this.bays, whole.scale, this.at.pos.y, width, height, solid) : null;
+    const { scale, position } = near ?? whole;
+    this.group.scale.setScalar(scale);
+    this.group.position.copy(position);
+    const at = this.at?.pos.y ?? 0;
+    this.small = near && { top: near.top, bottom: near.bottom, ...this.lifts(at, near.lo, near.hi) };
+  }
+
+  /** Which way the lift can go from height `at`, and whether that floor is whole between the heights `lo` and `hi` already. */
+  private lifts(at: number, lo: number, hi: number): Pick<Follow, 'up' | 'down' | 'seenUp' | 'seenDown'> {
+    const above = this.bays.filter((b) => b.y > at + 0.01);
+    const below = this.bays.filter((b) => b.y < at - 0.01);
+    const next = (rows: readonly BayBox[], y: number): BayBox[] => rows.filter((b) => b.y === y);
+    const nearest = (rows: readonly BayBox[], dir: 1 | -1): BayBox[] => next(rows, Math.min(...rows.map((b) => b.y * dir)) * dir); // the floor next to the marble's
+    const whole = (row: readonly BayBox[]): boolean => row.length > 0 && row.every((b) => b.box.min.y >= lo - 0.05 && b.box.max.y <= hi + 0.05);
+    return { up: above.length > 0, down: below.length > 0, seenUp: whole(nearest(above, 1)), seenDown: whole(nearest(below, -1)) };
+  }
+
+  /** The deck under the marble, null before it is placed. */
+  get deck(): Deck | null {
+    return this.focus;
+  }
+
+  /** What the window frames on a small phone, null while it shows the whole ship: the rect where a bay is a button, and which way the lift can go. */
+  get follow(): Follow | null {
+    return this.small;
+  }
+
+  /** The decks the marble is not on at `DIM` of their light: the colour and the glow of their vertices are rewritten in place. */
+  private light(): void {
+    if (!this.base) return; // the ship is not baked yet
+    const geometry = this.mesh!.geometry;
+    const color = geometry.getAttribute('color');
+    const emit = geometry.getAttribute('emit');
+    let at = 0;
+    for (const { deck, count } of this.spans) {
+      const k = this.focus && deck && deck !== this.focus ? DIM : 1;
+      for (let i = at * 3; i < (at + count) * 3; i++) {
+        (color.array as Float32Array)[i] = this.base.color[i]! * k;
+        (emit.array as Float32Array)[i] = this.base.emit[i]! * k;
+      }
+      at += count;
+    }
+    color.needsUpdate = emit.needsUpdate = true;
   }
 
   private add(geometry: THREE.BufferGeometry, name: string): THREE.Mesh {
@@ -325,14 +439,20 @@ export class Cutaway {
       mesh?.geometry.dispose();
       if (mesh) this.group.remove(mesh);
     }
-    this.mesh = this.marble = this.car = null;
+    this.mesh = this.marble = this.car = this.base = null;
   }
 
   /** Puts the marble at `pos` (the floor point of a bay or of the lift, in the file's units), at `scale` 0 to 1; the lift's car goes with it while it is in the shaft. */
   place(pos: Pos, scale: number): void {
     this.at = { pos, scale };
     if (pos.x === this.lift) this.carY = pos.y;
+    const deck = this.bays.reduce<BayBox | null>((a, b) => (!a || Math.abs(b.y - pos.y) < Math.abs(a.y - pos.y) ? b : a), null)?.deck ?? null; // the deck of the floor nearest the marble
+    if (deck !== this.focus) {
+      this.focus = deck;
+      this.light();
+    }
     this.put();
+    if (this.mesh) this.frame(); // the camera follows the marble
   }
 
   private put(): void {
@@ -350,6 +470,12 @@ export class Cutaway {
     return this.bays.map(({ deck, room, box }) => ({ deck, room, box: box.clone().applyMatrix4(this.group.matrixWorld) }));
   }
 
+  /** The lift shaft's column as the window sees it (the scene's units), at the front face of the bays. */
+  liftWorld(): THREE.Vector3 {
+    this.group.updateWorldMatrix(true, false);
+    return new THREE.Vector3(this.lift, 0, this.bays[0]?.box.max.z ?? 0).applyMatrix4(this.group.matrixWorld);
+  }
+
   /** The shell on show, null before its file is loaded. */
   get shell(): Layout | null {
     return this.source ? this.layout : null;
@@ -358,6 +484,8 @@ export class Cutaway {
   private drop(): void {
     this.clear();
     this.bays = [];
+    this.focus = null;
+    this.base = null;
     this.at = this.carY = null; // the places belong to the shell: the next one is given its own
     this.source = null;
     this.key = '';

@@ -346,8 +346,9 @@ import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hul
 import { workshopHtml } from './workshopview';
 import { bossLockLine, labelsHtml, nextGoal, pipsHtml, railHtml } from './hubview';
 import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, shipState } from './hubcutaway';
-import { bayButtons, focusBay, paintBays, placeBays } from './hubbays';
+import { bayButtons, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { ShipWalk } from './hubship';
+import { bayAt } from './hubroll';
 import { clearStray } from './modeswitch';
 import { indexedDbStore } from './idb';
 import { LocalSaves, type LocalGame } from './savegame';
@@ -870,7 +871,7 @@ let workshopStock: Stock | null = null; // the stock of the world on show, read 
 /** Puts the plates back on their cells: the camera moved, or they were drawn again. */
 function placeHubLabels(): void {
   hub?.placeLabels(hubLabels, (q, r) => sceneRenderer.cellToScreen(q, r, innerWidth, innerHeight));
-  if (cutawayShown) placeBays(shipBays, cutaway!.bayBoxes(), shipProject); // the bays' buttons follow the ship (#1691)
+  if (cutawayShown) placeShip(); // the bays' buttons follow the ship (#1691)
 }
 
 const freeCam = new FreeCameraController();
@@ -4348,13 +4349,17 @@ const shipNow = (beaten: readonly string[]) => {
 };
 // The bays are the tap targets (#1691): a tap rolls the marble there, and the room opens as the old deck's plate did (first-entry confirm kept). The deck's invisible discs take no click then.
 const shipBays = document.getElementById('ship-bays')!;
+const shipLift = document.getElementById('ship-lift')!;
+const shipVeil = document.getElementById('ship-veil')!;
 const ship = cutaway
   ? new ShipWalk({
       bays: () => cutaway.bays,
       lift: () => cutaway.lift,
       open: () => shipNow(loadProgress(store).beaten).open,
+      read: () => readLore(store),
       place: (pos, scale) => {
         cutaway.place(pos, scale);
+        if (cutawayShown) placeShip(); // a small phone's camera follows the marble: the buttons go with the ship
         dirty = CHANGE_DRAWS;
       },
       arrive: shipArrive,
@@ -4373,6 +4378,10 @@ function shipArrive({ deck, cell }: HubSpot): void {
   walk(cell);
   if (hubConfirm.hidden) shipFrom = null; // no confirm asked: the arrival stands; else Stay (cancelHubWalk) puts the marble of the old model back
 }
+shipLift.addEventListener('click', (e) => {
+  cancelHubWalk();
+  ship!.ride((e.target as Element).closest<HTMLElement>('[data-lift]')!.dataset.lift === 'up' ? 1 : -1);
+});
 shipBays.addEventListener('click', (e) => {
   const key = (e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!;
   if (bayEntry && key !== `${bayEntry.deck}:${bayEntry.room}`) return; // a visit's other bays take no tap (#1694)
@@ -4382,6 +4391,8 @@ shipBays.addEventListener('click', (e) => {
 /** The room the ship leaves to the title plate over it and the dock under it, so that no bay sits under either (#1691). */
 // The hull's dome and mast may stand behind the plate and the gear, a bay never.
 const shipInset = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) - 40), bottom: Math.max(0, innerHeight - document.getElementById('dock')!.getBoundingClientRect().top + 6) });
+/** What a small phone's camera leaves at the top and the bottom: the whole of the plate and the gear, and the dock, so that no bay is drawn under them. */
+const shipSolid = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) + 4), bottom: shipInset().bottom });
 const shipPoint = new THREE.Vector3();
 /** The window point of a point of the scene, for the bays' buttons. */
 const shipProject = (x: number, y: number, z: number): { x: number; y: number } => {
@@ -4389,10 +4400,17 @@ const shipProject = (x: number, y: number, z: number): { x: number; y: number } 
   shipPoint.set(x, y, z).project(sceneRenderer.camera);
   return { x: ((shipPoint.x + 1) / 2) * innerWidth, y: ((1 - shipPoint.y) / 2) * innerHeight };
 };
+/** The bays' buttons and the lift's two on the window: a small phone's camera frames the floors around the marble (`cutaway.follow`), the others show the whole ship. */
+function placeShip(): void {
+  const lift = cutaway!.liftWorld();
+  placeBays(shipBays, cutaway!.bayBoxes(), shipProject, cutaway!.follow, { deck: cutaway!.deck, bay: bayAt(cutaway!.bays, ship!.at) });
+  placeVeil(shipVeil, cutaway!.follow, innerHeight);
+  placeLift(shipLift, cutaway!.follow, shipProject(lift.x, lift.y, lift.z).x, innerWidth);
+}
 function syncCutaway(): void {
   if (!cutaway) return;
   const { beaten } = loadProgress(store);
-  const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipNow(beaten), shipInset());
+  const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipNow(beaten), shipInset(), shipSolid());
   if (shown) {
     sceneRenderer.scene.background = cutawaySpace; // the ship floats in the dark, not in the deck's sky
     ship!.sync(hub!.at); // the marble on the spot the Hub saved, once per ship
@@ -4400,6 +4418,7 @@ function syncCutaway(): void {
   if (shown === cutawayShown) return;
   cutawayShown = shown;
   shipBays.hidden = !shown;
+  if (!shown) shipLift.hidden = shipVeil.hidden = true;
   document.body.dataset.hubCutaway = String(shown); // read by the e2e tests, and by the CSS that hides the plates
   showBoard();
   view = fitted = fightView();
@@ -8095,6 +8114,8 @@ const renderCost = (): RenderCost => {
   return { calls: render.drawCalls, triangles: render.triangles, geometries: memory.geometries, textures: memory.textures, pointLights, tier, pixelRatio };
 };
 // With ?gpustats the GPU time per mode is in it too (#1581), the capture docs/specs/tech.md section 5.6 checks.
+/** The Hub Cutaway ship is in the scene (read by the e2e tests; the canvas shows it a frame later, a slow software tier several seconds). */
+Object.defineProperty(window, '__shipDrawn', { configurable: true, get: () => !!cutaway && cutaway.group.visible });
 Object.defineProperty(window, '__renderCost', { configurable: true, get: () => ({ ...renderCost(), text: renderCostText(renderCost()), gpu: gpu.snapshot() }) });
 copyButton.addEventListener('click', async () => {
   const text = diag.text({

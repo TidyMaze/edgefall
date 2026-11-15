@@ -93,8 +93,12 @@ export function arrow(floors: readonly Floor[], at: Pos, key: string): Pos | nul
 /** The bay a room of the old Hub is: a boss by its id, a terminal as the logs, the partner room as coop, any other room by its kind. */
 export const roomKey = (door: Door): string => (door.kind === 'boss' ? door.boss : door.kind === 'terminal' ? 'logs' : door.kind === 'together' ? 'coop' : door.kind);
 
-/** The cell of the old Hub's room that a bay opens (the first terminal for the logs), null for a set piece with no room (hold, crates, nave). */
-export const cellOf = (deck: Deck, room: string): Axial | null => roomsOf(deck).find((r) => roomKey(r.door) === room)?.cell ?? null;
+/** The cell of the old Hub's room that a bay opens: the logs open the first terminal of the deck not in `read` (the first one when both are read), null for a set piece with no room (hold, crates, nave). */
+export function cellOf(deck: Deck, room: string, read: readonly string[] = []): Axial | null {
+  const rooms = roomsOf(deck).filter((r) => roomKey(r.door) === room);
+  const unread = rooms.find((r) => r.door.kind === 'terminal' && !read.includes(r.door.lore));
+  return (unread ?? rooms[0])?.cell ?? null;
+}
 
 /** The cell of the lift that goes up from `deck`, the hatch a locked deck bumps at. */
 export const liftUpCell = (deck: Deck): Axial =>

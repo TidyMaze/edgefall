@@ -3,7 +3,7 @@
 import type { Deck } from './deck';
 import { roomAt } from './hub';
 import { cellOf, type Bay } from './hubroll';
-import { roomState, type ShipState } from './hubcutaway';
+import { roomState, type Follow, type ShipState } from './hubcutaway';
 import { roomLabel } from './hubview';
 
 const title = (deck: Deck): string => deck[0]!.toUpperCase() + deck.slice(1);
@@ -39,8 +39,11 @@ export interface BayBox {
   box: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } };
 }
 
+const kept = new WeakMap<HTMLElement, HTMLElement | null>(); // the button that had the focus at the last placing
+
 /** Puts each button on the window rect of its bay: `project` gives the window point of a point of the scene; the front face of the box is the bay. */
-export function placeBays(root: HTMLElement, boxes: readonly BayBox[], project: (x: number, y: number, z: number) => { x: number; y: number }): void {
+export function placeBays(root: HTMLElement, boxes: readonly BayBox[], project: (x: number, y: number, z: number) => { x: number; y: number }, follow: Follow | null = null, marble: { deck: Deck | null; bay?: { deck: Deck; room: string } } | null = null): void {
+  const was = kept.get(root);
   for (const { deck, room, box } of boxes) {
     const button = root.querySelector<HTMLElement>(`[data-bay="${deck}:${room}"]`);
     if (!button) continue;
@@ -50,6 +53,35 @@ export function placeBays(root: HTMLElement, boxes: readonly BayBox[], project: 
     button.style.top = `${Math.min(a.y, b.y)}px`;
     button.style.width = `${Math.abs(b.x - a.x)}px`;
     button.style.height = `${Math.abs(b.y - a.y)}px`;
+    button.dataset.here = String(!!marble && marble.deck === deck); // the deck the marble is on: a bright edge on its floors (ui.css)
+    button.hidden = !!follow && (Math.min(a.y, b.y) < follow.top - 0.5 || Math.max(a.y, b.y) > follow.bottom + 0.5); // a small phone: a bay not whole in the room is no button
+  }
+  const held = document.activeElement as HTMLElement | null;
+  if (marble && ((root.contains(held) && held!.hidden) || (held === document.body && was?.hidden))) focusBay(root, marble.bay); // the camera hid the bay the keyboard stood on (the browser drops its focus to the page): it goes to the marble's
+  kept.set(root, root.contains(document.activeElement) ? (document.activeElement as HTMLElement) : null);
+}
+
+/** The sky over the ship above and below the room of a small phone, so that no bay shows under the plate or the dock; hidden while the whole ship is drawn. */
+export function placeVeil(root: HTMLElement, follow: Follow | null, height: number): void {
+  root.hidden = !follow;
+  if (!follow) return;
+  const [top, bottom] = root.querySelectorAll<HTMLElement>('i') as unknown as [HTMLElement, HTMLElement];
+  top.style.height = `${follow.top}px`;
+  bottom.style.top = `${follow.bottom}px`;
+  bottom.style.height = `${Math.max(0, height - follow.bottom)}px`;
+}
+
+const TARGET = 44;
+/** The two lift buttons of a small phone, over the shaft at window `x`, in the strips above and below the room; shown only while the camera follows the marble. */
+export function placeLift(root: HTMLElement, follow: Follow | null, x: number, width: number): void {
+  root.hidden = !follow;
+  if (!follow) return;
+  const left = `${Math.min(Math.max(x - TARGET / 2, 0), width - TARGET)}px`;
+  for (const [dir, top, can, seen] of [['up', follow.top - TARGET - 2, follow.up, follow.seenUp], ['down', follow.bottom + 2, follow.down, follow.seenDown]] as const) {
+    const button = root.querySelector<HTMLButtonElement>(`[data-lift="${dir}"]`)!;
+    Object.assign(button.style, { left, top: `${top}px`, width: `${TARGET}px`, height: `${TARGET}px` });
+    button.disabled = !can;
+    button.dataset.seen = String(seen); // its floor is in view already: the button fades
   }
 }
 

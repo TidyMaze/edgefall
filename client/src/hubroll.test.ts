@@ -107,6 +107,15 @@ describe('the rooms of the old Hub, by bay', () => {
     expect(roomKey({ kind: 'bot' })).toBe('bot');
     expect(cellOf('furnace', 'coop')).toEqual(roomsOf('furnace').find((r) => r.door.kind === 'together')!.cell);
   });
+  it('opens the logs on the first terminal not read yet, the first one when both are read or none is given', () => {
+    const [a, b] = roomsOf('mess').filter((r) => r.door.kind === 'terminal');
+    const lore = (r: typeof a): string => (r!.door as { lore: string }).lore;
+    expect(cellOf('mess', 'logs', [])).toEqual(a!.cell);
+    expect(cellOf('mess', 'logs', [lore(a)])).toEqual(b!.cell);
+    expect(cellOf('mess', 'logs', [lore(b)])).toEqual(a!.cell);
+    expect(cellOf('mess', 'logs', [lore(a), lore(b)])).toEqual(a!.cell);
+    expect(cellOf('mess', 'echo', [lore(a)])).toEqual(roomsOf('mess').find((r) => r.door.kind === 'boss')!.cell);
+  });
   it('the lift up of a deck is the cell of its lift to the deck above', () => {
     expect(liftUpCell('mess')).toEqual(roomsOf('mess').find((r) => r.door.kind === 'lift')!.cell);
   });

@@ -8,7 +8,7 @@ import type { Spot } from './hub';
 // The marble of the Hub Cutaway (#1691): a tap rolls it along the floors and up the lift, a locked hatch bumps it, a tap or a key ends a roll, reduced motion fades it.
 
 const LIFT_X = 0;
-function setup(open: Deck[] = ['mess', 'cargo', 'furnace', 'chapel', 'bridge'], reduced = false) {
+function setup(open: Deck[] = ['mess', 'cargo', 'furnace', 'chapel', 'bridge'], reduced = false, read: string[] = []) {
   let t = 1000;
   let queued: (() => void) | null = null;
   let bays: readonly Bay[] = TALL_BAYS;
@@ -19,6 +19,7 @@ function setup(open: Deck[] = ['mess', 'cargo', 'furnace', 'chapel', 'bridge'], 
     bays: () => bays,
     lift: () => LIFT_X,
     open: () => new Set(open),
+    read: () => read,
     place: (pos, scale) => placed.push([pos, scale]),
     arrive: (spot) => arrived.push(spot),
     reduced: () => reduced,
@@ -129,6 +130,17 @@ describe('a tap on a bay', () => {
   });
 });
 
+describe('the logs bay', () => {
+  it('opens the first log of its deck not read yet', () => {
+    const s = setup(undefined, false, ['mess-house-rule']);
+    s.walk.sync(ECHO);
+    s.walk.tap('mess:logs');
+    s.advance(2000);
+    expect(s.arrived).toEqual([{ deck: 'mess', cell: cellOf('mess', 'logs', ['mess-house-rule'])! }]);
+    expect(s.arrived[0]!.cell).toEqual([1, 1]);
+  });
+});
+
 describe('reduced motion', () => {
   it('puts the marble where it goes and fades it in over 150 ms', () => {
     const s = setup(undefined, true);
@@ -184,6 +196,35 @@ describe('arrow keys', () => {
     s.walk.key('ArrowRight'); // ends the first roll where it was going, and goes on from there
     s.advance(160);
     expect(s.walk.at).toEqual({ x: LIFT_X, y: 0.24 });
+  });
+});
+
+describe('the lift buttons of a small phone', () => {
+  it('ride from wherever the marble stands to the lift and up or down one floor, opening nothing', () => {
+    const s = setup();
+    s.walk.sync(ECHO);
+    s.walk.ride(1);
+    s.advance(2000);
+    expect(s.walk.at).toEqual({ x: LIFT_X, y: 2.78 });
+    s.walk.ride(-1);
+    s.advance(2000);
+    expect(s.walk.at).toEqual({ x: LIFT_X, y: 1.4 });
+    expect(s.arrived).toEqual([]);
+  });
+  it('do nothing at the top and the bottom of the ship, and bump a shut hatch', () => {
+    const s = setup(['mess']);
+    s.walk.sync({ deck: 'mess', cell: cellOf('mess', 'world')! });
+    s.walk.ride(-1);
+    expect(s.pending()).toBe(false);
+    s.walk.ride(1);
+    s.advance(2000);
+    expect(s.walk.at).toEqual({ x: LIFT_X, y: 1.4 }); // the second floor of the Mess
+    s.walk.ride(1); // the hatch to Cargo
+    expect(s.arrived).toEqual([{ deck: 'mess', cell: liftUpCell('mess') }]);
+    const top = setup();
+    top.walk.sync({ deck: 'bridge', cell: cellOf('bridge', 'pulsar')! });
+    top.walk.ride(1);
+    expect(top.pending()).toBe(false);
   });
 });
 

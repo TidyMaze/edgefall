@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { TALL_BAYS } from './test/shipbays';
-import { bayButtons, focusBay, paintBays, placeBays } from './hubbays';
+import { bayButtons, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { shipState } from './hubcutaway';
 
 // The bays of the Hub Cutaway as tap targets (#1691): a button per bay with its name and state, a locked deck dark and unnamed, set pieces none.
@@ -70,6 +70,95 @@ describe('placing the buttons', () => {
     const echo = bay(root, 'mess:echo');
     expect([echo.style.left, echo.style.top, echo.style.width, echo.style.height]).toEqual(['100px', '628px', '60px', '72px']);
     expect(bay(root, 'mess:bot').style.left).toBe(''); // a bay with no box is left as it is
+  });
+});
+
+describe('a small phone', () => {
+  const box = (y: number) => ({ min: { x: 0, y, z: -1 }, max: { x: 1, y: y + 1, z: 0 } });
+  const at = (x: number, y: number) => ({ x: x * 60, y: 700 - y * 60 });
+  const bays = [
+    { deck: 'mess' as const, room: 'echo', box: box(0) }, // window y 700 to 640
+    { deck: 'mess' as const, room: 'dual', box: box(3) }, // 520 to 460
+    { deck: 'mess' as const, room: 'daily', box: box(5.5) }, // 370 to 310: over the top of the room
+  ];
+  it('draws as a button only the bays whole in the room, and every bay when the whole ship is drawn', () => {
+    const root = html();
+    placeBays(root, bays, at, { top: 400, bottom: 710, up: true, down: false, seenUp: false, seenDown: false });
+    expect([bay(root, 'mess:echo').hidden, bay(root, 'mess:dual').hidden, bay(root, 'mess:daily').hidden]).toEqual([false, false, true]);
+    placeBays(root, bays, at, { top: 400, bottom: 700, up: true, down: false, seenUp: false, seenDown: false }); // the foot of a bay on the edge is whole
+    expect(bay(root, 'mess:echo').hidden).toBe(false);
+    placeBays(root, bays, at, { top: 400, bottom: 699, up: true, down: false, seenUp: false, seenDown: false });
+    expect(bay(root, 'mess:echo').hidden).toBe(true);
+    placeBays(root, bays, at, null);
+    expect([bay(root, 'mess:echo').hidden, bay(root, 'mess:daily').hidden]).toEqual([false, false]);
+  });
+  it('puts the lift buttons over the shaft in the strips above and below the room, a 44 px target each, shown only with a follow camera', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<button data-lift="up"></button><button data-lift="down"></button>';
+    const [up, down] = [...root.querySelectorAll<HTMLButtonElement>('button')];
+    placeLift(root, { top: 108, bottom: 522, up: true, down: false, seenUp: false, seenDown: false }, 120, 360);
+    expect(root.hidden).toBe(false);
+    expect([up!.style.left, up!.style.top, up!.style.width, up!.style.height, up!.disabled]).toEqual(['98px', '62px', '44px', '44px', false]);
+    expect([down!.style.top, down!.disabled]).toEqual(['524px', true]);
+    expect([up!.dataset.seen, down!.dataset.seen]).toEqual(['false', 'false']);
+    placeLift(root, { top: 108, bottom: 522, up: true, down: true, seenUp: true, seenDown: false }, 120, 360);
+    expect([up!.dataset.seen, down!.dataset.seen]).toEqual(['true', 'false']); // the floor above is in view: its button fades
+    placeLift(root, { top: 108, bottom: 522, up: false, down: true, seenUp: false, seenDown: false }, 2, 360); // never off the window
+    expect([up!.style.left, up!.disabled, down!.disabled]).toEqual(['0px', true, false]);
+    placeLift(root, { top: 108, bottom: 522, up: false, down: true, seenUp: false, seenDown: false }, 359, 360);
+    expect(up!.style.left).toBe('316px');
+    placeLift(root, null, 120, 360);
+    expect(root.hidden).toBe(true);
+  });
+});
+
+describe('the sky over the ship', () => {
+  it('covers the window above and below the room of a small phone, and is hidden for the whole ship', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<i></i><i></i>';
+    const [top, bottom] = [...root.querySelectorAll('i')];
+    placeVeil(root, { top: 168, bottom: 504, up: true, down: true, seenUp: false, seenDown: false }, 640);
+    expect(root.hidden).toBe(false);
+    expect([top!.style.height, bottom!.style.top, bottom!.style.height]).toEqual(['168px', '504px', '136px']);
+    placeVeil(root, { top: 168, bottom: 700, up: true, down: true, seenUp: false, seenDown: false }, 640);
+    expect(bottom!.style.height).toBe('0px');
+    placeVeil(root, null, 640);
+    expect(root.hidden).toBe(true);
+  });
+});
+
+describe('the deck of the marble and the focus on a small phone', () => {
+  const box = (y: number) => ({ min: { x: 0, y, z: -1 }, max: { x: 1, y: y + 1, z: 0 } });
+  const at = (x: number, y: number) => ({ x: x * 60, y: 700 - y * 60 });
+  const bays = [
+    { deck: 'mess' as const, room: 'echo', box: box(0) },
+    { deck: 'cargo' as const, room: 'hull', box: box(3) },
+  ];
+  it('marks the buttons of the deck the marble is on, and none when it is nowhere', () => {
+    const root = html(['echo']);
+    placeBays(root, bays, at, null, { deck: 'cargo' });
+    expect([bay(root, 'mess:echo').dataset.here, bay(root, 'cargo:hull').dataset.here]).toEqual(['false', 'true']);
+    placeBays(root, bays, at);
+    expect(bay(root, 'cargo:hull').dataset.here).toBe('false');
+  });
+  it('moves the focus of a bay the camera hid to the bay of the marble, and keeps one still in view', () => {
+    const root = html(['echo']);
+    document.body.append(root);
+    const near = { top: 0, bottom: 800, up: true, down: false, seenUp: false, seenDown: false };
+    bay(root, 'cargo:hull').focus();
+    placeBays(root, bays, at, { ...near, top: 600 }, { deck: 'mess', bay: { deck: 'mess', room: 'echo' } }); // the Cargo bay is above the room: hidden
+    expect(document.activeElement).toBe(bay(root, 'mess:echo'));
+    placeBays(root, bays, at, near, { deck: 'mess', bay: { deck: 'mess', room: 'echo' } }); // the focus is on a bay in view: it stays
+    expect(document.activeElement).toBe(bay(root, 'mess:echo'));
+    bay(root, 'cargo:hull').focus();
+    placeBays(root, bays, at, near, { deck: 'mess', bay: { deck: 'mess', room: 'echo' } });
+    (document.activeElement as HTMLElement).blur(); // the browser drops the focus to the page once it has hidden the bay
+    placeBays(root, bays, at, { ...near, top: 600 }, { deck: 'mess', bay: { deck: 'mess', room: 'echo' } });
+    expect(document.activeElement).toBe(bay(root, 'mess:echo'));
+    (document.activeElement as HTMLElement).blur();
+    placeBays(root, bays, at, near, null); // not a marble's page
+    expect(document.activeElement).toBe(document.body);
+    root.remove();
   });
 });
 

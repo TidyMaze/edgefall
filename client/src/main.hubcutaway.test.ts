@@ -53,6 +53,18 @@ describe('the Hub Cutaway on the page (#1689)', () => {
     sync.mockRestore();
   });
 
+  it('says through window.__shipDrawn whether the ship is in the scene: not with the flag off, not outside the Hub', async () => {
+    await boot('?bot=off');
+    expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(false);
+    const game = await boot('?bot=off&hub=cutaway');
+    ship(game);
+    await game.settle();
+    expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(true);
+    game.hook('__startMode', 'arena');
+    await game.settle();
+    expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(false);
+  });
+
   it('points the ship at the next goal once the first win is not awaited', async () => {
     const game = await boot('?bot=off&hub=cutaway');
     const sync = vi.spyOn((await cutawayClass()).prototype, 'sync').mockReturnValue(false);

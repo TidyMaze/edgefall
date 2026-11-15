@@ -9,6 +9,8 @@ export interface ShipHost {
   /** The column of the lift shaft in the file. */
   lift(): number;
   open(): ReadonlySet<string>;
+  /** The ids of the lore logs already read: the logs bay opens the first one not in it. */
+  read(): readonly string[];
   /** Draws the marble at `pos` at `scale` (1, or 0 to 1 while it fades in). */
   place(pos: Pos, scale: number): void;
   /** The roll ended on the room of this spot of the old Hub, or on a shut hatch (the lift up of the top open deck). */
@@ -64,7 +66,7 @@ export class ShipWalk {
   /** A tap on the bay `deck:room`: the marble rolls there, the room opens on arrival; a shut deck bumps at its hatch. */
   tap(key: string): void {
     const bay = this.host.bays().find((b) => `${b.deck}:${b.room}` === key);
-    const cell = bay && cellOf(bay.deck, bay.room);
+    const cell = bay && cellOf(bay.deck, bay.room, this.host.read());
     if (!bay || !cell) return;
     this.cancel();
     const { route: path, bump } = plan(this.floors, this.host.open(), this.pos, bay);
@@ -72,11 +74,22 @@ export class ShipWalk {
     this.run(path, bump ? { deck: top, cell: liftUpCell(top) } : { deck: bay.deck, cell });
   }
 
-  /** An arrow key: one column along the floor, one level in the lift; nothing opens. A shut hatch bumps. */
+  /** An arrow key: one column along a floor, one level in the lift; nothing opens. A shut hatch bumps. */
   key(key: string): void {
     this.cancel();
     const to = arrow(this.floors, this.pos, key);
-    if (!to) return;
+    if (to) this.go(to);
+  }
+
+  /** The lift buttons of a small phone: from wherever the marble stands, to the lift and one floor up (1) or down (-1); nothing opens, a shut hatch bumps. */
+  ride(dir: 1 | -1): void {
+    this.cancel();
+    const at = this.floors.findIndex((f) => f.y === this.pos.y);
+    const next = this.floors[at + dir];
+    if (next) this.go({ x: next.lift, y: next.y });
+  }
+
+  private go(to: Pos): void {
     const deck = this.floors.find((f) => f.y === to.y)!.deck;
     if (this.host.open().has(deck)) return this.run(route(this.floors, this.pos, to), null);
     const from = this.floors.find((f) => f.y === this.pos.y)!.deck;

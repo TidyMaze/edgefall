@@ -163,6 +163,66 @@ describe('a tap on a bay', () => {
   });
 });
 
+describe('the logs bay', () => {
+  it('opens the first log of the deck not read yet, the first one when none is read', async () => {
+    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    const run = frames(game);
+    bay('mess:logs').click();
+    run(800);
+    expect(document.body.dataset.reading).toBe('mess-house-rule');
+  });
+  it('skips a log already read', async () => {
+    const game = await ship('?bot=off&hub=cutaway', ['echo'], { storage: { 'ab-alone.lore-read': 'mess-house-rule' } });
+    const run = frames(game);
+    bay('mess:logs').click();
+    run(800);
+    expect(document.body.dataset.reading).toBe('mess-corner-table');
+  });
+});
+
+describe('a small phone', () => {
+  it('frames the floors around the marble, makes a bay not whole in the room no button, and rides the lift with its two buttons, the camera following', async () => {
+    const game = await ship('?bot=off&hub=cutaway', ['echo', 'hull']);
+    expect(byId('ship-lift').hidden).toBe(true); // a window: the whole ship
+    vi.stubGlobal('innerWidth', 200);
+    vi.stubGlobal('innerHeight', 300);
+    window.dispatchEvent(new Event('resize'));
+    await game.settle();
+    const lift = (dir: string): HTMLButtonElement => document.querySelector<HTMLButtonElement>(`#ship-lift [data-lift="${dir}"]`)!;
+    expect(byId('ship-lift').hidden).toBe(false);
+    expect(byId('ship-veil').hidden).toBe(false);
+    expect(lift('up').disabled).toBe(false);
+    expect(lift('down').disabled).toBe(true); // the marble is on the lowest floor
+    expect(lift('up').style.width).toBe('44px');
+    expect([...document.querySelectorAll<HTMLElement>('#ship-bays .cut-bay')].some((b) => b.hidden)).toBe(true);
+    const run = frames(game);
+    lift('up').click();
+    run(2000);
+    expect(lift('down').disabled).toBe(false); // one floor up: the way down is open
+    lift('down').click();
+    run(2000);
+    expect(lift('down').disabled).toBe(true);
+    expect(hub()).toBe('mess 0,0'); // nothing opened
+    vi.stubGlobal('innerWidth', 1024);
+    vi.stubGlobal('innerHeight', 768);
+    window.dispatchEvent(new Event('resize'));
+    await game.settle();
+    expect(byId('ship-lift').hidden).toBe(true);
+    expect(byId('ship-veil').hidden).toBe(true);
+  });
+  it('hides the lift buttons with the ship, and with the flag off', async () => {
+    const game = await ship('?bot=off&hub=cutaway', ['echo']);
+    game.hook('__startMode', 'arena');
+    await game.settle();
+    expect(byId('ship-lift').hidden).toBe(true);
+    expect(byId('ship-veil').hidden).toBe(true);
+    const off = await boot('?bot=off', { storage: progress([]) });
+    off.hook('__startMode', 'hub');
+    await off.settle();
+    expect(byId('ship-lift').hidden).toBe(true);
+  });
+});
+
 describe('the arrow keys', () => {
   it('move the marble along a floor and up the lift, open nothing, and bump a shut hatch', async () => {
     const game = await ship();
