@@ -39,7 +39,7 @@ for (const { name, viewport, touch } of sizes) {
       expect(await page.locator('#lore').evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none'); // every press goes through to the board and the buttons
       // It is in the archive, and the terminal reader reads it again.
       await page.locator('#settings').click();
-      await page.locator('#setting-log-archive').click();
+      await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
       await expect(page.locator('.setting-archive')).toContainText(swarm.title);
       // Retry is not held by it: it starts the fight again, with no lore.
       await page.keyboard.press('Escape');
@@ -72,7 +72,7 @@ for (const { name, viewport, touch } of sizes) {
       await expect(page.locator('#lore')).toHaveCSS('opacity', '1');
       await shot(page, { path: `test-results/boss-lore-sealed-${name.replaceAll(' ', '-')}.png` });
       await page.locator('#settings').click();
-      await page.locator('#setting-log-archive').click();
+      await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
       await expect(page.locator('.setting-archive')).toHaveText('Nothing read yet.');
     });
   });

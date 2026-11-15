@@ -74,7 +74,7 @@ test('the settings menu closes on Escape and on a click outside, and is reachabl
   // Firefox first stops on the scrollable menu box itself, one more Tab reaches the first button.
   if (browserName === 'firefox') await page.keyboard.press(tab);
   await expect(page.locator('#setting-sound')).toBeFocused(); // the first item of the first group (#1566)
-  for (let i = 0; i < 7; i++) await page.keyboard.press(tab); // Transcript, Logs, Ledger, Theme, the two skins, then Clear board
+  for (let i = 0; i < 5; i++) await page.keyboard.press(tab); // Transcript, Theme, the two skins, then Clear board (Logs and Ledger live in the ship, #1693)
   await expect(toggle).toBeFocused();
   await page.keyboard.press('Space');
   await expect(page.locator('body')).toHaveAttribute('data-clear', 'on');
