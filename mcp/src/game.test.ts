@@ -194,11 +194,29 @@ describe('legal_moves', () => {
     const legal = value(game.legalMoves());
     expect(legal.to_move).toBe('black');
     expect(legal.announces).toEqual({});
+    expect(legal.pushes).toEqual({}); // no marble touches the opponent at the start (#1676)
     expect(legal.count).toBe(newEngine().legal_moves().length / 8);
     expect(legal.moves).toHaveLength(legal.count);
     expect(legal.moves).toContain('(1,3)>NE');
     expect(legal.moves.some((move) => /^(\(-?\d,-?\d\)){3}>/.test(move))).toBe(true);
     expect(new Set(legal.moves).size).toBe(legal.count);
+  });
+
+  test('pushes marks each move that pushes the opponent, eject when a marble leaves the board (#1676)', () => {
+    const game = session();
+    value(game.newGame({}));
+    // Black walks its 3-marble lines up the board (NW, NE) against the bot until a move touches White.
+    for (let turn = 0; turn < 40 && !Object.keys(value(game.legalMoves()).pushes).length; turn++) {
+      const { moves } = value(game.legalMoves());
+      const up = moves.filter((m) => /^(\(-?\d,-?\d\)){3}>N[EW]$/.test(m));
+      value(game.playMove({ move: (up.length ? up : moves)[turn % (up.length || moves.length)]! }));
+    }
+    const legal = value(game.legalMoves());
+    expect(Object.keys(legal.pushes).length).toBeGreaterThan(0);
+    for (const [move, effect] of Object.entries(legal.pushes)) {
+      expect(legal.moves).toContain(move);
+      expect(['push', 'eject']).toContain(effect);
+    }
   });
 
   test('every listed move is accepted by play_move', () => {
@@ -291,7 +309,7 @@ describe('play_move', () => {
     expect(last.state.status).toBe('draw');
     expect(last.state.draw_reason).toBe('repetition');
     expect(last.state.last_moves).toEqual(['(2,2)>SW', '(2,-1)>NW', '(1,3)>NE', '(2,-2)>SE', '(2,2)>SW', '(2,-1)>NW']);
-    expect(value(game.legalMoves())).toEqual({ to_move: 'black', moves: [], announces: {}, free: [], count: 0 });
+    expect(value(game.legalMoves())).toEqual({ to_move: 'black', moves: [], announces: {}, free: [], pushes: {}, count: 0 });
     expect(failure(game.playMove({ move: '(1,3)>NE' })).code).toBe('game_over');
   });
 

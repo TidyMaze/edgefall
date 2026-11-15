@@ -62,3 +62,19 @@ export function explain(reason: string, move: Move, board: ArrayLike<number>, ow
   }
   return '';
 }
+
+/** What a legal move does to the opponent (#1676): `push` when it pushes marbles, `eject` when the last of them leaves the
+ * board, null for a move into empty cells (a sideways move never pushes). Same geometry as `explain`. */
+export function pushOf(move: Move, board: ArrayLike<number>, ownValue: number): 'push' | 'eject' | null {
+  const group = [...move.cells].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const [dq, dr] = VECTORS[move.dir]!;
+  const step = ([q, r]: Cell, k: number): Cell => [q + dq! * k, r + dr! * k];
+  const axis = group.length > 1 ? [group[1]![0] - group[0]![0], group[1]![1] - group[0]![1]] : [dq!, dr!];
+  const forward = dq === axis[0] && dr === axis[1];
+  if (!(group.length === 1 || forward || (dq === -axis[0]! && dr === -axis[1]!))) return null;
+  const lead = step(forward || group.length === 1 ? group[group.length - 1]! : group[0]!, 1);
+  let run = 0;
+  for (let v = valueAt(board, lead); v !== undefined && v !== ownValue && v !== 0 && v !== 9; v = valueAt(board, step(lead, run))) run++;
+  if (run === 0) return null;
+  return valueAt(board, step(lead, run)) === undefined ? 'eject' : 'push';
+}

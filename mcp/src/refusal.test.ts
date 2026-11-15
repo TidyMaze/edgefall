@@ -3,7 +3,7 @@ import { BOARD_CELLS, CELLS } from './board';
 import { bossIds, newEncounter, newEngine } from './engine';
 import { fromRecords, parseMove, toRecord } from './notation';
 import type { EngineLike } from './game';
-import { explain } from './refusal';
+import { explain, pushOf } from './refusal';
 
 /** A 61-cell board with the given marks (1 Black, 2 White, 3 vanished, 9 other), the rest empty. */
 function bytes(marks: Record<string, number>): Uint8Array {
@@ -131,4 +131,62 @@ describe('explain agrees with the real engine', () => {
   test('every boss board, cores and seats included, at its start', () => {
     for (const id of bossIds()) check(newEncounter(id, 0));
   });
+});
+
+describe('the push a legal move makes (#1676)', () => {
+  const of = (move: string, marks: Record<string, number>, own = 1) => {
+    const parsed = parseMove(move);
+    if (!parsed.ok) throw new Error(parsed.message);
+    return pushOf(parsed.move, bytes(marks), own);
+  };
+  test('a move into empty cells pushes nothing, sideways never pushes', () => {
+    expect(of('(0,0)>E', { '0,0': 1 })).toBeNull();
+    expect(of('(0,0)(1,0)>E', { '0,0': 1, '1,0': 1 })).toBeNull();
+    expect(of('(0,0)(1,0)>SE', { '0,0': 1, '1,0': 1, '0,1': 2 })).toBeNull();
+  });
+  test('an inline move with the opponent in front pushes, and ejects when the last pushed marble leaves the board', () => {
+    expect(of('(0,0)(1,0)>E', { '0,0': 1, '1,0': 1, '2,0': 2 })).toBe('push');
+    expect(of('(1,0)(0,0)>W', { '0,0': 1, '1,0': 1, '-1,0': 2 })).toBe('push');
+    expect(of('(2,0)(3,0)>E', { '2,0': 1, '3,0': 1, '4,0': 2 })).toBe('eject');
+    expect(of('(1,0)(2,0)(3,0)>E', { '1,0': 2, '2,0': 2, '3,0': 2, '4,0': 1 }, 2)).toBe('eject');
+    expect(of('(2,0)(3,0)>E', { '2,0': 1, '3,0': 1, '4,0': 3 })).toBeNull(); // a vanished cell is off the board, not a marble
+  });
+});
+
+describe('pushOf agrees with the engine (#1676)', () => {
+  test('over a seeded game: a marked move moves the opponent (eject: one more ejected), an unmarked one leaves the opponent in place', () => {
+    const replay = (plies: Int32Array[]): EngineLike => {
+      const e = newEngine();
+      for (const p of plies) e.play(p);
+      return e;
+    };
+    const plies: Int32Array[] = [];
+    let seed = 7;
+    const seen = { push: 0, eject: 0, none: 0 };
+    for (let ply = 0; ply < 90 && (seen.push < 20 || seen.eject < 1); ply++) {
+      const engine = replay(plies);
+      const side = engine.to_move();
+      const foe = side === 1 ? 2 : 1;
+      const legal = fromRecords(engine.legal_moves());
+      if (!legal.length) break;
+      const before = engine.board();
+      for (const move of legal) {
+        const effect = pushOf(move, before, side);
+        const after = replay([...plies, toRecord(move)]);
+        const foeCells = (b: Uint8Array) => [...b].map((v, i) => (v === foe ? i : -1)).filter((i) => i >= 0).join();
+        if (effect === null) expect(foeCells(after.board())).toBe(foeCells(before));
+        else expect(foeCells(after.board())).not.toBe(foeCells(before));
+        expect(after.ejected(side) - engine.ejected(side)).toBe(effect === 'eject' ? 1 : 0);
+        seen[effect ?? 'none']++;
+        after.free();
+      }
+      const pushes = legal.filter((m) => pushOf(m, before, side));
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      const pick = pushes.length && seed % 3 ? pushes : legal;
+      plies.push(toRecord(pick[seed % pick.length]!));
+      engine.free();
+    }
+    expect(seen.push).toBeGreaterThan(0);
+    expect(seen.eject).toBeGreaterThan(0);
+  }, 60000);
 });

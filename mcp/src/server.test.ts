@@ -244,10 +244,21 @@ describe('the MCP server', () => {
     expect(file('walker-prompt.md')).not.toMatch(/abalone|ab-alone/i);
   });
 
+  test('rules sums up the game in a few lines: winning, moving, pushing, the notation (#1676)', async () => {
+    await connect();
+    const text = (await call('rules')).text;
+    expect(text).toContain('6 ');
+    expect(text).toMatch(/push/i);
+    expect(text).toMatch(/more marbles/i);
+    expect(text).toContain('(q,r)');
+    expect(text).toContain('ejected');
+  });
+
   test('lists the tools of a local game and of an online room, with their input schemas', async () => {
     const { tools } = await (await connect()).listTools();
     expect(tools.map((tool) => tool.name)).toEqual([
       'new_game',
+      'rules',
       'get_state',
       'legal_moves',
       'play_move',

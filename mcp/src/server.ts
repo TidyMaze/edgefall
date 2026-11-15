@@ -11,6 +11,18 @@ import { RogueRun } from './run';
 import { OpenWorld } from './world';
 import { refusePeers, WorldRoom } from './worldroom';
 
+/** The rules tool's text (#1676): what an agent needs to play, no more. */
+export const RULES = [
+  'Two sides, Black (moves first) and White, 14 marbles each on a hexagon of 61 cells. Push 6 of the opponent\'s marbles off the board to win (win_ejections in get_state; a boss can ask fewer or more).',
+  'A move takes 1 to 3 of your marbles in a straight adjacent line and moves them one cell in one of 6 directions.',
+  'Inline (along the line): the front marble may push the opponent\'s marbles in front of it, only if you have more marbles in the line than they have (2 push 1, 3 push 1 or 2), and only into an empty cell or off the board.',
+  'Sideways (across the line): every target cell must be empty; it never pushes.',
+  'A marble pushed off the board is ejected: ejected.black in get_state counts the White marbles Black has pushed off, ejected.white the Black marbles White has.',
+  'legal_moves lists every legal move; pushes marks the ones that push the opponent ("eject" when one leaves the board). A refused move names the cells and the rule.',
+  'Cells are (q,r) axial coordinates, (0,0) the centre: E/W change q, NE/SW and NW/SE are the diagonals. ' + 'A move: "(-1,2)(0,2)>E".',
+  'Bosses change some rules: get_state.boss.tell says what the boss does after the next ply (null: nothing to see), marks shows its special cells.',
+].join('\n');
+
 const NOTATION =
   'A move is the selected cells, then ">", then the direction: "(-1,2)(0,2)>E", "(0,0)>SE". A cell is (q,r). ' +
   'Directions: E, W, NE, SW, NW, SE.';
@@ -80,13 +92,19 @@ export function createServer(
   );
 
   server.registerTool(
+    'rules',
+    { description: 'The rules in a few lines: how to win, move, push and read the notation. No game needed.' },
+    () => ({ content: [{ type: 'text', text: RULES }] }),
+  );
+
+  server.registerTool(
     'get_state',
     {
       description:
         'The game state: mode (bot, boss, online), your side, side to move, status (running, black_won, white_won, ' +
         'draw), marbles ejected by each side and the number needed to win, the board as ASCII and as 61 characters (91 or 169 on a larger boss board), ' +
-        'the last 6 plies, and in a boss fight the boss: phase, tell (what it does after the next ply), marks on the ' +
-        'board, result.',
+        'the last 6 plies, and in a boss fight the boss: phase, tell (what it does after the next ply, null when it shows ' +
+        'nothing), marks on the board, result. ejected.black counts the White marbles Black pushed off the board.',
     },
     () => toolResult(session.getState()),
   );
@@ -96,7 +114,8 @@ export function createServer(
     {
       description:
         'Every legal move of the side to move, from the engine. Empty once the game is over. announces maps a move to ' +
-        `the reply a boss announces for it, empty when it announces nothing. ${NOTATION}`,
+        'the reply a boss announces for it, empty when it announces nothing. pushes maps each move that pushes the ' +
+        `opponent to "push", or "eject" when a marble leaves the board. ${NOTATION}`,
     },
     () => toolResult(session.legalMoves()),
   );

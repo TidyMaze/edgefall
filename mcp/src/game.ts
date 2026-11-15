@@ -14,7 +14,7 @@ import { bossState, type BossLike, type BossState } from './boss';
 import type { Outcome } from './world';
 import { formatMove, fromRecord, fromRecords, parseMove, toRecord } from './notation';
 import { Room, type RoomEvent } from './online';
-import { explain } from './refusal';
+import { explain, pushOf } from './refusal';
 
 /** What the session uses of both `Engine` and `Encounter` in edgefall-wasm. */
 interface Playable {
@@ -136,6 +136,8 @@ export interface LegalMoves {
   announces: Record<string, string>;
   /** The free moves The Echo offers now, also in `moves`: playing one keeps the turn, any other move declines them (#958). */
   free: string[];
+  /** The moves that push the opponent's marbles, `eject` when one leaves the board; a move not listed moves only your own marbles (#1676). */
+  pushes: Record<string, 'push' | 'eject'>;
   count: number;
 }
 
@@ -311,8 +313,14 @@ export class Session {
         }
       }
       const moves = legal.map(formatMove);
+      const board = game.engine.board();
+      const pushes: Record<string, 'push' | 'eject'> = {};
+      for (const move of legal) {
+        const effect = pushOf(move, board, game.engine.to_move());
+        if (effect) pushes[formatMove(move)] = effect;
+      }
       const free = game.boss && !game.resigned && game.engine.to_move() === BLACK ? fromRecords(game.boss.encounter.free_moves()).map(formatMove) : [];
-      return ok({ to_move: sideName(game.engine.to_move()), moves, announces, free, count: moves.length });
+      return ok({ to_move: sideName(game.engine.to_move()), moves, announces, free, pushes, count: moves.length });
     });
   }
 

@@ -186,15 +186,20 @@ Input: none.
 Output:
 
 ```json
-{ "to_move": "black | white", "moves": ["(0,0)>SE", "..."], "announces": {}, "free": [], "count": 0 }
+{ "to_move": "black | white", "moves": ["(0,0)>SE", "..."], "announces": {}, "free": [], "pushes": {}, "count": 0 }
 ```
 
 - `moves` is `Engine.legal_moves()` (or `Encounter.legal_moves()`) in notation. Empty once the game is over.
 - On a boss turn that restricts the moves (for example the army in turn), the list only holds the allowed moves. Nothing else changes.
 - `announces` is an object from a move to the reply the boss announces for it (`Encounter.tell_move(mv)`): for The Echo, the first bonus move that move gives it, a move with no bonus is left out (#859). It is empty unless the boss announces replies. Same shape for every boss, no per-boss output type.
 - `free` is the free moves The Echo offers the agent now (`Encounter.free_moves()`, #958), also in `moves`. Playing one keeps the agent to move (no reply); playing any other move declines them all. Empty against the bot, the other bosses and online.
+- `pushes` maps each move that pushes the opponent's marbles to `"push"`, or `"eject"` when the last pushed marble leaves the board (#1676). A move not in it moves only the agent's own marbles. It is read from the board bytes with the geometry the refusal explainer uses (`pushOf` in `mcp/src/refusal.ts`), checked against the engine over a seeded game. It informs and never judges: `moves` stays the engine's list.
 
 Errors: `no_game`.
+
+### `rules`
+
+Input: none, and no game needed. Output: a few lines of plain text (not JSON) on how to win, move, push, what `ejected` counts (`ejected.black` is the White marbles Black pushed off) and how to read the notation (#1676).
 
 ### `play_move`
 
