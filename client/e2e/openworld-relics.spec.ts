@@ -23,7 +23,7 @@ for (const { name, viewport, touch } of sizes) {
     const file = name.replaceAll(' ', '-');
 
     test('the Workshop upgrades a Heavy for shards and ore, and buys a relic for shards and parts', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7');
+      await page.goto('./?bot=off&openworld=7&hub=classic');
       const body = page.locator('body');
       await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const listed = (await body.getAttribute('data-openworld-places'))!.split(' ');
@@ -47,7 +47,7 @@ for (const { name, viewport, touch } of sizes) {
     });
 
     test('a lair fight walked into places the special marbles and sets the relics the army brings, and Back keeps them all', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7');
+      await page.goto('./?bot=off&openworld=7&hub=classic');
       const body = page.locator('body');
       await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const lairs = (await body.getAttribute('data-openworld-lairs'))!.split(' ').map((c) => c.split(',').map(Number) as [number, number]);

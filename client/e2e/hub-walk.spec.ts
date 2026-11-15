@@ -13,7 +13,7 @@ async function hookClick(page: Page, q: number, r: number): Promise<void> {
 
 /** A player's first launch, skipped to the Hub: the marble on the start cell of the Mess, The Echo's door the goal. */
 async function firstHub(page: Page): Promise<void> {
-  await page.goto('./?firstrun');
+  await page.goto('./?firstrun&hub=classic');
   await page.locator('canvas').waitFor();
   await page.getByRole('button', { name: 'Skip', exact: true }).click();
   await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 0,0');
@@ -61,7 +61,7 @@ for (const [name, viewport, touch] of [
       await hookClick(page, 1, 0);
       await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 1,0');
       await expect(coach).toBeHidden();
-      await page.goto('./?firstrun'); // a new launch: the first run is done, the Hub is opened from the menu on the saved cell
+      await page.goto('./?firstrun&hub=classic'); // a new launch: the first run is done, the Hub is opened from the menu on the saved cell
       await page.locator('canvas').waitFor();
       await startMode(page, 'hub');
       await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 1,0');
@@ -88,7 +88,7 @@ for (const [name, viewport, touch] of [
     });
 
     test('once a mode was entered the confirm never comes back, and a plate walks straight in', async ({ page }) => {
-      await page.goto('./?firstrun');
+      await page.goto('./?firstrun&hub=classic');
       await page.locator('canvas').waitFor();
       await page.evaluate(() => localStorage.setItem('ab-alone.entered', 'yes'));
       await page.getByRole('button', { name: 'Skip', exact: true }).click();

@@ -28,7 +28,7 @@ test('the leaderboard shows my position among the opponents I met, my row highli
     );
     localStorage.setItem('ab-alone.ranked.board', JSON.stringify({ version: 1, rank: 1 }));
   });
-  await page.goto('./?bot=off');
+  await page.goto('./?bot=off&hub=classic');
   await page.getByRole('button', { name: 'Game modes' }).click();
   await page.getByRole('button', { name: 'Leaderboard' }).click();
   const board = page.getByRole('dialog', { name: 'Ranked 1v1' });

@@ -56,8 +56,8 @@ for (const [layout, size] of [['tall', { width: 390, height: 844 }], ['wide', { 
   });
 }
 
-test('the flag off asks for no cutaway file and keeps the deck', async ({ page }) => {
-  const files = await openHub(page, '?bot=off');
+test('?hub=classic asks for no cutaway file and keeps the deck', async ({ page }) => {
+  const files = await openHub(page, '?bot=off&hub=classic');
   await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 0,0');
   await page.waitForTimeout(500);
   expect(files).toEqual([]);

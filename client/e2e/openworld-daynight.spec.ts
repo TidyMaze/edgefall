@@ -12,7 +12,7 @@ const PHASES = [['day', 3 * MIN], ['dusk', 6.75 * MIN], ['night', 9 * MIN]] as c
 const shots = process.env.DAYNIGHT_SHOTS ?? 'test-results';
 
 const enter = async (page: Page): Promise<void> => {
-  await page.goto('./?bot=off&openworld=7');
+  await page.goto('./?bot=off&openworld=7&hub=classic');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe('7');
 };

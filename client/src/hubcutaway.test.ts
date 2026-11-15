@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { describe, expect, it, vi } from 'vitest';
 import { framing } from './camera';
-import { Cutaway, CUTAWAY_VIEW, FILL, GLOW, bakeShip, cutawayFile, cutawayFrame, cutawayOn, glowOf, goalRoom, partOf, roomState, shellFor, shipMaterial, shipState, type ShipState } from './hubcutaway';
+import { Cutaway, CUTAWAY_VIEW, FILL, GLOW, bakeShip, cutawayFile, cutawayFrame, cutawayOn, plainSearch, glowOf, goalRoom, partOf, roomState, shellFor, shipMaterial, shipState, type ShipState } from './hubcutaway';
 
 const fs = 'node:fs/promises'; // untyped: the client has no Node types
 const { readFile } = (await import(/* @vite-ignore */ fs)) as { readFile(path: URL): Promise<Uint8Array> };
@@ -17,11 +17,14 @@ const glow = (name: string, st: ShipState): number | null => {
 const col = (hex: number, k = 1): number => new THREE.Color(hex).multiplyScalar(k).getHex();
 
 describe('the flag and the shell (#1689)', () => {
-  it('reads ?hub=cutaway, and no other value or parameter', () => {
+  it('is on unless ?hub=classic; a plain page is no query or only hub', () => {
     expect(cutawayOn('?hub=cutaway')).toBe(true);
-    expect(cutawayOn('?look=cutaway')).toBe(false); // ?look= is read by the neon look as the old terrace
-    expect(cutawayOn('?hub=other')).toBe(false);
-    expect(cutawayOn('')).toBe(false);
+    expect(cutawayOn('?look=cutaway')).toBe(true);
+    expect(cutawayOn('?hub=classic')).toBe(false);
+    expect(cutawayOn('')).toBe(true);
+    expect(plainSearch('')).toBe(true);
+    expect(plainSearch('?hub=classic')).toBe(true);
+    expect(plainSearch('?hub=classic&bot=off')).toBe(false);
   });
 
   it('chooses the tall shell under 600 px wide or 500 px high, the wide one above', () => {

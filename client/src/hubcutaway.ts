@@ -12,8 +12,11 @@ import { NEON } from './neonlook';
 
 export type Layout = 'tall' | 'wide';
 
-/** `?hub=cutaway`: the flag is its own parameter, `?look=` is read by the neon look as the old terrace. */
-export const cutawayOn = (search: string): boolean => new URLSearchParams(search).get('hub') === 'cutaway';
+/** On unless `?hub=classic` (the old Hub, kept one release for #1697; `?hub=cutaway` is a no-op). */
+export const cutawayOn = (search: string): boolean => new URLSearchParams(search).get('hub') !== 'classic';
+
+/** A page opened with no query, or with only the Hub switch (`?hub=classic`): a new player's landing is the same (#602, #1696). */
+export const plainSearch = (search: string): boolean => [...new URLSearchParams(search).keys()].every((k) => k === 'hub');
 
 /** The tall shell under 600 px wide or 500 px high, else the wide one. */
 export const shellFor = (width: number, height: number): Layout => (width < 600 || height < 500 ? 'tall' : 'wide');

@@ -183,7 +183,7 @@ const sharedPage = (viewport: { width: number; height: number }, mobile: boolean
   test.beforeAll(async ({ browser }, testInfo) => {
     page = await (await browser.newContext({ ...testInfo.project.use, viewport, isMobile: mobile, hasTouch: mobile })).newPage();
     await page.addInitScript((s) => Object.entries(s).forEach(([k, v]) => localStorage.setItem(k, v)), stored);
-    await page.goto('./?bot=off&net=hook');
+    await page.goto('./?bot=off&net=hook&hub=classic');
     await page.locator('canvas').waitFor();
   });
   test.afterAll(async () => {
@@ -218,7 +218,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 800 }
     test.use({ viewport, isMobile: true, hasTouch: true });
     test('the HUD plate and the dock cover no cell, #1567', async ({ page }, testInfo) => {
       await page.addInitScript(() => localStorage.setItem('ab-alone.board-zoom', 'on'));
-      await page.goto('./?bot=off&net=hook');
+      await page.goto('./?bot=off&net=hook&hub=classic');
       await page.locator('canvas').waitFor();
       await expect(page.locator('#hud')).toContainText('Black to move');
       await expect(page.getByRole('button', { name: 'Zoom the board' })).toHaveAttribute('aria-pressed', 'true');
@@ -233,7 +233,7 @@ for (const viewport of [{ width: 360, height: 640 }]) {
   test.describe(`the Hub on a phone ${viewport.width} by ${viewport.height} held upright`, () => {
     test.use({ viewport, isMobile: true, hasTouch: true });
     test('the rail and the Bosses strip sit under the cog and above the board, #1388', async ({ page }) => {
-      await page.goto('./?bot=off&net=hook');
+      await page.goto('./?bot=off&net=hook&hub=classic');
       await page.locator('canvas').waitFor();
       await hubUnderCog(page, viewport);
     });
@@ -281,7 +281,7 @@ for (const { name, viewport, mobile } of sizes) {
       const context = await browser.newContext({ ...testInfo.project.use, viewport, isMobile: mobile, hasTouch: mobile });
       page = await context.newPage();
       await page.clock.install({ time: Date.parse('2026-10-23T08:00:00Z') });
-      await page.goto('./?bot=off&net=hook');
+      await page.goto('./?bot=off&net=hook&hub=classic');
       await page.locator('canvas').waitFor();
     });
     test.afterAll(async () => {
@@ -489,7 +489,7 @@ for (const { name, viewport, scale } of [
   test(`every settings row is on screen and reachable, ${name}, bug #427`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await page.addInitScript((s) => localStorage.setItem('ab-alone.ui-scale', s), scale);
-    await page.goto('./?bot=off&net=hook');
+    await page.goto('./?bot=off&net=hook&hub=classic');
     await page.locator('canvas').waitFor();
     await settingsReachable(page);
   });
@@ -524,7 +524,7 @@ for (const { name, viewport } of [
       const hud = page.locator('#hud');
       await page.emulateMedia({ reducedMotion: 'reduce' }); // the 7 moves of the defeat slide in no time: the layout is the same
       await page.clock.setFixedTime(new Date('2027-03-30T08:00:00Z'));
-      await page.goto('./?bot=off&net=hook');
+      await page.goto('./?bot=off&net=hook&hub=classic');
       await openModes(page);
       await page.locator('#daily').click();
       await expect(hud).toContainText('Daily challenge 2027-03-30 · attempt 1');

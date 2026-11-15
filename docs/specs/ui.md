@@ -770,8 +770,8 @@ slot stays New game. A wild fight keeps Flee (F) in the first slot until it is o
 A boss or lair fight in progress with a ply played is not saved, so the exit asks for a second press, `Sure?` in the `.confirm` look, lapsing after `CONFIRM_MS` as New game does (`newgame.ts`); a fight over or with no ply, the world, the Hub, a town, a run, the Trainer and a table ask nothing, and Browser Back never asks.
 
 **The Hub Cutaway rewrites this table (#1698; amends Decision #1513, owner 2026-11-14).** Design: `cutaway-v2.html` on the `pr-screenshots` branch (`hub-cutaway/`).
-Status: the ship is built behind `?hub=cutaway`, off by default (#1689, #1691, #1694). The old table below stays true with the flag off until #1696 turns the Cutaway on and #1697 removes
-the old path (the Modes menu, Quick game, the dock's World button and the old Hub code). What follows is written as it will be once the flag is on.
+Status: the ship is the default Hub since #1696 (#1689, #1691, #1694). `?hub=classic` is the off switch for one release and brings the old Hub back; `?hub=cutaway` is a no-op. #1697 removes
+the old path (the Modes menu, Quick game, the dock's World button and the old Hub code). What follows is the default page.
 
 **One home for every feature.** A feature starts in one place; any other screen may show its state and lead there, never start it.
 
@@ -792,12 +792,12 @@ With no room left (all five beaten) the line and the card say so and do nothing.
 | Screen | Enter | Exit, first slot | State |
 |---|---|---|---|
 | Plain table | Hub, House table bay; New game | the exit, to the Hub (the table is no longer a home) | Once the flag is on (#1697) |
-| Hub (the ship) | Boot of a returning player; the exit of any mode | none: the home, no dock. Back goes to the table | Behind `?hub=cutaway` |
-| A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its bay: the marble rolls there, the confirm asks, Enter starts | Hub | Behind `?hub=cutaway` |
-| Open world | Hub, Airlock bay | Hub (the world saved) | Behind `?hub=cutaway` |
-| Town | Roll onto a town: the ship opens on the Mess | World, hero on the entrance | Behind `?hub=cutaway` |
-| Dungeon gate (the run) | Roll onto a gate: the ship opens on the Mining cut, the biome kept | Stay or the exit: World, hero on the entrance | Behind `?hub=cutaway` |
-| Tower (a lair fight) | Roll onto a lair: the ship opens on the boss's bay | Stay or the exit: World, hero on the entrance | Behind `?hub=cutaway` |
+| Hub (the ship) | Boot of a returning player; the exit of any mode | none: the home, no dock. Back goes to the table | Default (`?hub=classic` for the old one) |
+| A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its bay: the marble rolls there, the confirm asks, Enter starts | Hub | Default (`?hub=classic` for the old one) |
+| Open world | Hub, Airlock bay | Hub (the world saved) | Default (`?hub=classic` for the old one) |
+| Town | Roll onto a town: the ship opens on the Mess | World, hero on the entrance | Default (`?hub=classic` for the old one) |
+| Dungeon gate (the run) | Roll onto a gate: the ship opens on the Mining cut, the biome kept | Stay or the exit: World, hero on the entrance | Default (`?hub=classic` for the old one) |
+| Tower (a lair fight) | Roll onto a lair: the ship opens on the boss's bay | Stay or the exit: World, hero on the entrance | Default (`?hub=classic` for the old one) |
 | Wild fight | A marble touches the hero | Flee, then World | Built |
 | Online room (Play online, Fight together, Boss duel, an invite link) | Comms desk, Shift crew bays; `#room=` opens its table | the exit; its Lobby sheet | Once the flag is on |
 

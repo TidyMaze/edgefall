@@ -24,7 +24,7 @@ for (const { name, viewport, touch } of sizes) {
 
     for (const [kind, shown] of [['town', 'data-hub'], ['dungeon', 'data-run']] as const) {
       test(`rolling onto a ${kind} enters it, and Back to the Open world returns to the entrance cell, #1593`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7');
+        await page.goto('./?bot=off&openworld=7&hub=classic');
         const body = page.locator('body');
         await expect(body).toHaveAttribute('data-openworld-at', '0,0');
         const [q, r] = await placeOf(page, kind);
@@ -50,7 +50,7 @@ for (const { name, viewport, touch } of sizes) {
 
 // #1597: a gate's run begins in the biome of the ground the gate stands in, not the Meadow (body[data-biome] is absent in the Meadow).
 test('rolling onto a dungeon gate starts its run in the gate\'s biome, #1597', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7');
+  await page.goto('./?bot=off&openworld=7&hub=classic');
   const body = page.locator('body');
   await expect(body).toHaveAttribute('data-openworld-at', '0,0');
   const [q, r] = await placeOf(page, 'dungeon');

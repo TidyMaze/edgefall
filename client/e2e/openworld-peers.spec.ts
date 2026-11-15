@@ -23,7 +23,7 @@ async function enter(page: Page, seed: number): Promise<void> {
     w.__out = [];
     w.__netPeerOut = (data) => void w.__out.push(Array.from(data));
   });
-  await page.goto(`./?bot=off&net=hook&quality=low&openworld=${seed}`);
+  await page.goto(`./?bot=off&net=hook&quality=low&openworld=${seed}&hub=classic`);
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe(String(seed));
 }

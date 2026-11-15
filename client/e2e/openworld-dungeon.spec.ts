@@ -7,7 +7,7 @@ lowTierOnCi();
 // #1291: the Dungeon button walks the hero to the nearest tower. The test hook stands the hero a few cells from a lair (no 150-cell
 // walk); the press walks the rest and the step onto the lair starts the boss fight.
 test('the Dungeon button walks the hero to the nearest tower and the fight starts, #1291', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7');
+  await page.goto('./?bot=off&openworld=7&hub=classic');
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworldAt)).toBe('0,0');
   const lairs = (await page.evaluate(() => document.body.dataset.openworldLairs))!.split(' ');

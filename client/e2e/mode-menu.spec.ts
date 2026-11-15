@@ -6,7 +6,7 @@ import { BOSS_IDS } from '../src/tally';
 const ENTRIES = ['Play online', 'Boss fight', /^Daily challenge/];
 
 test('the mode menu is closed at the start, and its button opens and closes it', async ({ page }) => {
-  await page.goto('./?bot=off');
+  await page.goto('./?bot=off&hub=classic');
   const button = page.getByRole('button', { name: 'Game modes' });
   await expect(button).toBeEnabled();
   await expect(button).toHaveAttribute('title', 'Game modes');
@@ -26,7 +26,7 @@ test('the mode menu is closed at the start, and its button opens and closes it',
 test('the mode menu closes on Escape and on a press outside, and is reachable by keyboard', async ({ page, browserName }) => {
   // On a Mac, Tab skips buttons in Safari unless Option is held (system keyboard navigation setting).
   const tab = process.platform === 'darwin' && browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
-  await page.goto('./?bot=off');
+  await page.goto('./?bot=off&hub=classic');
   const button = page.getByRole('button', { name: 'Game modes' });
   const online = page.getByRole('button', { name: 'Play online' });
   await expect(button).toBeEnabled();
@@ -52,7 +52,7 @@ test('the mode menu closes on Escape and on a press outside, and is reachable by
 });
 
 test('picking a boss closes the mode menu and keeps Retry and Goal in the column', async ({ page }) => {
-  await page.goto('./?bot=off');
+  await page.goto('./?bot=off&hub=classic');
   const button = page.getByRole('button', { name: 'Game modes' });
   await button.click();
   await page.getByRole('button', { name: 'Boss fight' }).click();
@@ -69,7 +69,7 @@ test('picking Ranked starts a ranked queue with rank badge and updates Elo in Ba
   await page.addInitScript(() => {
     if (!localStorage.getItem('ab-alone.board-consent')) localStorage.setItem('ab-alone.board-consent', JSON.stringify({ v: 5, choice: 'declined' }));
   });
-  await page.goto('./?bot=off&net=hook');
+  await page.goto('./?bot=off&net=hook&hub=classic');
   const modes = page.getByRole('button', { name: 'Game modes' });
   await modes.click();
   await page.getByRole('button', { name: 'Battle royale' }).click();
@@ -78,7 +78,7 @@ test('picking Ranked starts a ranked queue with rank badge and updates Elo in Ba
   await expect(modes).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('#hud .rank-badge')).toContainText('Silver1200');
 
-  await page.goto('./?bot=off&net=hook');
+  await page.goto('./?bot=off&net=hook&hub=classic');
   await modes.click();
   await page.getByRole('button', { name: 'Ranked' }).click();
   await expect(modes).toHaveAttribute('aria-expanded', 'false');
@@ -90,7 +90,7 @@ test.describe('on a phone', () => {
   test.use({ viewport: { width: 375, height: 812 }, hasTouch: true });
 
   test('the mode button and every item of the open menu are touch targets of at least 44 px', async ({ page }) => {
-    await page.goto('./?bot=off');
+    await page.goto('./?bot=off&hub=classic');
     await page.getByRole('button', { name: 'Game modes' }).click();
     await page.getByRole('button', { name: 'Boss fight' }).click();
     const small = await page.evaluate(() =>
@@ -111,7 +111,7 @@ for (const viewport of [{ width: 360, height: 780 }, { width: 375, height: 812 }
     test.use({ viewport, hasTouch: true });
 
     test('every boss of the list keeps 44 px touch targets and readable labels, the last one reachable, #666', async ({ page }) => {
-      await page.goto('./?bot=off');
+      await page.goto('./?bot=off&hub=classic');
       await page.getByRole('button', { name: 'Game modes' }).click();
       await page.getByRole('button', { name: 'Boss fight' }).click();
       const list = page.locator('#boss-list');
@@ -139,7 +139,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1280, height: 800
   for (const [name, id] of [['Boss fight', 'boss-list'], ['Boss with a partner', 'coop-list']]) {
     test(`every boss of the ${name} list and Daily challenge fit without a scroll in a ${viewport.width}x${viewport.height} window, bugs #653 #699`, async ({ page }) => {
       await page.setViewportSize(viewport);
-      await page.goto('./?bot=off');
+      await page.goto('./?bot=off&hub=classic');
       await page.getByRole('button', { name: 'Game modes' }).click();
       await page.getByRole('button', { name }).click();
       const list = page.locator(`#${id}`);

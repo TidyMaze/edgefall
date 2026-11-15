@@ -21,7 +21,7 @@ const look = (page: Page, id: string) =>
   });
 
 test('Free camera is a settings item, not a HUD button, lit while it is on, #938', async ({ page }) => {
-  await page.goto('./?bot=off');
+  await page.goto('./?bot=off&hub=classic');
   await page.locator('canvas').waitFor();
   await expect(page.locator('#free-cam')).toHaveCount(0);
   await expect(page.locator('#mode-menu #reset-view')).toHaveCount(1); // Reset view in the Game modes menu, not the dock (#1612: five dock controls fit 320 px)
@@ -35,7 +35,7 @@ test('Free camera is a settings item, not a HUD button, lit while it is on, #938
 });
 
 test('Play online shows its name and is as tall as Boss with a partner, #839', async ({ page }) => {
-  await page.goto('./?bot=off');
+  await page.goto('./?bot=off&hub=classic');
   await page.locator('canvas').waitFor();
   await openModes(page);
   const play = page.getByRole('button', { name: 'Play online', exact: true });
@@ -45,7 +45,7 @@ test('Play online shows its name and is as tall as Boss with a partner, #839', a
 });
 
 test('Copy looks like Reset view and is as tall as the link beside it, #839', async ({ page }) => {
-  await page.goto('./?bot=off');
+  await page.goto('./?bot=off&hub=classic');
   await page.locator('canvas').waitFor();
   await startMode(page, 'online');
   await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeVisible();

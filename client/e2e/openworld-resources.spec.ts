@@ -21,7 +21,7 @@ for (const { name, viewport, touch } of sizes) {
     const file = name.replaceAll(' ', '-');
 
     test('a boulder and a tree broken fill the plate line, and a reload keeps the counts', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=1');
+      await page.goto('./?bot=off&openworld=1&hub=classic');
       await expect(page.locator('body')).toHaveAttribute('data-openworld-at', '0,0');
       await expect(page.locator('body')).toHaveAttribute('data-openworld-resources', '0,0,0,0');
       await fixture(page, { hero: [65, -47], troop: [], enemies: [] });

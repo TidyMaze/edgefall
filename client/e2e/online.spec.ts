@@ -89,7 +89,7 @@ const sharedCreator = (calmed: boolean): (() => Page) => {
   test.beforeAll(async ({ browser }) => {
     a = await (await browser.newContext()).newPage();
     if (calmed) await calm(a);
-    await a.goto('./?bot=off&net=hook&quality=low');
+    await a.goto('./?bot=off&net=hook&quality=low&hub=classic');
     await a.locator('canvas').waitFor();
   });
   test.afterAll(async () => {
@@ -110,7 +110,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     await expect(a.locator('#invite')).toBeVisible();
     await a.mouse.click(5, 5); // a tap on the board keeps the link while alone
     await expect(a.locator('#invite')).toBeVisible();
-    await b.goto(`./?net=hook&quality=low${new URL(await inviteLink(a)).hash}`);
+    await b.goto(`./?net=hook&quality=low&hub=classic${new URL(await inviteLink(a)).hash}`);
     await b.locator('canvas').waitFor();
     await open(a);
     await open(b);
@@ -129,7 +129,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     expect(invite).toMatch(/#room=[\w-]+&key=[\w-]{8}$/); // the creator key's fingerprint (#1323)
     await expect(a.locator('#hud')).toContainText('You are Black');
 
-    await b.goto(`./?net=hook&quality=low${new URL(invite).hash}`);
+    await b.goto(`./?net=hook&quality=low&hub=classic${new URL(invite).hash}`);
     await b.locator('canvas').waitFor();
     await expect(b.locator('#hud')).toContainText('Joining as White...');
 
@@ -173,7 +173,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     await expect(a.getByText('Invite link: send it to your opponent')).toBeVisible();
     const invite = await inviteLink(a);
 
-    await b.goto(`./?net=hook&quality=low${new URL(invite).hash}`);
+    await b.goto(`./?net=hook&quality=low&hub=classic${new URL(invite).hash}`);
     await b.locator('canvas').waitFor();
     await expect(status(b)).toHaveText('Joining as White...');
     await expect(status(a)).toHaveText('You are Black. Waiting for an opponent...'); // B is not connected yet
@@ -210,7 +210,7 @@ test.describe('one creator page, joiners on the invite link', { tag: '@one-page'
     await expect(a.locator('#hud')).not.toBeEmpty();
     await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
-    await b.goto(`./?net=hook&quality=low${hash}`);
+    await b.goto(`./?net=hook&quality=low&hub=classic${hash}`);
     await b.locator('canvas').waitFor();
     await open(a);
     await open(b);
@@ -268,7 +268,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     const hash = new URL(await inviteLink(a)).hash;
     // The two joiners load at once: their page loads overlap instead of queueing one after the other.
     await Promise.all([b, c].map(async (page) => {
-      await page.goto(`./?net=hook&quality=low${hash}`);
+      await page.goto(`./?net=hook&quality=low&hub=classic${hash}`);
       await page.locator('canvas').waitFor();
     }));
     for (const page of all) await open(page);
@@ -321,7 +321,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
     await Promise.all([b, c].map(async (page) => {
-      await page.goto(`./?net=hook&quality=low${hash}`);
+      await page.goto(`./?net=hook&quality=low&hub=classic${hash}`);
       await page.locator('canvas').waitFor();
     }));
     for (const page of [a, b, c]) await open(page);
@@ -363,7 +363,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await expect(a.locator('#hud')).not.toBeEmpty();
     await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
-    await b.goto(`./?net=hook&quality=low${hash}`);
+    await b.goto(`./?net=hook&quality=low&hub=classic${hash}`);
     await b.locator('canvas').waitFor();
     await open(a);
     await open(b);
@@ -443,8 +443,8 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     const hash = new URL(await inviteLink(a)).hash;
     // The spectator's page loads now, in parallel with b's: the room drops its records until it is opened after the plies.
     await Promise.all([
-      b.goto(`./?net=hook&quality=low${hash}`).then(() => b.locator('canvas').waitFor()),
-      c.goto(`./?net=hook&quality=low${hash}`).then(() => c.locator('canvas').waitFor()),
+      b.goto(`./?net=hook&quality=low&hub=classic${hash}`).then(() => b.locator('canvas').waitFor()),
+      c.goto(`./?net=hook&quality=low&hub=classic${hash}`).then(() => c.locator('canvas').waitFor()),
     ]);
     await c.evaluate(() => {
       const w = window as any;
@@ -515,7 +515,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await expect(a.locator('#hud')).not.toBeEmpty();
     await startMode(a, 'online');
     const hash = new URL(await inviteLink(a)).hash;
-    await b.goto(`./?net=hook&quality=low${hash}`);
+    await b.goto(`./?net=hook&quality=low&hub=classic${hash}`);
     await b.locator('canvas').waitFor();
     await open(a);
     await open(b);
@@ -556,7 +556,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await startMode(a, 'coop:echo');
     const hash = new URL(await inviteLink(a)).hash;
     expect(hash).toMatch(/^#room=[\w-]+&boss=echo&seed=\d+&key=[\w-]{8}$/);
-    await b.goto(`./?bot=off&net=hook&quality=low${hash}`);
+    await b.goto(`./?bot=off&net=hook&quality=low&hub=classic${hash}`);
     await b.locator('canvas').waitFor();
     await open(a);
     await open(b);
@@ -605,7 +605,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await expect(a.locator('#hud')).not.toBeEmpty();
     await startMode(a, 'coop:echo');
     const hash = new URL(await inviteLink(a)).hash;
-    await b.goto(`./?bot=off&net=hook&quality=low${hash}`);
+    await b.goto(`./?bot=off&net=hook&quality=low&hub=classic${hash}`);
     await b.locator('canvas').waitFor();
     await open(a);
     await open(b);
@@ -660,7 +660,7 @@ test.describe('one creator page in reduced motion, joiners on the invite link', 
     await a.locator('#coop-list').getByRole('button', { name: 'The Hull' }).click();
     const hash = new URL(await inviteLink(a)).hash;
     expect(hash).toMatch(/^#room=[\w-]+&boss=hull&seed=\d+&seat=boss&key=[\w-]{8}$/);
-    await b.goto(`./?bot=off&net=hook&quality=low${hash}`);
+    await b.goto(`./?bot=off&net=hook&quality=low&hub=classic${hash}`);
     await b.locator('canvas').waitFor();
     await open(a);
     await open(b);
@@ -709,12 +709,12 @@ test('two tabs of the same browser context play an online game, bug #116', async
     await route.continue();
   });
 
-  await a.goto('./?bot=off&net=hook&quality=low'); // './' keeps the /edgefall/ path of E2E_BASE_URL, '/' is the Pages host root (404)
+  await a.goto('./?bot=off&net=hook&quality=low&hub=classic'); // './' keeps the /edgefall/ path of E2E_BASE_URL, '/' is the Pages host root (404)
   await a.locator('canvas').waitFor();
   await expect(a.locator('#hud')).not.toBeEmpty(); // refresh() runs after the play-online listener is wired
   await startMode(a, 'online');
   const invite = await inviteLink(a);
-  await b.goto(`./?net=hook&quality=low${new URL(invite).hash}`, { waitUntil: 'commit' }); // held textures can hold the load event
+  await b.goto(`./?net=hook&quality=low&hub=classic${new URL(invite).hash}`, { waitUntil: 'commit' }); // held textures can hold the load event
   await textures; // main.ts runs on page b and waits for its textures (its canvas comes after them, #585)
   await open(a);
   // Calls on a page run in order: the textures go only once a later call on page b came back, so open(b)
@@ -736,7 +736,7 @@ test('two tabs of the same browser context play an online game, bug #116', async
 // Bug #127: main.ts awaits the wasm engine and the textures before it attaches the click listener.
 // A click right after domcontentloaded must either hit a disabled button or create the invite.
 test('Play online is disabled or works when clicked right after load, bug #127', async ({ page }) => {
-  await page.goto('./?bot=off&net=hook&quality=low', { waitUntil: 'domcontentloaded' });
+  await page.goto('./?bot=off&net=hook&quality=low&hub=classic', { waitUntil: 'domcontentloaded' });
   const disabledAtClick = await page.evaluate(() => {
     const button = document.getElementById('play-online') as HTMLButtonElement;
     const wasDisabled = button.disabled;
@@ -748,7 +748,7 @@ test('Play online is disabled or works when clicked right after load, bug #127',
 
 // Issue #194: offline, Play online is disabled with a notice. Back online, it works again without a reload.
 test('Play online is disabled with a notice while offline and works again back online, #194', async ({ page, context }) => {
-  await page.goto('./?bot=off&net=hook&quality=low');
+  await page.goto('./?bot=off&net=hook&quality=low&hub=classic');
   await page.locator('canvas').waitFor();
   const button = page.locator('#play-online');
   await expect(button).toBeEnabled();
@@ -776,14 +776,14 @@ test('the coordinator page closes: the lowest join_seq live peer coordinates on 
   await calm(a, b, c);
   await Promise.all(rest.map((p) => p.clock.install())); // the missing heartbeats are counted on the page clock, moved by hand below
   await room({ a, b, c });
-  await a.goto('./?bot=off&net=hook&beat=1200');
+  await a.goto('./?bot=off&net=hook&beat=1200&hub=classic');
   await a.locator('canvas').waitFor();
   await expect(a.locator('#hud')).not.toBeEmpty();
   await startMode(a, 'online');
   const hash = new URL(await inviteLink(a)).hash;
   // White first, so its join_seq is 2 and the spectator's 3: the pages load together, they open in that order.
   await Promise.all([b, c].map(async (page) => {
-    await page.goto(`./?net=hook&beat=1200${hash}`);
+    await page.goto(`./?net=hook&beat=1200&hub=classic${hash}`);
     await page.locator('canvas').waitFor();
   }));
   await open(a);

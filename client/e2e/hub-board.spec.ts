@@ -6,7 +6,7 @@ import { shot } from './shot';
 // missing and a local streak, and covers no station. The state is loaded through localStorage, as the other Hub specs do.
 
 /** Opens the Hub with `beaten` bosses down on `deck`, and the saved `days` of the daily (day -> record), today being 2027-03-30. */
-async function hubWith(page: Page, beaten: string[], deck: string, days: Record<string, string> = {}, search = './'): Promise<void> {
+async function hubWith(page: Page, beaten: string[], deck: string, days: Record<string, string> = {}, search = './?hub=classic'): Promise<void> {
   await page.addInitScript(
     ([beaten, deck, days]) => {
       const now = Date.parse('2027-03-30T08:00:00Z');
@@ -91,7 +91,7 @@ for (const [name, viewport, touch] of [
     });
 
     test('#1528: the board waits while the coach line teaches the first minutes', async ({ page }) => {
-      await page.goto('./?firstrun');
+      await page.goto('./?firstrun&hub=classic');
       await page.locator('canvas').waitFor();
       await page.locator('#coldopen-skip').click();
       await expect(page.locator('#hub-coach')).toBeVisible();

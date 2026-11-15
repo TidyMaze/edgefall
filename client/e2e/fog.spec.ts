@@ -101,7 +101,7 @@ test('the fog shows smoothly across the bay, not on board cells nor as a brutal 
   // The CI window (playwright.config.ts): each of the three draws costs by its pixels, 44 % fewer than the 1280x720 default,
   // and a loaded machine must not push the test past 15 s (#854). It stays above the 768 px width of the low quality tier.
   await page.setViewportSize({ width: 960, height: 540 });
-  await page.goto('./?bot=off&scene=room&quality=high'); // the room's fog: the terrace has none (#1314)
+  await page.goto('./?bot=off&scene=room&quality=high&hub=classic'); // the room's fog: the terrace has none (#1314)
   await page.locator('canvas').waitFor();
   await expect(page.locator('body')).toHaveAttribute('data-bay', 'ready'); // the room is complete: the bay loads after the page (#661)
   // The evaluation bar's label (#191) is set when the analysis worker answers, which can be after the first shot. Tally's

@@ -86,7 +86,7 @@ const MENU_MODES: [string, (page: Page) => Promise<void>, (page: Page) => Promis
 
 for (const [name, enter, shown] of MENU_MODES) {
   test(`${name} is left by the first slot of the dock, labelled Hub, #1517`, async ({ page }) => {
-    await page.goto('./?bot=off&net=hook');
+    await page.goto('./?bot=off&net=hook&hub=classic');
     await expect(page.locator('#hud')).toContainText('Black to move');
     await expect(firstSlot(page)).toHaveAttribute('id', 'new-game'); // the plain table has no exit
     await enter(page);
@@ -101,7 +101,7 @@ for (const [name, enter, shown] of MENU_MODES) {
 
 test('a table of a Hub door is left by the first slot, and the Hub puts the marble back on the door, #1517', async ({ page }) => {
   await besideTheTable(page);
-  await page.goto('./?bot=off&net=hook');
+  await page.goto('./?bot=off&net=hook&hub=classic');
   await pick(page, '#ship');
   await hubShown(page);
   await expect(firstSlot(page)).toHaveAttribute('id', 'new-game');
@@ -121,7 +121,7 @@ for (const { name, viewport, touch } of sizes) {
 
     for (const [kind, shown] of [['town', 'data-hub'], ['dungeon', 'data-run'], ['tower', 'data-boss']] as const) {
       test(`a ${kind} of the world is left by the first slot, labelled World, and the hero is on the entrance cell, #1517`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7');
+        await page.goto('./?bot=off&openworld=7&hub=classic');
         await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
         await exitIs(page, 'Hub'); // the world's own exit is in the same slot
         const [q, r] = await cellOf(page, kind);
@@ -141,7 +141,7 @@ for (const { name, viewport, touch } of sizes) {
 }
 
 test('a lair fight with a ply played asks for a second press, labelled Sure?, as New game does; Back asks nothing, #1517', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7');
+  await page.goto('./?bot=off&openworld=7&hub=classic');
   await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
   const [q, r] = await cellOf(page, 'tower');
   await page.evaluate(([q, r]) => (window as unknown as Hooks).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] }), [q!, r!]);
@@ -175,7 +175,7 @@ test('a lair fight with a ply played asks for a second press, labelled Sure?, as
 });
 
 test('a wild fight is left by the first slot too: Flee, and the hero is back in the world, #1517', async ({ page }) => {
-  await page.goto('./?openworld=3&nodes=200');
+  await page.goto('./?openworld=3&nodes=200&hub=classic');
   await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
   await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
   const [q, r] = (await page.evaluate(() => (window as unknown as Hooks).__openworldEnemies()))[0]!;
@@ -198,7 +198,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
     for (const [[name, enter], lose] of states) {
       test(`the dock with the exit in ${name}${lose ? ' after a defeat' : ''} fits the window, clipped by nothing, #1517`, async ({ page }) => {
         await besideTheTable(page);
-        await page.goto('./?bot=off&net=hook');
+        await page.goto('./?bot=off&net=hook&hub=classic');
         await enter(page);
         if (lose) await loseByRepetition(page); // the first boss of the list is The Echo: Retry, Goal and the rest join the exit
         await dockFits(page);
@@ -209,7 +209,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
     // The column of a phone held sideways scrolls from six buttons on (thumb-dock.md section 2): the seventh is measured where it fits.
     if (!sideways) test('the dock with the exit holds the seventh button, Auto-play, at the table of the bot, #1517', async ({ page }) => {
       await besideTheTable(page);
-      await page.goto('./?net=hook'); // the bot plays: Auto-play joins
+      await page.goto('./?net=hook&hub=classic'); // the bot plays: Auto-play joins
       await pick(page, '#ship');
       await hubShown(page);
       await page.evaluate(() => (window as any).__click(-2, 0)); // the bot's table
@@ -219,7 +219,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
     });
 
     test('the dock in the world is the exit alone, clear of the stick, the plate and the map button, #1517', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7');
+      await page.goto('./?bot=off&openworld=7&hub=classic');
       await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
       await exitIs(page, 'Hub');
       expect(await page.locator('#dock > button:visible').count()).toBe(1);
@@ -242,7 +242,7 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 960, height: 540 }
 
 for (const [from, start] of [['the plain table', async (_p: Page) => undefined], ['the Hub', async (p: Page) => { await pick(p, '#ship'); await hubShown(p); }]] as const) {
   test(`Escape in the Open world presses the exit and lands in the Hub, opened from ${from}, #1605`, async ({ page }) => {
-    await page.goto('./?bot=off&net=hook');
+    await page.goto('./?bot=off&net=hook&hub=classic');
     await expect(page.locator('#hud')).toContainText('Black to move');
     await start(page);
     await pick(page, '#openworld');

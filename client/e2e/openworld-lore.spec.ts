@@ -14,7 +14,7 @@ const sizes = [
 ];
 
 const open = async (page: Page): Promise<void> => {
-  await page.goto('./?bot=off&openworld=7');
+  await page.goto('./?bot=off&openworld=7&hub=classic');
   await expect(page.locator('body')).toHaveAttribute('data-openworld-at', '0,0');
 };
 const stand = (page: Page, hero: number[]): Promise<void> =>

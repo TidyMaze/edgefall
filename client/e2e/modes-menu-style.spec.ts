@@ -17,7 +17,7 @@ const enterAlien = async (page: Page) => {
 for (const size of SIZES) {
   test(`the Auto-play note stays inside the window and off Retry at ${size.name}, bug #1548`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: size.width, height: size.height });
-    await page.goto('./'); // with the bot: Auto-play is only shown against it
+    await page.goto('./?hub=classic'); // with the bot: Auto-play is only shown against it
     await enterAlien(page);
     const note = page.locator('#auto-reason');
     await expect(note).toContainText('Beat The Alien once to unlock Auto-play');
@@ -36,7 +36,7 @@ for (const size of SIZES) {
 
   test(`every button of the Modes menu has the menu style and a focus ring at ${size.name}, bug #1563`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: size.width, height: size.height });
-    await page.goto('./?bot=off');
+    await page.goto('./?bot=off&hub=classic');
     await openModes(page);
     const styles = await page.locator('#mode-menu button:visible').evaluateAll((buttons) =>
       buttons.map((b) => {
@@ -63,7 +63,7 @@ for (const size of SIZES) {
 test('the Modes menu of a 390x844 phone reaches every mode, hints at the scroll and gives Daily a full row, bug #1565', async ({ page }, testInfo) => {
   for (const width of [360, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto('./?bot=off');
+    await page.goto('./?bot=off&hub=classic');
     await openModes(page);
     const menu = page.locator('#mode-menu');
     const widths = await page.locator('#mode-menu > button:visible').evaluateAll((bs) => bs.map((b) => [b.id, Math.round(b.getBoundingClientRect().width)] as const));

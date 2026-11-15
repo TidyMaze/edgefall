@@ -345,7 +345,7 @@ import { NO_ARMY, NO_RESOURCES, type Army, type Resources } from './openworldres
 import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hullKeeps, leave as leaveBrought, leaveRelic, lose, placeBrought, relicsMask, sell, sellRelic, thrownOff, upgrade as upgradeMarble, wildFoes, withoutKinds, type Stock } from './openworldworkshop';
 import { workshopHtml } from './workshopview';
 import { bossLockLine, labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, type Goal } from './hubview';
-import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, shellFor, shipState } from './hubcutaway';
+import { Cutaway, CUTAWAY_VIEW, cutawayOn, goalRoom, plainSearch, shellFor, shipState } from './hubcutaway';
 import { bayButtons, bayRect, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { goalBay, goalLabel, goalWords, paintGoalText, placeGoal, wayTag } from './hubgoal';
 import { ShipWalk } from './hubship';
@@ -8176,8 +8176,8 @@ else if (duelInvite && boss_ids().includes(duelInvite.boss)) void goOnline(duelI
 else if (coopInvite && boss_ids().includes(coopInvite.boss)) void goOnline(coopInvite.room, 2, coopInvite, creator); // an unknown boss starts nothing
 else if (resumedRun) resumeRun(resumedRun); // a run saved in progress, over the local game; an invite link wins
 else if (!resumed && (!locked || new URLSearchParams(location.search).has('firstrun')) && firstRunDue(store, location.search, navigator.webdriver, location.hash, loadProgress(store).beaten.length > 0)) startFirstRun(); // a fresh profile plays the first run (#1521); a locked one only when ?firstrun asks (the landing below is its first match, #1663)
-else if (!resumed && locked && !location.search && !location.hash) beginFirstMatch(); // a new player lands in the guided first match, no cold open (#1663)
-else if (!resumed && !locked && !location.search && !location.hash) enterHub(loadProgress(store).at); // a new player arrives on the Hub (#602)
+else if (!resumed && locked && plainSearch(location.search) && !location.hash) beginFirstMatch(); // a new player lands in the guided first match, no cold open (#1663)
+else if (!resumed && !locked && plainSearch(location.search) && !location.hash) enterHub(loadProgress(store).at); // a new player arrives on the Hub (#602)
 else analyse(); // the start position
 
 // Browser Back and the Android Back gesture (#1564, backnav.ts, ui.md "Browser Back"): the screens other than the one the page started on

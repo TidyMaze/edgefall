@@ -15,7 +15,7 @@ test('the board opens no relay socket before the consent, and reads the relays a
     sockets.push(ws.url());
     ws.send(JSON.stringify(['EOSE', 'ab-board']));
   });
-  await page.goto('./?bot=off&net=hook');
+  await page.goto('./?bot=off&net=hook&hub=classic');
   await page.getByRole('button', { name: 'Game modes' }).click();
   await page.getByRole('button', { name: 'Leaderboard' }).click();
   const board = page.getByRole('dialog', { name: 'Ranked 1v1' });

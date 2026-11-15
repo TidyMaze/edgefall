@@ -26,7 +26,7 @@ for (const { name, viewport, touch } of sizes) {
 
     for (const [kind, title, back] of [['tower', 'The Echo', 'exit'], ['dungeon', 'Mining cut · Rogue-lite run', 'exit']] as const) {
       test(`a ${kind} shows its transition with its title over the live place and the way back plays the matching one, #1519`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7');
+        await page.goto('./?bot=off&openworld=7&hub=classic');
         const body = page.locator('body');
         await expect(body).toHaveAttribute('data-openworld-at', '0,0');
         const [q, r] = await cellOf(page, kind);
@@ -51,7 +51,7 @@ for (const { name, viewport, touch } of sizes) {
 
       test(`under reduced motion a ${kind} keeps its title and cuts the rest, and the way back is a cut, #1519`, async ({ page }) => {
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        await page.goto('./?bot=off&openworld=7');
+        await page.goto('./?bot=off&openworld=7&hub=classic');
         const body = page.locator('body');
         await expect(body).toHaveAttribute('data-openworld-at', '0,0');
         const [q, r] = await cellOf(page, kind);

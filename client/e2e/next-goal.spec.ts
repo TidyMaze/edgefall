@@ -11,7 +11,7 @@ async function hubWith(page: Page, beaten: string[], deck: string, ran: boolean)
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck, cell: [0, 0], beaten }));
     if (ran) localStorage.setItem('ab-alone.roguelite', '1');
   }, [beaten, deck, ran] as const);
-  await page.goto('./');
+  await page.goto('./?hub=classic');
   await page.locator('canvas').waitFor();
   await expect(page.locator('body')).toHaveAttribute('data-hub', `${deck} 0,0`);
 }

@@ -26,6 +26,17 @@ describe('the Hub Cutaway on the page (#1689)', () => {
     }
   });
 
+  it('is the default page (#1696): no query draws the ship, ?hub=classic keeps the deck', async () => {
+    const on = await boot('?bot=off', { defaultHub: true });
+    ship(on);
+    await on.settle();
+    expect(cutawayFiles(on).length).toBeGreaterThan(0);
+    const off = await boot('?bot=off&hub=classic', { defaultHub: true });
+    ship(off);
+    await off.settle();
+    expect(cutawayFiles(off)).toEqual([]);
+  });
+
   it('asks for the shell of the window with the flag on, one at a time, and draws the ship in the Hub only', async () => {
     const game = await boot('?bot=off&hub=cutaway');
     const sync = vi.spyOn((await cutawayClass()).prototype, 'sync');

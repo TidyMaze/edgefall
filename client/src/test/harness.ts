@@ -28,6 +28,8 @@ export interface BootOptions {
   /** A fake AudioContext (src/test/audio.ts), read back with `game.hook('__audio')`; none by default, as in a browser
    * without Web Audio. */
   audio?: boolean;
+  /** The Cutaway is the default page (#1696). A boot is the old Hub unless the query says `hub=cutaway` or this is true. */
+  defaultHub?: boolean;
   /** The texture files under assets/ that fail to load, as a missing file would, `spaceship-bay.glb` included. The others
    * load, each a texture named after its file. */
   missing?: string[];
@@ -132,6 +134,7 @@ export async function boot(url = '/', options: BootOptions = {}): Promise<Game> 
     vi.doUnmock('three/webgpu');
     vi.doUnmock('edgefall-wasm');
     vi.doUnmock('../p2p');
+    vi.doUnmock('../hubcutaway');
     vi.doUnmock('three/examples/jsm/geometries/RoundedBoxGeometry.js');
     vi.doUnmock('three/examples/jsm/loaders/KTX2Loader.js');
     vi.doUnmock('three/examples/jsm/loaders/GLTFLoader.js');
@@ -346,6 +349,12 @@ export async function boot(url = '/', options: BootOptions = {}): Promise<Game> 
   // The online room: main.ts gets one end of a local pair, the test holds the other.
   let peer: Transport | null = null;
   let room: string | null = null;
+  if (!options.defaultHub) {
+    vi.doMock('../hubcutaway', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('../hubcutaway')>()),
+      cutawayOn: (search: string): boolean => new URLSearchParams(search).get('hub') === 'cutaway',
+    }));
+  } else vi.doUnmock('../hubcutaway');
   vi.doMock('../p2p', async (importOriginal) => {
     const { localPair } = await import('../transport');
     return {
