@@ -445,15 +445,16 @@ shared('a step hops the hero: it rises mid-step and lands on its cell, #1100', a
   const heights: number[] = [];
   await paused(page, async (frame) => {
     await page.keyboard.press('ArrowRight');
-    for (let i = 0; i < 8; i++) {
-      await frame(200);
+    for (let i = 0; i < 4; i++) {
+      await frame(400); // the same 1.6 s as 8 frames of 200 ms, in 4: each draw costs a software-GL frame (5.9 s alone before, #1710)
       const glide = await page.evaluate(() => document.body.dataset.openworldGlide);
       if (glide) heights.push(Number(glide.split(',')[2]));
-      if (i === 3) await shot(page, { path: test.info().outputPath('hop-mid-step.png') });
+      if (i === 1) await shot(page, { path: test.info().outputPath('hop-mid-step.png') });
     }
+    await frame(16); // the frame after the glide's end lands the hero
   });
   expect(await page.evaluate(() => document.body.dataset.openworldGlide)).toBeUndefined(); // landed
-  expect(heights.length).toBeGreaterThan(5);
+  expect(heights.length).toBeGreaterThan(2); // a rise and a fall between the step's start and its end
   expect(Math.max(...heights) - Math.min(...heights)).toBeGreaterThan(0.04); // up to 0.08 cell at mid-step
 });
 
