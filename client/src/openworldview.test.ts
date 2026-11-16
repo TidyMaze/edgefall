@@ -375,7 +375,7 @@ describe('loading the Blender models (client/models/openworld.glb, openworld-hi.
 
   it('reads each biome\'s own tree and boulder from the biomes file, with the low-poly props (#1733)', async () => {
     const biomes = '/assets/pbr/openworld-biomes.glb';
-    const all = { ...files, [biomes]: sceneOf(['ow_tree_forest', 'ow_boulder_desert', 'ow_tree']) }; // a plain name there is not read
+    const all: Record<string, THREE.Group> = { ...files, [biomes]: sceneOf(['ow_tree_forest', 'ow_boulder_desert', 'ow_tree']) }; // a plain name there is not read
     const models = await loadModels({ ...urls, biomes }, { loadAsync: async (url: string) => ({ scene: all[url]! }) });
     expect(models.low.tree_forest).toBeDefined();
     expect(models.low.boulder_desert).toBeDefined();
