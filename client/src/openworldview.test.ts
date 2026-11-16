@@ -1,6 +1,7 @@
 import './test/openworldwasm';
 import { relief, terrace } from './landshape';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { AMBIENT } from './openworldparticles';
 import * as THREE from 'three/webgpu';
 import { axialTo3D, type Axial } from './board';
 import { BIOMES, type Biome, cellAtPoint, CHUNK, chunkOf, neighbours, OFF_WORLD, type Terrain, type Tile, TROOP, World } from './openworld';
@@ -43,7 +44,7 @@ import {
   MARBLE,
   type Played,
   waterColor,
-  WANDER_GLIDE_MS, BIOME_MIX, biomeGround } from './openworldview';
+  WANDER_GLIDE_MS, BIOME_MIX, biomeGround, BIOME_SKY, SKY_MIX } from './openworldview';
 
 // Every chunk of the square -3..3 is the same: the terrain code runs 0 to 7 along the cells, the height 0 to 3.
 function bytes(cx: number, cy: number): Uint8Array {
@@ -84,6 +85,12 @@ const zoomed = (view: OpenWorldView, scale: number): void => {
 const ground = (view: OpenWorldView) => GROUNDS.reduce((sum, g) => sum + mesh(view, `terrain-${g}`).count, 0);
 // `expect(a).not.toBe(b)` deep-compares two scene objects to word its hint (seconds on a mesh): identity is all that is asked.
 const isNot = (a: unknown, b: unknown): void => expect(Object.is(a, b)).toBe(false);
+/** Holds the badlands' own motes for one test (#1736), so a count is the puff's or the shards' alone. */
+const holdMotes = (): void => {
+  const rate = AMBIENT.badlands!.rate;
+  AMBIENT.badlands!.rate = 0;
+  onTestFinished(() => void (AMBIENT.badlands!.rate = rate));
+};
 const mesh = (view: OpenWorldView, name: string) => view.scene.getObjectByName(name) as THREE.InstancedMesh;
 const counts = (view: OpenWorldView, prefix: string, names: readonly string[]) =>
   Object.fromEntries(names.map((n) => [n, mesh(view, `${prefix}-${n}`).count]));
@@ -167,6 +174,23 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     };
     new OpenWorldView(new World(desert));
     for (let q = 0; q < 12; q++) expect(topOf('grass', 3, q, 1) - 0.2 - 3 * STEP - hexLift(q, 1)).toBeCloseTo(terrace(q, 1, 'desert'));
+  });
+
+  it('tints the sky and the fog toward the air of the hero\'s biome, and again when the hero crosses into another (#1736)', () => {
+    const half = (cx: number, cy: number): Uint8Array => {
+      if (Math.abs(cx) > 2 || Math.abs(cy) > 2) return new Uint8Array();
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([3, 2, BIOMES.indexOf(cx < 0 ? 'tundra' : 'desert')], i * 3);
+      return out;
+    };
+    const view = new OpenWorldView(new World(half));
+    view.show([2, 2]);
+    const desert = (view.scene.background as THREE.Color).getHex();
+    view.show([-CHUNK + 2, 2]);
+    const tundra = (view.scene.background as THREE.Color).getHex();
+    expect(tundra).not.toBe(desert);
+    expect((view.scene.fog as THREE.Fog).color.getHex()).toBe(tundra);
+    expect(BIOME_SKY.desert).not.toBe(BIOME_SKY.tundra);
   });
 
   it('lifts a cell by its height, water lies low, and varies props by cell without chance', () => {
@@ -2427,11 +2451,11 @@ describe('the particles of the Open world (#1110)', () => {
     expect(sparks(view).count).toBe(5);
   });
 
-  it('draws none in the badlands, and none under reduced motion', () => {
+  it('draws embers in the badlands (#1736), and none under reduced motion', () => {
     const bad = new OpenWorldView(new World(biomeOf(4)));
     bad.show([0, 0]);
-    expect(run(bad, 3000)).toBe(false);
-    expect(sparks(bad).count).toBe(0);
+    expect(run(bad, 3000)).toBe(true);
+    expect(sparks(bad).count).toBeGreaterThan(0);
     const still = new OpenWorldView(new World(biomeOf(0)));
     still.show([0, 0]);
     expect(run(still, 3000, true)).toBe(false);
@@ -2460,6 +2484,7 @@ describe('the particles of the Open world (#1110)', () => {
   });
 
   it('puffs dust under the hero at a step, and not past ROLL_ZOOM', () => {
+    holdMotes(); // the puff alone: the biome's own motes held for the test
     const view = new OpenWorldView(new World(biomeOf(4)));
     view.resize(1600, 900);
     view.show([0, 0]);
@@ -2601,6 +2626,7 @@ describe('the particles of the Open world (#1110)', () => {
     });
 
     it('throws shards of its colour that fall away, and only a fade under reduced motion', () => {
+      holdMotes(); // the shards alone: the biome's own motes held for the test
       const { world, view } = standing();
       world.smash(1, 0);
       view.smash([1, 0], 'boulder', 100, false);
@@ -2677,8 +2703,11 @@ describe('the refined look of the Open world (#1138)', () => {
 
   it('fogs toward the sky of the time of day (the day\'s at the start, #1496) and edges the walls in the one hazard colour, sodium (#1173)', () => {
     const view = new OpenWorldView(new World(bytes));
-    expect(view.scene.fog!.color.getHex()).toBe(WORLD_LOOKS.day.sky);
+    expect(view.scene.fog!.color.getHex()).toBe(WORLD_LOOKS.day.sky); // no hero shown yet: the hour's own sky (#1736)
     expect((view.scene.background as THREE.Color).getHex()).toBe(WORLD_LOOKS.day.sky);
+    view.show([0, 0]);
+    const tile = new World(bytes).tile(0, 0)!;
+    expect((view.scene.background as THREE.Color).getHex()).toBe(new THREE.Color(WORLD_LOOKS.day.sky).lerp(new THREE.Color(BIOME_SKY[tile.biome]), SKY_MIX).getHex());
     expect(SODIUM).toBe(0xd9822b);
   });
 

@@ -11,6 +11,14 @@ function run(pool: ParticlePool, look: Look | undefined, to: number, from = 0): 
   for (let t = from; t <= to; t += 16) pool.step(t, hero, look);
 }
 
+describe('the air of every biome (#1736)', () => {
+  it('drifts its own motes in each of the six biomes: embers rise in the badlands, spray over the archipelago', () => {
+    expect(Object.keys(AMBIENT).sort()).toEqual(['archipelago', 'badlands', 'desert', 'forest', 'meadow', 'tundra']);
+    expect(AMBIENT.badlands!.rise).toBeGreaterThan(0);
+    expect(new Set(Object.values(AMBIENT).map((a) => a!.colour)).size).toBe(6);
+  });
+});
+
 describe('capFor', () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -176,8 +184,8 @@ describe('ParticlePool', () => {
     expect(pool.pose(0, 2000, pose)).toBe(false);
   });
 
-  it('has a look for every biome that moves and none for the badlands, each within the desktop cap', () => {
-    expect(Object.keys(AMBIENT).sort()).toEqual(['desert', 'forest', 'meadow', 'tundra']);
+  it('has a look for every biome, each within the desktop cap (#1736: the badlands and the archipelago too)', () => {
+    expect(Object.keys(AMBIENT).sort()).toEqual(['archipelago', 'badlands', 'desert', 'forest', 'meadow', 'tundra']);
     for (const look of Object.values(AMBIENT)) expect(look.rate * (look.life / 1000)).toBeLessThanOrEqual(56);
   });
 });

@@ -2,11 +2,12 @@ import './test/openworldwasm';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three/webgpu';
 import { NEON, WORLD_DAY, neonSunPosition, neonWorldOn } from './neonlook';
-import { NEON_BIOME, WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, applyNeonWorld, mapColour, neonProp, neonTraces } from './neonworld';
+import { MOTE_KEEP, NEON_BIOME, WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, applyNeonWorld, mapColour, neonProp, neonTraces } from './neonworld';
 import { AMBIENT } from './openworldparticles';
+const GAME_MOTES = Object.fromEntries(Object.entries(AMBIENT).map(([b, l]) => [b, l!.colour])); // the game's own, before the look
 import { BIOMES, CHUNK, neighbours, World } from './openworld';
 import { terrainColour } from './openworldminimap';
-import { BIOME_LOOK, LAIR_LOOK, LOOK, MARBLE_LOOK, OpenWorldView, PROPS, TELEPORTER_LOOK, WATER, groundColour, waterColor, BIOME_MIX } from './openworldview';
+import { BIOME_LOOK, LAIR_LOOK, LOOK, MARBLE_LOOK, OpenWorldView, PROPS, TELEPORTER_LOOK, WATER, groundColour, waterColor, BIOME_MIX, NEON_SKY_MIX } from './openworldview';
 
 const palette = { LOOK, WATER, BIOME_LOOK, PROPS, MARBLE_LOOK, LAIR_LOOK, TELEPORTER_LOOK, AMBIENT };
 const bytes = (): Uint8Array => {
@@ -51,7 +52,8 @@ describe('the neon palette of the Open world (#1424)', () => {
     expect(PROPS.boulder.color).toBe(WORLD.boulder);
     expect(PROPS.boulder.rim).toBe(NEON.rimLight); // a dark shell with a slate rim, cyan is the marbles' (#1557)
     expect(PROPS.tree.geometry).toBe(geometry); // only colours are touched
-    expect(Object.values(AMBIENT).every((a) => a!.colour === 0x2b3648)).toBe(true);
+    // calm motes, each keeping 40 % of its biome's own colour so a biome still reads by its air (#1736)
+    for (const [biome, look] of Object.entries(AMBIENT)) expect(look!.colour, biome).toBe(new THREE.Color(0x2b3648).lerp(new THREE.Color(GAME_MOTES[biome]!), MOTE_KEEP).getHex());
     applyNeonWorld(false, palette);
     expect(neonWorldOn()).toBe(false);
     expect([LOOK.grass.color, LOOK.sand.color, PROPS.mountain.color]).toEqual([grass, sand, mountain]);
@@ -119,8 +121,11 @@ describe('the Open world view with the look (#1424)', () => {
     applyNeonWorld(true, palette);
     const view = new OpenWorldView(new World(bytes));
     view.show([0, 0]);
-    expect((view.scene.background as THREE.Color).getHex()).toBe(NEON.sky);
-    expect((view.scene.fog as THREE.Fog).color.getHex()).toBe(NEON.sky);
+    const biome = (view as unknown as { world: World }).world.tile(0, 0)!.biome;
+    const sky = new THREE.Color(NEON.sky).lerp(new THREE.Color(BIOME_LOOK[biome].ground), NEON_SKY_MIX).getHex(); // the biome's dark ground in a near-black sky (#1736)
+    expect((view.scene.background as THREE.Color).getHex()).toBe(sky);
+    expect((view.scene.fog as THREE.Fog).color.getHex()).toBe(sky);
+    expect(new THREE.Color(sky).getHSL({ h: 0, s: 0, l: 0 }).l).toBeLessThan(0.12); // still near black
     const stars = view.scene.getObjectByName('starfield')!;
     expect(stars.position.toArray()).toEqual(view.camera.position.toArray());
     expect(stars.position.length()).toBeGreaterThan(0);

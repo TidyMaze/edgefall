@@ -8,6 +8,9 @@ import { ROLL_ZOOM } from './openworldglide';
 import { FOAM_GAIN } from './openworldmotion';
 import { BIOME_DETAIL, SURFACE_DETAIL } from './openworldedge';
 import { MAX_ZOOM, OpenWorldView, type Played } from './openworldview';
+import { holdMotes } from './test/holdmotes';
+
+holdMotes(); // the motes of each biome drift since #1736: held, these tests see the water's and the trees' motion alone
 
 // The water and the trees move (#1101, #1102, docs/specs/openworld-animation.md sections 3 and 4).
 // Zooms by `scale` and lands the drawn zoom on it at once, as reduced motion does: the follow is tested on its own (#1333).

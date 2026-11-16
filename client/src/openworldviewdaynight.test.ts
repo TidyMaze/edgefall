@@ -4,7 +4,7 @@ import * as THREE from 'three/webgpu';
 import { CHUNK, World } from './openworld';
 import { BLEND_MS, WORLD_LOOKS } from './daynight';
 import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, setNeonWorldOn } from './neonlook';
-import { CAIRN_LOOK, OpenWorldView } from './openworldview';
+import { BIOME_LOOK, BIOME_SKY, CAIRN_LOOK, NEON_SKY_MIX, OpenWorldView, SKY_MIX } from './openworldview';
 import { GLOW_SHARE, stripedMaterial, stripeFadeNode } from './openworldstripe';
 import { sunPosition } from './tablezero';
 
@@ -16,6 +16,10 @@ function flat(cx: number, cy: number): Uint8Array {
   for (let i = 0; i < CHUNK * CHUNK; i++) out.set([i % 4, i % 8, 0], i * 3);
   return out;
 }
+/** The sky as the view draws it over the fixture's meadow (biome 0): the hour's sky leaning toward the meadow's air (#1736). */
+const air = (sky: number): number => new THREE.Color(sky).lerp(new THREE.Color(BIOME_SKY.meadow), SKY_MIX).getHex();
+/** The same under the look: the meadow's own dark ground, a smaller share, the sky near black. */
+const airNeon = (sky: number): number => new THREE.Color(sky).lerp(new THREE.Color(BIOME_LOOK.meadow.ground), NEON_SKY_MIX).getHex();
 const made = (): OpenWorldView => {
   const view = new OpenWorldView(new World(flat));
   view.show([0, 0]);
@@ -38,8 +42,8 @@ describe('the sky of the Open world view', () => {
     const view = made();
     const { sun, hemisphere } = lights(view);
     const day = WORLD_LOOKS.day;
-    expect((view.scene.background as THREE.Color).getHex()).toBe(day.sky);
-    expect(view.scene.fog!.color.getHex()).toBe(day.sky);
+    expect((view.scene.background as THREE.Color).getHex()).toBe(air(day.sky));
+    expect(view.scene.fog!.color.getHex()).toBe(air(day.sky));
     expect([sun.color.getHex(), sun.intensity]).toEqual([day.sun, day.sunIntensity]);
     expect([hemisphere.color.getHex(), hemisphere.groundColor.getHex(), hemisphere.intensity]).toEqual([day.hemiSky, day.hemiGround, day.hemiIntensity]);
     expect(sun.position.clone().sub(view.focusPoint).toArray().map((v) => +v.toFixed(3))).toEqual(sunPosition(30, day.elevation, day.azimuth).map((v) => +v.toFixed(3)));
@@ -50,8 +54,8 @@ describe('the sky of the Open world view', () => {
     const { sun, hemisphere } = lights(view);
     expect(view.setTime(9 * MIN, true)).toBe(true);
     const night = WORLD_LOOKS.night;
-    expect((view.scene.background as THREE.Color).getHex()).toBe(night.sky);
-    expect(view.scene.fog!.color.getHex()).toBe(night.sky);
+    expect((view.scene.background as THREE.Color).getHex()).toBe(air(night.sky));
+    expect(view.scene.fog!.color.getHex()).toBe(air(night.sky));
     expect([sun.color.getHex(), sun.intensity]).toEqual([night.sun, night.sunIntensity]);
     expect([hemisphere.color.getHex(), hemisphere.groundColor.getHex(), hemisphere.intensity]).toEqual([night.hemiSky, night.hemiGround, night.hemiIntensity]);
     const water = view.scene.getObjectByName('terrain-water') as THREE.InstancedMesh;
@@ -74,10 +78,10 @@ describe('the sky of the Open world view', () => {
     const view = made();
     view.setTime(6 * MIN - BLEND_MS / 2, true);
     const mid = (view.scene.background as THREE.Color).getHex();
-    expect(mid).not.toBe(WORLD_LOOKS.day.sky);
-    expect(mid).not.toBe(WORLD_LOOKS.dusk.sky);
+    expect(mid).not.toBe(air(WORLD_LOOKS.day.sky));
+    expect(mid).not.toBe(air(WORLD_LOOKS.dusk.sky));
     view.setTime(6 * MIN - BLEND_MS / 2, false);
-    expect((view.scene.background as THREE.Color).getHex()).toBe(WORLD_LOOKS.day.sky);
+    expect((view.scene.background as THREE.Color).getHex()).toBe(air(WORLD_LOOKS.day.sky));
   });
 
   it('keeps the hero, the troop, the teleporters and the lairs lit at night: the glow follows the look', () => {
@@ -112,8 +116,8 @@ describe('the sky of the Open world under the neon look (#1536)', () => {
     const view = made();
     const { sun, hemisphere } = lights(view);
     const day = NEON_WORLD_LOOKS.day;
-    expect((view.scene.background as THREE.Color).getHex()).toBe(NEON.sky);
-    expect(view.scene.fog!.color.getHex()).toBe(NEON.sky);
+    expect((view.scene.background as THREE.Color).getHex()).toBe(airNeon(NEON.sky));
+    expect(view.scene.fog!.color.getHex()).toBe(airNeon(NEON.sky));
     expect([sun.color.getHex(), sun.intensity]).toEqual([day.sun, day.sunIntensity]);
     expect([hemisphere.color.getHex(), hemisphere.groundColor.getHex(), hemisphere.intensity]).toEqual([day.hemiSky, day.hemiGround, day.hemiIntensity]);
   });
@@ -124,8 +128,8 @@ describe('the sky of the Open world under the neon look (#1536)', () => {
     const { sun, hemisphere } = lights(view);
     expect(view.setTime(6 * MIN, true)).toBe(true);
     const dusk = NEON_WORLD_LOOKS.dusk;
-    expect((view.scene.background as THREE.Color).getHex()).toBe(dusk.sky);
-    expect(view.scene.fog!.color.getHex()).toBe(dusk.sky);
+    expect((view.scene.background as THREE.Color).getHex()).toBe(airNeon(dusk.sky));
+    expect(view.scene.fog!.color.getHex()).toBe(airNeon(dusk.sky));
     expect([sun.color.getHex(), sun.intensity]).toEqual([dusk.sun, dusk.sunIntensity]);
     expect(hemisphere.color.getHex()).toBe(dusk.hemiSky);
     expect(view.shine.value).toBe(dusk.glow);
@@ -137,7 +141,7 @@ describe('the sky of the Open world under the neon look (#1536)', () => {
     const motes = (view.scene.getObjectByName('particles') as THREE.Mesh).material as THREE.MeshBasicMaterial;
     expect(motes.opacity).toBeCloseTo(0.4); // half at night: no snow on the dark ground
     view.sparkle(1000, false);
-    expect((view.scene.background as THREE.Color).getHex()).toBe(night.sky);
+    expect((view.scene.background as THREE.Color).getHex()).toBe(airNeon(night.sky));
     expect([sun.color.getHex(), sun.intensity]).toEqual([night.sun, night.sunIntensity]);
     expect([hemisphere.color.getHex(), hemisphere.groundColor.getHex(), hemisphere.intensity]).toEqual([night.hemiSky, night.hemiGround, night.hemiIntensity]);
     expect(view.shine.value).toBe(1);

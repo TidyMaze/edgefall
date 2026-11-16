@@ -20,6 +20,8 @@ export const NEON_BIOME: Record<Biome, { ground: number; prop: number }> = {
 };
 /** The ambient motes of the Open world: a very dim cool grey-blue (half the brightness of the first slate). */
 const MOTE = 0x2b3648;
+/** The share of a biome's own mote colour the look keeps (#1736): calm, yet each biome reads by its air. */
+export const MOTE_KEEP = 0.4;
 /** The dark seam between the ground cells with the look: the band along an edge keeps 30 % of the colour (the game's own is 78 %). */
 export const WORLD_EDGE_GAIN = -0.7;
 
@@ -110,7 +112,7 @@ function neonPalette(base: WorldPalette): WorldPalette {
   Object.assign(out.MARBLE_LOOK.foes!, { base: NEON.blackMarble });
   Object.assign(out.LAIR_LOOK, { open: NEON.violet, beaten: NEON.cyan });
   Object.assign(out.TELEPORTER_LOOK, { colour: NEON.crystal }); // a pad is quieter than a marble
-  for (const look of Object.values(out.AMBIENT)) look!.colour = MOTE; // calm motes: a cool slate, never a bright colour on the map
+  for (const look of Object.values(out.AMBIENT)) look!.colour = new THREE.Color(MOTE).lerp(new THREE.Color(look!.colour), MOTE_KEEP).getHex(); // calm motes: a cool slate with a share of the biome's own (#1736)
   return out;
 }
 

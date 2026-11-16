@@ -238,6 +238,10 @@ export const LOOK: Record<Ground, { color: number; emissive: number }> = {
 };
 /** The lake colours: the shore, lighter and greener, and the deep middle of a lake. */
 export const WATER = { shore: 0x5392a5, deep: 0x2a516e };
+/** The air of each biome (#1736): the sky and the fog lean `SKY_MIX` toward it while the hero is in it, at every hour. */
+export const BIOME_SKY: Readonly<Record<Biome, number>> = { meadow: 0xbfe3a0, forest: 0x5f9a6a, tundra: 0xe2f0ff, desert: 0xf0c890, badlands: 0xd0704f, archipelago: 0x7fd0f0 };
+export const SKY_MIX = 0.14;
+export const NEON_SKY_MIX = 0.1;
 /** The looks of the biomes (openworld-terrain.md section 4): the ground of the low grass (heights 3 and 4), and the tint of the
  * trees and the boulders, multiplied into their colour per instance. The meadow keeps the grass of `LOOK`; the rest is neutral
  * white. Shore, uplands, peaks and water keep their colours in every biome. */
@@ -714,6 +718,7 @@ export class OpenWorldView {
   /** The neon look's 2 accent lights (neonfx.ts), kept near the hero. */
   private readonly accents = this.neon ? accentLights('openworld') : [];
   private levels = { lights: 1, lamps: 1 }; // the Settings sliders (#1727)
+  private skyBiome: Biome | null = null; // the biome whose air tints the sky (#1736): none until the hero stands in one
   private skyGlow: THREE.Object3D | null = null;
   /** The look of the sky at the time of day (#1496), written by `setTime`; the shine of the things that matter at night, a uniform the marbles' and the lairs' materials read. */
   private readonly sky = new Sky(this.neon ? NEON_WORLD_LOOKS : WORLD_LOOKS); // the neon look has its own day, dusk and night (#1536)
@@ -1201,6 +1206,11 @@ export class OpenWorldView {
    * the hero and the camera follow every step. */
   show(at: Axial, troop: readonly Axial[] = [], glide?: { now: number; span: number; pace?: Pace }): void {
     this.heroCell = [at[0], at[1]];
+    const biome = this.world.tile(at[0], at[1])?.biome;
+    if (biome && biome !== this.skyBiome) {
+      this.skyBiome = biome; // the sky leans toward the new biome's air (#1736)
+      this.applyLook();
+    }
     if (glide && this.placed) this.glideTo(at, troop, glide);
     else this.snapTo(at, troop);
     this.frame();
@@ -1627,8 +1637,11 @@ export class OpenWorldView {
 
   private applyLook(): void {
     const { look } = this.sky;
-    (this.scene.background as THREE.Color).setHex(look.sky);
-    this.fog.color.setHex(look.sky);
+    const air = new THREE.Color(look.sky);
+    // the air of the hero's biome (#1736); under the look, its own dark ground, so the black sky stays near black
+    if (this.skyBiome) air.lerp(new THREE.Color(this.neon ? BIOME_LOOK[this.skyBiome].ground : BIOME_SKY[this.skyBiome]), this.neon ? NEON_SKY_MIX : SKY_MIX);
+    (this.scene.background as THREE.Color).copy(air);
+    this.fog.color.copy(air);
     this.sun.color.setHex(look.sun);
     this.sun.intensity = look.sunIntensity * this.levels.lights;
     sunDirection(this.sunDirection, look.elevation, look.azimuth);

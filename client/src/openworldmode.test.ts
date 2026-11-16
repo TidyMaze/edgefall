@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AMBIENT } from './openworldparticles';
 import './test/openworldwasm';
 import * as THREE from 'three/webgpu';
 import type { Axial } from './board';
@@ -20,6 +21,14 @@ stopLeftIntervalsAfterEach();
 
 // Grass at height 1 everywhere in the square -3..3 of chunks, a boulder on (0, 1). The badlands have no particles (#1110), so a frame
 // with motion on is idle when nothing moves; `meadow` is the same world with pollen.
+// The fixture world is the badlands (biome 4), whose embers drift since #1736: held here, so a test of when the mode draws sees only what it moves.
+let embers = 0;
+beforeAll(() => {
+  embers = AMBIENT.badlands!.rate;
+  AMBIENT.badlands!.rate = 0;
+});
+afterAll(() => void (AMBIENT.badlands!.rate = embers));
+
 function bytes(cx: number, cy: number, biome = 4): Uint8Array {
   if (Math.abs(cx) > 3 || Math.abs(cy) > 3) return new Uint8Array();
   const out = new Uint8Array(CHUNK * CHUNK * 3);

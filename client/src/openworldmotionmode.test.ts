@@ -7,6 +7,9 @@ import { worldSaves } from './openworldsave';
 import { memoryStore } from './savegame';
 import { OpenWorldView } from './openworldview';
 import { stopLeftIntervalsAfterEach } from './test/intervals';
+import { holdMotes } from './test/holdmotes';
+
+holdMotes(); // the motes of each biome drift since #1736: held, these tests see the water's and the trees' motion alone
 stopLeftIntervalsAfterEach();
 
 // The mode drives the water and tree motion (#1101, #1102): the loops draw every frame while their element is in view and motion is on,

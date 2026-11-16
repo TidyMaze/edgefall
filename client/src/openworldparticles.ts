@@ -30,6 +30,8 @@ export const AMBIENT: Partial<Record<Biome, Look>> = {
   forest: { rate: 8, life: 6000, lift: 2.2, spread: 0.8, rise: -0.35, sway: 0.5, size: 0.15, colour: 0xe08a2e },
   tundra: { rate: 11, life: 5000, lift: 2.4, spread: 1.0, rise: -0.45, sway: 0.25, size: 0.17, colour: 0xffffff },
   desert: { rate: 14, life: 3000, lift: 0.1, spread: 0.8, rise: 0.15, sway: 0.4, size: 0.14, colour: 0xf0c888 },
+  badlands: { rate: 9, life: 3500, lift: 0.1, spread: 1.0, rise: 0.4, sway: 0.3, size: 0.1, colour: 0xff7a4a }, // embers rising off the hot rock (#1736)
+  archipelago: { rate: 10, life: 2500, lift: 0.05, spread: 1.2, rise: 0.3, sway: 0.6, size: 0.12, colour: 0xd8f4ff }, // sea spray (#1736)
 };
 
 /** The dust puff of a step: `count` grains thrown outward from the cell the hero leaves, gone within `life` ms. */
