@@ -345,6 +345,8 @@ import { createKitGlyph, type GlyphOptions } from './hubart';
 import { HubController } from './controller';
 import { noticeBoard } from './hubboard';
 import { NO_ARMY, NO_RESOURCES, type Army, type Resources } from './openworldresources';
+import { wildPlan } from './openworldwild';
+import type { Biome } from './openworld';
 import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hullKeeps, leave as leaveBrought, leaveRelic, lose, placeBrought, relicsMask, sell, sellRelic, thrownOff, upgrade as upgradeMarble, wildFoes, withoutKinds, type Stock } from './openworldworkshop';
 import { workshopHtml } from './workshopview';
 import { labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, type Goal } from './hubview';
@@ -509,7 +511,7 @@ const closeGoal = (): void => {
 let locked = false; // the first-win lock (#1665, unlock.ts): on for a new player until the first win against the bot
 let fight: { id: string; seed: number; daily?: { day: string; attempt: number }; mirror?: boolean } | null = null; // mirror: the player's trait brought in (#1620)
 let hub: HubController | null = null;
-let wildFrom: { seed: number; home: Axial; phase: Phase; placed: number[][]; relics: number[] } | null = null; // the Open world marble that started the wild fight (#1511): the world, the cell it starts on, and the phase it was met in, and the special marbles of the army placed on its side (#1655)
+let wildFrom: { seed: number; home: Axial; phase: Phase; placed: number[][]; relics: number[]; biome: Biome; foes?: number | number[] } | null = null; // `foes` set as the fight starts (#1738) // the Open world marble that started the wild fight (#1511): the world, the cell it starts on, and the phase it was met in, and the special marbles of the army placed on its side (#1655)
 const PULSAR_DOCK = 1.2; // the near pylons are fitted 20 % further out on the terrace, so the dock does not cover them (#1374)
 const activeRadius =(): number => (fight?.id === 'ballast' ? 5 : 4);
 // The view a fight opens on: the whole board of its radius (#573), drawn back in a Pulsar fight until every pulsar and
@@ -558,7 +560,7 @@ let armed = 0;
 // Whether the Swap tactic is picking the army's two marbles (#1460): the first one is the selection.
 let swapping = false;
 // Whether the fight on carries the army's build (#1494): a run's army fight, or an act boss that takes it (special marbles, relics, tactics).
-const built = (): boolean => (run !== null && (engine instanceof Engine || engine.takes_build())) || ((wildFrom ?? lairFrom)?.placed.length ?? 0) > 0; // the army's marbles are on the board: a run's fight, or a wild or lair fight of the world that brought some (#1655)
+const built = (): boolean => (run !== null && (engine instanceof Engine || engine.takes_build())) || ((wildFrom ?? lairFrom)?.placed.length ?? 0) > 0 || typeof wildFrom?.foes === 'object'; // special marbles on the board: a run's fight, a wild or lair fight of the world that brought some (#1655), or a wild fight's biome foes (#1738)
 // Its rounds when it is an online one (#504), and the interval that lets their deadlines pass.
 let royaleNet: RoyaleNet<Royale> | null = null;
 let ticking = 0;
@@ -3235,7 +3237,7 @@ async function botTurn(): Promise<void> {
   const game = liveGame();
   const started = performance.now();
   const world = wildFrom ?? lairFrom; // a fight the Open world started that brought special marbles or relics: the bot searches the board the page plays (#1655)
-  const build = world && fightArmed(world) ? world : null;
+  const build = world && (fightArmed(world) || typeof wildFrom?.foes === 'object') ? world : null; // an army, relics, or a biome's own foes (#1738)
   const normal = wildFrom ? Math.min(WILD_NODES, budget) : gameNodes(); // an elite searches more (#800); a wild marble a modest fixed search (#1511)
   const searchBudget = trainer ? trainerBudget(trainer.wave, normal) : normal; // past a full army, the bot searches more (#1159)
   const diffPercent = (run && actBoss(run.map, run.state, boss_ids())?.percent) || DIFFICULTY_PERCENT[difficulty]; // an act boss at its act's strength
@@ -3243,7 +3245,7 @@ async function botTurn(): Promise<void> {
   try {
     // An auto-played move comes no sooner than AUTO_DELAY_MS after the last, so the game can be followed and stopped.
     [move] = await Promise.all([
-      bots && firstRun === 'match' ? firstBotMove(engine.legal_moves(), history.length) : askBot(mover, history, searchBudget, fight ?? undefined, diffPercent, auto, wildFrom && build ? FULL_ARMY : run?.state.army, build ? build.placed : run?.state.placed, wildFrom && build ? wildFoes(build.relics) : run ? foesFor(run.map, run.state) : undefined, trainer ? { wave: trainer.wave, left: MARBLES - trainer.lost } : undefined, build ? relicsMask(build.relics) : run ? relicMask(run.state) : undefined),
+      bots && firstRun === 'match' ? firstBotMove(engine.legal_moves(), history.length) : askBot(mover, history, searchBudget, fight ?? undefined, diffPercent, auto, wildFrom && build ? FULL_ARMY : run?.state.army, build ? build.placed : run?.state.placed, wildFrom && build ? wildFrom.foes! : run ? foesFor(run.map, run.state) : undefined, trainer ? { wave: trainer.wave, left: MARBLES - trainer.lost } : undefined, build ? relicsMask(build.relics) : run ? relicMask(run.state) : undefined),
       auto ? new Promise((done) => setTimeout(done, AUTO_DELAY_MS)) : undefined,
     ]);
   } catch {
@@ -6142,8 +6144,15 @@ function startWild(from: NonNullable<typeof wildFrom>): void {
   syncBoardLook();
   worker = botWorker;
   stopAnalysis();
-  applyDeck(deckOf('local'));
-  engine = fightArmed(from) ? engineFor(Engine, FULL_ARMY, from.placed, wildFoes(from.relics), undefined, relicsMask(from.relics)) : new Engine(); // the army's special marbles on its side and its relics set: the rogue-lite flag, as the bot's search has it (#1655)
+  const { biome } = from;
+  applyDeck(deckOf('local'), null, biome === 'meadow' ? null : biome); // the arena in its biome's light (#1738)
+  document.body.dataset.wildBiome = biome; // read by the e2e tests
+  // the biome's own foes: its hazard and two of its special marbles (#1738), on the cells the bot's army stands on
+  const count = wildFoes(from.relics);
+  const board = biome === 'meadow' ? null : Engine.with_army(FULL_ARMY, count).board(); // the cells the bot's army stands on
+  const foes = wildPlan(biome, count, board ? BOARD_CELLS.filter((_, i) => board[i] === 2) : []); // the bridge's order of the cells
+  from.foes = foes; // the bot searches the same board (askBot)
+  engine = fightArmed(from) || typeof foes !== 'number' ? engineFor(Engine, FULL_ARMY, from.placed, foes, undefined, relicsMask(from.relics)) : new Engine(); // the army's special marbles on its side and its relics set: the rogue-lite flag, as the bot's search has it (#1655)
   history.length = 0;
   undone = false; // a fresh game (#1672)
   replaying = null;
@@ -7485,7 +7494,8 @@ const openWorld = new OpenWorldHandle(async () =>
     lairCells,
     onWild: (seed, home, phase, brought, relics) => {
       loadBoard(); // as the wipe closes, half a second before the fight starts (#1520)
-      wipe(document.getElementById('wild-wipe')!, reducedMotion(), () => startWild({ seed, home, phase, placed: placeBrought(new Engine().board(), brought), relics }));
+      const biome = openWorld.biome!; // the hero stands by the marble: its biome's foes (#1738)
+      wipe(document.getElementById('wild-wipe')!, reducedMotion(), () => startWild({ seed, home, phase, placed: placeBrought(new Engine().board(), brought), relics, biome }));
     },
     cue: (event) => playCue(event),
     wanderTick: () => wanderTick,

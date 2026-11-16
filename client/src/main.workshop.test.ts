@@ -14,7 +14,7 @@ const settle = async (): Promise<void> => {
   for (let i = 0; i < 10; i++) await new Promise((done) => setTimeout(done));
 };
 type Stock = { resources?: { wood: number; ore: number; parts: number; shards: number }; army?: { specials: number[]; brought: number[]; relics: number[]; relicsBrought: number[] } };
-type Hooks = { __openworldFixture: (f: { hero: Axial; troop: Axial[]; enemies?: Axial[] } & Stock) => void };
+type Hooks = { __openworldFixture: (f: { hero: Axial; troop: Axial[]; enemies?: Axial[] } & Stock) => void; __openworldEnemies: () => Axial[] };
 const hooks = () => window as unknown as Hooks;
 const rich = { wood: 20, ore: 20, parts: 40, shards: 0 };
 const army = (specials: number[], brought: number[]) => ({ specials, brought, relics: [], relicsBrought: [] });
@@ -238,6 +238,36 @@ const beside: Axial = [home[0] + 1, home[1]];
 const specials = (): number[] => (data().specials ?? '').split(' ').filter(Boolean).map((s) => Number(s.split(',')[2])).sort((a, b) => a - b);
 
 afterEach(() => vi.useRealTimers());
+
+describe('a wild fight in a biome (#1738)', () => {
+  it('stands the biome on the board and gives the bot two of its special marbles, and the bot searches the same board', async () => {
+    const game = await boot('?openworld=3&nodes=40');
+    const { Engine } = await import('edgefall-wasm');
+    const withFoes = vi.spyOn(Engine, 'with_foes');
+    byId('openworld').click();
+    await settle();
+    hooks().__openworldFixture({ hero: [-30, 30], troop: [] }); // the badlands of seed 3 (south-west)
+    const [q, r] = hooks().__openworldEnemies().find(([eq, er]) => eq < -25 && er > 25)!;
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    hooks().__openworldFixture({ hero: [q! + 1, r!], troop: [] });
+    document.getElementById('openworld-ask-fight')!.click();
+    vi.advanceTimersByTime(1000);
+    vi.useRealTimers();
+    expect(data().wildBiome).toBe('badlands');
+    expect(data().space).toBe('badlands'); // the arena in the badlands' light
+    expect(specials()).toEqual([1, 1]); // two Heavies on the bot's side
+    const plan = Array.from(withFoes.mock.calls[0]![1] as Int32Array);
+    expect(plan.slice(0, 3)).toEqual([14, 0, 4]); // 14 marbles, the standard formation, the badlands' holes
+    game.click(0, 2);
+    game.click(0, 1);
+    await game.settle();
+    game.frame(1000); // the bot's move waits for the slide of the human's
+    for (let i = 0; i < 20 && game.hook<number>('__plies') < 2; i++) await game.settle();
+    expect(game.hook<number>('__plies')).toBe(2); // the bot answered
+    expect(withFoes.mock.calls.length).toBeGreaterThanOrEqual(2); // on an engine of the same plan, in its worker
+    expect(Array.from(withFoes.mock.calls.at(-1)![1] as Int32Array)).toEqual(plan);
+  });
+});
 
 describe('the special marbles in a wild fight (#1655)', () => {
   /** A world with the stock loaded and the hero put next to a marble: the wipe closes, the arena opens. */
