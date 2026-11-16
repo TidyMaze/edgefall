@@ -140,6 +140,11 @@ water on seeds 1 to 4.
 
 **Memory**: unchanged, the tint is the instance colour every ground and prop already carries (#984).
 
+- **Light rules (#1739)**: the forest's fog closes in to `FOREST_SIGHT` (60 %) of its reach; the desert's mirage hides a marble past
+  `MIRAGE` (8) cells of the hero until it comes near; the tundra's ice slides the hero one cell more the same way once a step has landed,
+  when that cell is free and nothing was broken or pushed, the slide itself not sliding again (`biomerules.ts`, `slideOnIce`). Not done: a
+  pushed marble sliding on the ice (follow-up).
+
 ## 5. Relief (#988)
 
 Client only, after #983 (it needs the eight heights).
