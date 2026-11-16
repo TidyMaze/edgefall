@@ -8,6 +8,7 @@ import { OpenWorldMode } from './openworldmode';
 import { worldSaves } from './openworldsave';
 import { memoryStore } from './savegame';
 import { stopLeftIntervalsAfterEach } from './test/intervals';
+import { BIOME_SKY, SKY_MIX } from './openworldview';
 stopLeftIntervalsAfterEach();
 
 // The time of day of the Open world (docs/specs/openworld.md section 11, #1496): counted while the world is open, saved with it.
@@ -21,6 +22,8 @@ const grass = (_seed: number, cx: number, cy: number): Uint8Array => {
 const body = () => document.body.dataset;
 const made = (reduced = true, saves = worldSaves(memoryStore(), 1)) => new OpenWorldMode(grass, () => new Int32Array(), async () => ({ low: {}, high: {} }), () => reduced, saves);
 const background = (m: OpenWorldMode): number => ((m.scene as THREE.Scene).background as THREE.Color).getHex();
+/** The hour's sky leaning toward the air of the hero's biome, as the view draws it (#1736). */
+const air = (m: OpenWorldMode, sky: number): number => new THREE.Color(sky).lerp(new THREE.Color(BIOME_SKY[m.biome!]), SKY_MIX).getHex();
 
 afterEach(() => {
   for (const key of Object.keys(body())) delete body()[key];
@@ -33,7 +36,7 @@ describe('the time of day in the Open world mode', () => {
     expect(m.timeOfDay).toBe(0);
     expect(m.phase).toBe('day');
     expect(body().openworldPhase).toBe('day');
-    expect(background(m)).toBe(WORLD_LOOKS.day.sky);
+    expect(background(m)).toBe(air(m, WORLD_LOOKS.day.sky));
   });
 
   it('counts the time of the frames, and marks the phase and draws again when it changes', () => {
@@ -50,7 +53,7 @@ describe('the time of day in the Open world mode', () => {
     m.frame(render, 1300);
     expect(m.phase).toBe('dusk');
     expect(body().openworldPhase).toBe('dusk');
-    expect(background(m)).toBe(WORLD_LOOKS.dusk.sky);
+    expect(background(m)).toBe(air(m, WORLD_LOOKS.dusk.sky));
     expect(render.mock.calls.length).toBeGreaterThan(1);
   });
 
@@ -79,7 +82,7 @@ describe('the time of day in the Open world mode', () => {
     m.frame(render);
     m.setTime(9 * MIN);
     expect(body().openworldPhase).toBe('night');
-    expect(background(m)).toBe(WORLD_LOOKS.night.sky);
+    expect(background(m)).toBe(air(m, WORLD_LOOKS.night.sky));
     m.frame(render);
     expect(render).toHaveBeenCalledTimes(2);
   });
@@ -88,11 +91,11 @@ describe('the time of day in the Open world mode', () => {
     const blended = made(false);
     blended.enter(7, 800, 600);
     blended.setTime(6 * MIN - BLEND_MS / 2);
-    expect(background(blended)).not.toBe(WORLD_LOOKS.day.sky);
+    expect(background(blended)).not.toBe(air(blended, WORLD_LOOKS.day.sky));
     const still = made(true);
     still.enter(7, 800, 600);
     still.setTime(6 * MIN - BLEND_MS / 2);
-    expect(background(still)).toBe(WORLD_LOOKS.day.sky);
+    expect(background(still)).toBe(air(still, WORLD_LOOKS.day.sky));
   });
 
   it('counts nothing while the world is left, and takes the mark off the page', () => {
