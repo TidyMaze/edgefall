@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { lowTierOnCi } from './modes';
 import { shot } from './shot';
+import { test as shared } from './shared-world';
 
 lowTierOnCi();
 
@@ -29,8 +30,8 @@ for (const { name, viewport, touch } of sizes) {
   test.describe(name, () => {
     test.use({ viewport, isMobile: touch, hasTouch: touch });
 
-    test('rolling onto a log opens its panel, the next move closes it, the log stays found after a reload and reads again from the archive, #1589', async ({ page }) => {
-      await open(page);
+    // on the shared Open world page of its size (#1710): that the save keeps the log found is the save's unit test (openworldsave.test.ts, #1589)
+    shared('rolling onto a log opens its panel, the next move closes it, the log is saved and reads again from the archive, #1589', async ({ world: page }) => {
       const logs = await page.evaluate(() => (window as unknown as Hooks).__openworldLogs(7));
       expect(logs).toHaveLength(24); // twelve logs
       const [q, r] = await logAt(page, 0);
@@ -65,15 +66,15 @@ for (const { name, viewport, touch } of sizes) {
       await expect(page.locator('body')).toHaveAttribute('data-openworld-at', `${q + 1},${r}`);
       await expect(panel).toBeHidden();
       await expect(page.locator('body')).not.toHaveAttribute('data-openworld-log', /.+/);
-      // Found for good: the save keeps it.
+      // Found for good: the world is saved with it.
       await expect(page.locator('body')).toHaveAttribute('data-openworld-saved', /.+/);
-      await page.reload();
       await expect(page.locator('body')).toHaveAttribute('data-openworld-logs-found', '0');
       // And it is in the log archive of the settings menu.
-      await page.keyboard.press('Escape'); // back to the page's own menu: the world is left
       await page.locator('#settings').click();
       await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
       await expect(page.locator('.setting-archive')).toContainText('Stake: the clearing');
+      await page.locator('#settings').click(); // the menu shuts: the next test finds the world
+      await expect(page.locator('#settings-menu')).toBeHidden();
     });
   });
 }
