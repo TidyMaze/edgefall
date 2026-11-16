@@ -25,7 +25,7 @@ describe('a failed load of the Open world, #1578', () => {
     expect(byId('hud').textContent).not.toBe(''); // the page under the message is alive
     chunk.fail = false;
     byId('chunk-retry').click();
-    await vi.waitFor(() => expect(document.body.dataset.openworld).toBeDefined());
+    await vi.waitFor(() => expect(document.body.dataset.openworld).toBeDefined(), { timeout: 20000 }); // entering the world, as main.boot.test.ts waits for it: 3 s on a CI shard
     expect(byId('chunk-error').hidden).toBe(true);
   });
 });
