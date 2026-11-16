@@ -175,7 +175,11 @@ Drawn only: the levels, the walk and the rules stay the engine's. `topOf = 0.2 +
   - a town and a teleporter **pool their light**: 2 rings, no height, the tops leaning 32 % toward the light's own colour (the town's
     cyan, the teleporter's violet).
 - The shapes are set as the world opens, before the ground is laid (`shapeWorld`); the low tier's flat look draws neither the rise nor
-  the shapes. Kept on screenshots of seed 1305 at a tower, a gate, the spawn town and in the open, close and wide (owner OK, 2026-11-16).
+  the shapes.
+- **Twice the levels, and a beach (#1732, owner 2026-11-16)**: the rise inside a level is cut into two flat terraces, none or half a step
+  (`terrace`, 0.3) where the relief passes its middle, so each level of the engine reads as two: sixteen drawn heights instead of eight. The
+  coast's sand stands half a step lower than its level (`BEACH` 0.3) and takes no terrace: a level-2 beach is drawn at 0.9 instead of 1.4 to 1.9,
+  nearer the water (0.08). `topOf = 0.2 + STEP * level + hexLift + terrace + shape`, sand `0.2 + STEP * level - BEACH + hexLift`. Kept on screenshots of seed 1305 at a tower, a gate, the spawn town and in the open, close and wide (owner OK, 2026-11-16).
 
 ## 6. Shared rules
 

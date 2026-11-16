@@ -1,5 +1,5 @@
 import './test/openworldwasm';
-import { relief } from './landshape';
+import { relief, terrace } from './landshape';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three/webgpu';
 import { axialTo3D, type Axial } from './board';
@@ -167,6 +167,7 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     expect(topOf('grass', 0, 0, 0)).toBeCloseTo(0.2 + hexLift(0, 0));
     expect(topOf('peak', 7, 0, 0)).toBeCloseTo(0.2 + 7 * STEP + hexLift(0, 0));
     for (let level = 0; level < 7; level++) expect(topOf('sand', level + 1, 3, 4) - topOf('sand', level, 3, 4)).toBeCloseTo(STEP);
+    expect(topOf('sand', 2, 0, 0)).toBeCloseTo(0.2 + 2 * STEP - STEP / 2 + hexLift(0, 0)); // the beach: half a step nearer the water (#1732)
     expect(topOf('water', 7, 3, 4)).toBeCloseTo(0.08); // water stays flat, whatever the cell (#1418)
     expect(variety(3, 4)).toBe(variety(3, 4));
     const draws = new Set([0, 1, 2, 3, 4, 5].map((q) => variety(q, -q)));
@@ -918,7 +919,7 @@ describe('the zoom of the Open world camera (#976)', () => {
     expect(view.focusHeight).toBeCloseTo(view.scene.getObjectByName('hero')!.position.y);
     view.show([1, 0]); // a step onto a cell 3 levels up: the top is 3 * STEP higher
     const top = view.scene.getObjectByName('hero')!.position.y;
-    expect(top - view.focusHeight).toBeCloseTo(3 * STEP + hexLift(1, 0) + relief(1, 0) - hexLift(0, 0) - relief(0, 0)); // the rise inside a level too (#1718)
+    expect(top - view.focusHeight).toBeCloseTo(3 * STEP + hexLift(1, 0) + terrace(1, 0) - hexLift(0, 0) - terrace(0, 0)); // the terrace inside a level too (#1718, #1732)
     const start = view.focusHeight;
     expect(view.follow(1 / 60, false)).toBe(true);
     expect(view.focusHeight).toBeGreaterThan(start);

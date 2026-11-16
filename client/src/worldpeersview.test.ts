@@ -4,9 +4,9 @@ import * as THREE from 'three/webgpu';
 import { axialTo3D } from './board';
 import { BOB_AMP, DRAFT } from './openworldboat';
 import { hexLift, topOf } from './openworldview';
-import { relief } from './landshape';
+import { terrace } from './landshape';
 /** The drawn lift of a cell over its level: its own and the rise inside the level (#1418, #1718). */
-const lifted = (q: number, r: number): number => hexLift(q, r) + relief(q, r);
+const lifted = (q: number, r: number): number => hexLift(q, r) + terrace(q, r); // the terrace inside a level (#1732)
 import { edgeSpot, peerColour, PeersLayer } from './worldpeersview';
 
 describe('edgeSpot', () => {

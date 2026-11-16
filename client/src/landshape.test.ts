@@ -1,6 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { HOLLOW, MOUND, POOL, RELIEF, relief, shadeTop, shapeLand, shapingAt } from './landshape';
+import { BEACH, HOLLOW, MOUND, POOL, RELIEF, relief, shadeTop, shapeLand, shapingAt, terrace } from './landshape';
 import { STEP } from './openworldview';
+
+// #1732: twice the levels: the rise inside a level is two terraces, flat, 0 or half a step up; the coast's sand stands half a step lower, by the water.
+describe('the terraces of a level (#1732)', () => {
+  it('lifts a cell by none or by half a step, both on a fair share of the land, so each level of the engine reads as two', () => {
+    const all: number[] = [];
+    for (let q = -60; q <= 60; q += 2) for (let r = -60; r <= 60; r += 2) all.push(terrace(q, r));
+    expect(new Set(all)).toEqual(new Set([0, STEP / 2]));
+    const up = all.filter((t) => t > 0).length / all.length;
+    expect(up).toBeGreaterThan(0.25);
+    expect(up).toBeLessThan(0.75);
+    expect(terrace(7, -3)).toBe(terrace(7, -3));
+  });
+
+  it('keeps the upper terrace under the next level, and the beach half a step down', () => {
+    expect(STEP / 2).toBeLessThan(STEP);
+    expect(RELIEF.terrace).toBe(STEP / 2);
+    expect(BEACH).toBe(STEP / 2);
+  });
+});
 
 describe('the rise inside a level (#1718)', () => {
   it('stays between 0 and RELIEF.height, under a step, and is the same every call', () => {

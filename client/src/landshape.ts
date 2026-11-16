@@ -7,7 +7,9 @@ import { hexDistance } from './worldpeers';
 
 /** The rise inside a level (#1718): a smooth bump over the land, up to `height`, its hills about `span` cells apart, so the cells of one
  * level read as slopes, not as one flat step. Under a step of the relief, so a level never reads above the next. */
-export const RELIEF = { height: 0.5, span: 5 } as const; // under STEP (0.6): a level's highest cell stays under the next level's lowest
+export const RELIEF = { height: 0.5, span: 5, terrace: 0.3 } as const; // under STEP (0.6): a level's highest cell stays under the next level's lowest
+/** How much lower the coast's sand stands than its level (#1732): half a step, a beach by the water. */
+export const BEACH = 0.3;
 
 /** The three shapes (#1719), in rings round the landmark: `reach` rings, the lift (world units) at the landmark, and the colour share. */
 export const MOUND = { reach: 3, lift: 1.1, colour: 0x6f7480, share: 0.45 } as const;
@@ -40,6 +42,12 @@ const ease = (t: number): number => t * t * (3 - 2 * t);
 
 /** The rise of the cell `(q, r)` inside its level, from 0 to `RELIEF.height`: value noise on a lattice `span` cells wide, eased between
  * its points, so neighbours differ by little and a hill spans a few cells. */
+/** The terrace of a cell inside its level (#1732): none or half a step up, where the relief passes its middle, so each level of the engine
+ * reads as two flat terraces (sixteen in all instead of eight). */
+export function terrace(q: number, r: number): number {
+  return relief(q, r) >= RELIEF.height / 2 ? RELIEF.terrace : 0;
+}
+
 export function relief(q: number, r: number): number {
   const x = q / RELIEF.span;
   const y = r / RELIEF.span;

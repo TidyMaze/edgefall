@@ -20,7 +20,7 @@ import { contactOf, heldClock } from './openworldhit';
 import { SUN, SUN_SHADOW, aimSunShadow, sunDirection } from './tablezero';
 import { Sky, WORLD_LOOKS } from './daynight';
 import { ICON } from './openworldlairicon';
-import { relief, shadeTop, shapeLand, shapingAt, type Landmarks, type Shaping } from './landshape';
+import { BEACH, shadeTop, shapeLand, shapingAt, terrace, type Landmarks, type Shaping } from './landshape';
 import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightWorldDay, neonHeroRim, neonMarbleRim, neonStars, neonWorldOn } from './neonlook';
 import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './neonworld';
 import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength, wearSkin } from './openworldstripe';
@@ -553,7 +553,11 @@ export const shapeWorld = (marks: Landmarks): void => void (shaped = shapeLand(m
 /** The height of the top of the ground of the cell `(q, r)`: water lies low and flat, the land is lifted by `hexLift` (#1418), rises
  * inside its level (`relief`, #1718) and by the landmark that shapes it (#1719). The low tier's flat look draws none of the three. */
 export const topOf = (terrain: Terrain, height: number, q: number, r: number): number =>
-  terrain === 'water' ? 0.08 : 0.2 + STEP * height + hexLift(q, r) + (lifting ? relief(q, r) + (shapingAt(shaped, q, r)?.lift ?? 0) : 0);
+  terrain === 'water'
+    ? 0.08
+    : terrain === 'sand' // the coast: a beach half a step down, flat, by the water (#1732)
+      ? 0.2 + STEP * height - BEACH + hexLift(q, r)
+      : 0.2 + STEP * height + hexLift(q, r) + (lifting ? terrace(q, r) + (shapingAt(shaped, q, r)?.lift ?? 0) : 0);
 /** The colour of the top of a ground cell, leaned toward the landmark that shapes it (#1719); water keeps its own. */
 export const shadedGround = (tile: Tile, ground: Ground, q: number, r: number): number =>
   ground === 'water' ? groundColour(tile, ground) : shadeTop(groundColour(tile, ground), shapingAt(shaped, q, r));
