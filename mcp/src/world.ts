@@ -28,7 +28,7 @@ export interface WorldRules {
   /** The walk from a cell to a cell: `q, r` pairs, the start left out, empty when there is none. */
   world_path(seed: number, fromQ: number, fromR: number, toQ: number, toR: number, blocked: Int32Array, broken: Int32Array): Int32Array;
   /** What the step from `(q, r)` to `(tq, tr)` does: 0 refused, 1 rolls, 2 breaks. `terrain` is the code of the cell, -1 off the world. */
-  world_enter(q: number, r: number, tq: number, tr: number, terrain: number, occupied: boolean): number;
+  world_enter(q: number, r: number, tq: number, tr: number, terrain: number, occupied: boolean, rise: number): number;
   /** The troop after the hero steps from `(q, r)` to `(tq, tr)`, flocking over `ground`: `q, r` pairs. */
   world_flock(seed: number, tick: number, troop: Int32Array, step: Int32Array, ground: Int32Array, goals: Int32Array): Int32Array;
   /** The version of the world generator: a save of another version does not hold this world. */
@@ -373,7 +373,8 @@ export class OpenWorld {
     const play = this.play!;
     const { hero, fight, seed } = play;
     const code = this.terrain(to[0], to[1]);
-    const entry = this.rules.world_enter(hero[0], hero[1], to[0], to[1], code ?? -1, this.occupied(to));
+    const sailed = code === WATER || this.terrain(hero[0], hero[1]) === WATER; // water is sailed onto and off, whatever the land's height (#1744)
+    const entry = this.rules.world_enter(hero[0], hero[1], to[0], to[1], code ?? -1, this.occupied(to), sailed ? 0 : this.height(to[0], to[1]) - this.height(hero[0], hero[1])); // a cliff too high is refused
     if (entry === REFUSED) return null;
     const smashed = entry === BREAKS ? (NAMES[code!] as 'boulder' | 'tree') : null;
     if (smashed) {
@@ -427,6 +428,15 @@ export class OpenWorld {
   private occupied(cell: Cell): boolean {
     const generated = this.generated(Math.floor(cell[0] / CHUNK), Math.floor(cell[1] / CHUNK));
     return this.play!.fight.occupied(flat(generated), cell[0], cell[1]);
+  }
+
+  /** The height level of a cell (the first byte of the bridge's chunk), 0 off the world. */
+  private height(q: number, r: number): number {
+    const [cx, cy] = [Math.floor(q / CHUNK), Math.floor(r / CHUNK)];
+    const key = `${cx},${cy}`;
+    let cells = this.chunks.get(key);
+    if (!cells) this.chunks.set(key, (cells = this.rules.world_chunk(this.play!.seed, cx, cy)));
+    return cells[((r - cy * CHUNK) * CHUNK + (q - cx * CHUNK)) * 3] ?? 0;
   }
 
   /** The terrain code of a cell with the broken obstacles turned to ground, `undefined` off the world. */

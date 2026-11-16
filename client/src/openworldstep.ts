@@ -27,9 +27,12 @@ const ENTRIES: readonly Entry[] = ['refused', 'rolls', 'breaks'];
 /** What the step of the hero from `at` to `to` does (`world_enter`, edgefall-core `worldstep`): the rule is in the engine; this reads the
  * terrain of the cell and whether an enemy stands on it. */
 export function enter(world: World, fight: FightState, at: Axial, to: Axial): Entry {
-  const terrain = world.tile(to[0], to[1])?.terrain;
+  const tile = world.tile(to[0], to[1]);
   const occupied = fight.occupied(world, to[0], to[1]);
-  return ENTRIES[world_enter(at[0], at[1], to[0], to[1], terrain === undefined ? -1 : TERRAINS.indexOf(terrain), occupied)]!;
+  const from = world.tile(at[0], at[1]);
+  // a cliff higher than MAX_CLIMB levels cannot be walked (#1744); water is sailed onto and off, whatever the height of the land beside it
+  const rise = tile?.terrain === 'water' || from?.terrain === 'water' ? 0 : (tile?.height ?? 0) - (from?.height ?? 0);
+  return ENTRIES[world_enter(at[0], at[1], to[0], to[1], tile === undefined ? -1 : TERRAINS.indexOf(tile.terrain), occupied, rise)]!;
 }
 
 /** The troop after the hero steps from `at` to `to` (`world_flock`, the flock of edgefall-core `worldstep`): the same marbles in the same order,

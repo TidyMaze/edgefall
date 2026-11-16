@@ -149,6 +149,9 @@ Client only, after #983 (it needs the eight heights).
   faces, 0.5 shows the rock plateaus and the peak cluster standing clear of the grass with tall side faces, and no
   cell hidden behind a peak at close zoom. Props, marbles and the troop stand on `topOf`; the mountains (1.2 to 2.0
   high) read as spires on the taller columns, so their scale is unchanged.
+- **A cliff too high (#1744)**: a step that climbs or drops more than `MAX_CLIMB` (2) levels is refused (`worldstep::entry`, the `rise` of
+  `world_enter`), up or down, an obstacle too; water is sailed onto and off whatever the land's height beside it. The client and the MCP
+  server pass the rise; steering slides the hero to a free neighbour as for any refused cell.
 - **Finding**: on seed 7 no two passable cells differ by 2 levels or more within 45 cells of the spawn: the steepest
   step a hero can walk is one level. The tall faces are peaks (blocked, level 7) against rock (level 6), 22 cells out
   at (-8, 22) and (-8, 23). The e2e test steps onto a cell one level up, (4, 0).

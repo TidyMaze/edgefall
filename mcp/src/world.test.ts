@@ -60,7 +60,7 @@ function clientRun(seed: number, dirs: string[]): { hero: string; troop: string[
   return { hero: `(${hero.at[0]},${hero.at[1]})`, troop: hero.troop.map(([q, r]) => `(${q},${r})`) };
 }
 
-const SEEDS = Array.from({ length: 12 }, (_, seed) => seed);
+const SEEDS = Array.from({ length: 40 }, (_, seed) => seed); // 12 until #1744: a cliff too high now cuts some walks to a spot
 
 const STEPS: Record<string, [number, number]> = { E: [1, 0], W: [-1, 0], NE: [1, -1], SW: [-1, 1], NW: [0, -1], SE: [0, 1] };
 

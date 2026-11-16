@@ -547,14 +547,29 @@ describe('the Open world models are loaded once per page (#981)', () => {
   });
 });
 
-// Grass at height 1, and the cell (1, 0) at height 4: a step up a cliff of 3 levels (#988).
+// Grass at height 1, and the cell (1, 0) at height 3: a step up a cliff of 2 levels, the most a step climbs (#988, #1744).
 function cliff(_seed: number, cx: number, cy: number): Uint8Array {
   if (Math.abs(cx) > 3 || Math.abs(cy) > 3) return new Uint8Array();
   const out = new Uint8Array(CHUNK * CHUNK * 3);
   for (let i = 0; i < CHUNK * CHUNK; i++) out.set([1, 2, 4], i * 3); // the badlands: no particles (#1110)
-  if (cx === 0 && cy === 0) out.set([4, 2, 4], 3); // (1, 0) is index 1 of its chunk
+  if (cx === 0 && cy === 0) out.set([3, 2, 4], 3); // (1, 0) is index 1 of its chunk
   return out;
 }
+
+describe('a cliff too high (#1744)', () => {
+  it('refuses a step up more than two levels: the hero never stands on the cliff top', () => {
+    const steep = (_seed: number, cx: number, cy: number): Uint8Array => {
+      const out = cliff(_seed, cx, cy);
+      if (cx === 0 && cy === 0) out.set([4, 2, 4], 3); // (1, 0) three levels up
+      return out;
+    };
+    const m = mode(undefined, steep, () => true);
+    m.enter(1, 800, 600);
+    tap(m, 'ArrowRight');
+    m.release('ArrowRight');
+    expect(body().openworldAt).not.toBe('1,0'); // refused (steering may slide it to a free neighbour)
+  });
+});
 
 describe('the camera eases up a cliff (#988)', () => {
   it('draws every frame while the camera follows to the top of the cliff, then draws nothing once it has settled', () => {
