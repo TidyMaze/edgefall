@@ -88,8 +88,13 @@ test('on a phone screen the arrow stays inside the screen, whichever way the her
 
 test('the hero sends its position when it steps, and Escape leaves the room, #1305', async ({ page }) => {
   await enter(page, PUBLIC);
+  const positions = () => page.evaluate(() => (window as unknown as Hook).__out.filter((m) => m[1] === 2));
+  await expect.poll(async () => (await positions()).length).toBe(1); // the room is joined: the spawn's position went out
   await page.keyboard.press('ArrowRight');
-  await expect.poll(() => page.evaluate(() => (window as unknown as Hook).__out.filter((m) => m[1] === 2).length)).toBeGreaterThanOrEqual(2);
+  // the step sends its own position at once: a press before the join only showed in the keepalive, 5 s later (#1710)
+  await expect.poll(async () => (await positions()).length, { timeout: 1000 }).toBe(2);
+  const [spawn, step] = await positions();
+  expect(step).not.toEqual(spawn);
   await page.keyboard.press('Escape');
   await expect(page.locator('#openworld-peers')).toBeHidden();
 });

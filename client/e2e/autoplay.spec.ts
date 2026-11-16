@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { startMode } from './modes';
+import { AUTO_DELAY_MS } from '../src/autoplay';
 import { shot } from './shot';
 
 // Auto-play (#792, docs/specs/ui.md section 4.3): the bot plays the player's side, stoppable, and a boss needs its medal.
@@ -8,6 +9,7 @@ const plies = (page: Page) => page.evaluate(() => (window as any).__plies() as n
 const toggle = (page: Page) => page.getByRole('button', { name: 'Auto-play' });
 
 test('the bot plays the player side of a bot game until Auto-play is turned off', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' }); // no slides: the bot's moves land at once (5.4 s with them, #1710)
   await page.goto('./?nodes=50');
   await expect(toggle(page)).toBeEnabled();
   await toggle(page).click();
@@ -19,7 +21,7 @@ test('the bot plays the player side of a bot game until Auto-play is turned off'
   await expect(page.locator('#hint')).toBeEnabled(); // the bot is done thinking: the board answers clicks again
   await expect.poll(() => page.evaluate(() => (window as any).__botBusy() as boolean)).toBe(false); // the bot's own reply, asked for before the click, lands after the last slide (ui.md 4.3)
   const stopped = await plies(page);
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(AUTO_DELAY_MS + 300); // past the wait between two Auto-play moves: one more would have landed
   expect(await plies(page)).toBe(stopped);
 });
 

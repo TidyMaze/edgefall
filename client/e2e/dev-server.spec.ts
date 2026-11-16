@@ -11,8 +11,8 @@ test('rewriting the wasm package during a run does not reload the page under tes
   test.skip(!!process.env.E2E_BASE_URL, 'the live site has no dev server and no local wasm package');
   await page.goto(new URL('./?bot=off', process.env.E2E_DEV_URL).href);
   await page.locator('canvas').waitFor();
-  // A watching dev server reloads the page about a second after the files change: wait well past that.
-  const reloaded = page.waitForEvent('framenavigated', { timeout: 5_000 }).then(
+  // A watching dev server reloads the page about a second after the files change: wait past that (2.5 s keeps the test under 5 s, #1710).
+  const reloaded = page.waitForEvent('framenavigated', { timeout: 2_500 }).then(
     () => true,
     () => false,
   );

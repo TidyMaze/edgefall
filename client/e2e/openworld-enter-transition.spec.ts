@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loseByRepetition } from './fight-end';
 import { lowTierOnCi, enterBay } from './modes';
 
 lowTierOnCi();
@@ -41,7 +40,6 @@ for (const { name, viewport, touch } of sizes) {
         await expect(body).not.toHaveAttribute('data-place-transition', /.*/);
         await expect(cue).toBeHidden();
         await enterBay(page); // the bay asks first (#1694)
-        if (kind === 'tower') await loseByRepetition(page); // The Echo, the first tower, is lost in a few moves: Back to the Open world shows
         await page.evaluate((id) => document.getElementById(id)!.click(), back); // the first slot of the dock (#1517); a click by script, as the tower's end light may cover it
         await expect(body).toHaveAttribute('data-openworld-at', `${q! - 1},${r}`);
         await expect(cue).toHaveAttribute('data-kind', kind);
