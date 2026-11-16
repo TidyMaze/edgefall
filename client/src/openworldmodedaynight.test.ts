@@ -3,7 +3,7 @@ import './test/openworldwasm';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three/webgpu';
 import { CHUNK } from './openworld';
-import { BLEND_MS, CYCLE_MS, WORLD_LOOKS } from './daynight';
+import { BLEND_MS, CYCLE_MS, WORLD_LOOKS, clockLine, PHASE_MS } from './daynight';
 import { OpenWorldMode } from './openworldmode';
 import { worldSaves } from './openworldsave';
 import { memoryStore } from './savegame';
@@ -27,6 +27,20 @@ const air = (m: OpenWorldMode, sky: number): number => new THREE.Color(sky).lerp
 
 afterEach(() => {
   for (const key of Object.keys(body())) delete body()[key];
+});
+
+describe('the world\'s clock on the plate (#1743)', () => {
+  it('shows the hour, the phase and the time to the next, and follows the clock', () => {
+    const clock = document.body.appendChild(Object.assign(document.createElement('p'), { id: 'openworld-clock' }));
+    const m = made();
+    m.enter(1, 800, 600);
+    m.frame(() => {}, 1000);
+    expect(clock.textContent).toBe(clockLine(m.timeOfDay));
+    m.setTime(PHASE_MS.day + 1000);
+    m.frame(() => {}, 1016);
+    expect(clock.textContent).toMatch(/ · Dusk · night in /);
+    clock.remove();
+  });
 });
 
 describe('the time of day in the Open world mode', () => {

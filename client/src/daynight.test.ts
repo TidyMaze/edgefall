@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLEND_MS, CYCLE_MS, PHASE_MS, Sky, WORLD_LOOKS, mixHex, phaseOf, wrapTime } from './daynight';
+import { BLEND_MS, CYCLE_MS, PHASE_MS, Sky, WORLD_LOOKS, mixHex, phaseOf, wrapTime, clockLine } from './daynight';
 
 // The day/night cycle of the Open world (docs/specs/openworld.md section 11, #1496): day 6 min, dusk 1.5 min, night 3 min, dusk 1.5 min.
 const MIN = 60_000;
@@ -105,3 +105,17 @@ describe('the sky', () => {
     expect(sky.look).toEqual(looks.dusk);
   });
 });
+
+// #1743: the world's clock on the HUD: the hour of the world (a cycle is a day of 24 hours, the day starting at 06:00), the phase, and the
+// real time left until the next phase.
+describe('the clock line of the world (#1743)', () => {
+  it('reads the hour, the phase and the time to the next phase', () => {
+    expect(clockLine(0)).toBe('06:00 · Day · dusk in 6:00');
+    expect(clockLine(PHASE_MS.day - 5_000)).toMatch(/^\d\d:\d\d · Day · dusk in 0:05$/);
+    expect(clockLine(PHASE_MS.day)).toMatch(/ · Dusk · night in 1:30$/);
+    expect(clockLine(PHASE_MS.day + PHASE_MS.dusk)).toMatch(/ · Night · dawn in 3:00$/);
+    expect(clockLine(PHASE_MS.day + PHASE_MS.dusk + PHASE_MS.night)).toMatch(/ · Dawn · day in 1:30$/);
+    expect(clockLine(CYCLE_MS / 2)).toBe('18:00 · Dusk · night in 1:30'); // half the cycle: 18:00, the day ends
+  });
+});
+

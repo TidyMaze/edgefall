@@ -4,7 +4,7 @@
 import type * as THREE from 'three/webgpu';
 import { axialTo3D, type Axial } from './board';
 import { PhaseWatch, StepWatch, type WorldCue } from './cues';
-import { phaseOf, type Phase, wrapTime } from './daynight';
+import { phaseOf, type Phase, wrapTime, clockLine } from './daynight';
 import { type Biome, chunkOf, Hero, neighbours, same, type Tile, WALKABLE, World } from './openworld';
 import { FightState } from './openworldfight';
 import { GLIDE_MS, NUDGE_MS, slowBy, stepMs, type Pace } from './openworldglide';
@@ -1411,5 +1411,8 @@ export class OpenWorldMode {
   /** The phase on the page (`openworldPhase`, #1496), written when it changes. */
   private markPhase(): void {
     if (document.body.dataset.openworldPhase !== this.phase) document.body.dataset.openworldPhase = this.phase;
+    const clock = document.getElementById('openworld-clock');
+    const line = clockLine(this.tod); // the world's hour, its phase and the time to the next (#1743)
+    if (clock && clock.textContent !== line) clock.textContent = line;
   }
 }

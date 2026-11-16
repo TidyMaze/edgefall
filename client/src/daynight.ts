@@ -20,6 +20,19 @@ const STEPS = 255;
 /** A time in `[0, CYCLE_MS)`: one cycle wraps into the next, and a time that is not a number is the start of day. */
 export const wrapTime = (ms: number): number => (Number.isFinite(ms) ? ((ms % CYCLE_MS) + CYCLE_MS) % CYCLE_MS : 0);
 
+/** The world's clock on the HUD (#1743): the hour of the world (a cycle is a day of 24 hours, the day from 06:00), the phase (the second dusk is
+ * the dawn) and the real time left until the next one, in minutes and seconds. */
+export function clockLine(ms: number): string {
+  const t = wrapTime(ms);
+  const i = indexAt(t);
+  const hours = (6 + (t / CYCLE_MS) * 24) % 24;
+  const hh = String(Math.floor(hours)).padStart(2, '0');
+  const mm = String(Math.floor((hours % 1) * 60)).padStart(2, '0');
+  const names = ['Day', 'Dusk', 'Night', 'Dawn'];
+  const left = Math.ceil((ENDS[i]! - t) / 1000);
+  return `${hh}:${mm} · ${names[i]} · ${names[(i + 1) % 4]!.toLowerCase()} in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+}
+
 /** The phase at time `ms` of the cycle. */
 export function phaseOf(ms: number): Phase {
   return ROUND[indexAt(wrapTime(ms))]!;
