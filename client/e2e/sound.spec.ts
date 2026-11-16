@@ -120,7 +120,8 @@ test('the effects slider at 0 mutes the ejection and the knock, and the game pla
   await expect(page.locator('body')).toHaveAttribute('data-knock', 'none'); // the knock of the last move is silent too
 });
 
-test('the sliders survive a reload, and every slider at 0 makes no audio context', async ({ page }) => {
+// Two tests (#1710): the reload and the gesture each cost a page load or a board click, 6.4 s together on the software-GL runner.
+test('the sliders survive a reload', async ({ page }) => {
   await open(page);
   for (const name of ['Music', 'Ambience', 'Effects', 'Voice'] as const) {
     const range = await slider(page, name);
@@ -130,9 +131,15 @@ test('the sliders survive a reload, and every slider at 0 makes no audio context
   await page.keyboard.press('Escape');
 
   await page.reload();
+  await open(page);
+  for (const name of ['Music', 'Ambience', 'Effects', 'Voice'] as const) await expect(await slider(page, name)).toHaveValue('0');
+});
+
+test('every slider at 0 makes no audio context, and a slider back up starts it', async ({ page }) => {
+  await page.addInitScript(() => {
+    for (const bus of ['music', 'ambience', 'effects', 'voice']) localStorage.setItem(`ab-alone.volume.${bus}`, '0'); // as the sliders save them
+  });
   const click = await open(page);
-  await expect(await slider(page, 'Voice')).toHaveValue('0');
-  await page.keyboard.press('Escape');
   await click([0, 2]); // a gesture on the board: still no audio context while every slider is at 0
   expect(await audio(page)).toBe('none');
 
@@ -193,11 +200,11 @@ test('the tension level rises when a marble is pushed to the rim, and the drones
   expect(await tension(page)).toEqual({ level: 0, layers: [0, 0] });
   // The first four moves of loseGlass: White steps two marbles into the q = -2 column, the top one on the rim, three
   // Black marbles in line behind them.
-  await click([-2, 2], [-2, 3], [-2, 4], [-2, 1]);
-  await click([0, -3], [0, -2], [-1, -2]);
+  await hookMove(page, [[-2, 2], [-2, 3], [-2, 4]], [-2, 1]);
+  await hookMove(page, [[0, -3], [0, -2]], [-1, -2]);
   expect((await tension(page)).level).toBe(0);
-  await click([-2, 1], [-2, 2], [-2, 3], [-2, 0]);
-  await click([-1, -2], [-1, -1], [-2, -2]);
+  await hookMove(page, [[-2, 1], [-2, 2], [-2, 3]], [-2, 0]);
+  await click([-1, -2], [-1, -1], [-2, -2]); // the last move is a real gesture
   await expect.poll(async () => (await tension(page)).level).toBeGreaterThan(0);
   await expect.poll(async () => (await tension(page)).layers[0]).toBeGreaterThan(0.9); // crossfaded in within about a second
 });

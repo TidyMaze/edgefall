@@ -155,15 +155,17 @@ async function onePly(page: Page): Promise<void> {
   await expect.poll(() => page.evaluate(() => (window as any).__plies())).toBeGreaterThan(0);
 }
 
-// Two tests on the shared page (#1710): the one of before entered the lair three times, 8 s on CI.
-shared('a lair fight with no ply leaves at the first press; with a ply played it asks for a second press, labelled Sure?, as New game does, #1517', async ({ world: page }) => {
+// Tests on the shared page (#1710): entering a lair costs a place transition and a board build, so each test enters it once (the one of
+// before entered it twice, 5.7 s on CI).
+shared('a lair fight with no ply leaves at the first press, #1517', async ({ world: page }) => {
   const [q, r] = await intoLair(page);
   await firstSlot(page).click(); // no ply played: nothing to lose, the first press leaves at once
   await expect(body(page)).toHaveAttribute('data-openworld-at', `${q - 1},${r}`);
-  await page.keyboard.press('ArrowRight'); // back onto the tower
-  await enterBay(page);
-  await expect(body(page)).toHaveAttribute('data-boss', /.+/);
-  await page.mouse.click(5, 5);
+  await exitIs(page, 'Hub');
+});
+
+shared('a lair fight with a ply played asks for a second press, labelled Sure?, as New game does, #1517', async ({ world: page }) => {
+  const [q, r] = await intoLair(page);
   await onePly(page);
   await firstSlot(page).click();
   await expect(firstSlot(page)).toHaveAttribute('data-label', 'Sure?');
@@ -181,18 +183,19 @@ shared('Browser Back leaves a lair fight with a ply played and asks nothing, #15
   await expect(body(page)).toHaveAttribute('data-openworld-at', `${q - 1},${r}`);
 });
 
-test('a wild fight is left by the first slot too: Flee, and the hero is back in the world, #1517', async ({ page }) => {
-  await page.goto('./?openworld=3&nodes=200');
-  await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
-  await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
-  const [q, r] = (await page.evaluate(() => (window as unknown as Hooks).__openworldEnemies()))[0]!;
-  await page.evaluate((h) => (window as unknown as Hooks).__openworldFixture({ hero: h, troop: [] }), [q + 1, r]);
-  await page.locator('#openworld-ask-fight').click(); // the wild marble asks first (#1662)
-  await expect(body(page)).not.toHaveAttribute('data-openworld', /.*/);
-  await expect(firstSlot(page)).toHaveAttribute('id', 'wild-flee');
-  await firstSlot(page).click();
-  await expect(body(page)).toHaveAttribute('data-openworld-at', `${q + 1},${r}`);
-  await exitIs(page, 'Hub');
+// Seed 3 has a wild marble within the hero's sight of the spawn (openworld-wild.spec.ts): its own shared page, booted once (#1710).
+shared.describe('wild world', () => {
+  shared.use({ worldUrl: './?bot=off&openworld=3' });
+  shared('a wild fight is left by the first slot too: Flee, and the hero is back in the world, #1517', async ({ world: page }) => {
+    const [q, r] = (await page.evaluate(() => (window as unknown as Hooks).__openworldEnemies()))[0]!;
+    await page.evaluate((h) => (window as unknown as Hooks).__openworldFixture({ hero: h, troop: [] }), [q + 1, r]);
+    await page.locator('#openworld-ask-fight').click(); // the wild marble asks first (#1662)
+    await expect(body(page)).not.toHaveAttribute('data-openworld', /.*/);
+    await expect(firstSlot(page)).toHaveAttribute('id', 'wild-flee');
+    await firstSlot(page).click();
+    await expect(body(page)).toHaveAttribute('data-openworld-at', `${q + 1},${r}`);
+    await exitIs(page, 'Hub');
+  });
 });
 
 // The dock holds the exit and the slots it pushes along on a phone and on the CI page: nothing clips, nothing is under 44 px, nothing leaves the window.
