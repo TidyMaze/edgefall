@@ -146,14 +146,16 @@ body[data-scene='table-zero']::after { display: none; }
 }
 #fps[hidden] { display: none; }
 /* The low tier offer (#849): a quiet note above the dock, wrapping on a narrow screen. */
-#low-offer {
+#low-offer, #update-banner {
   position: fixed; left: 0.5rem; right: 0.5rem; margin: 0 auto; bottom: calc(6.5rem + env(safe-area-inset-bottom)); z-index: 3; box-sizing: border-box;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.5rem; width: fit-content; max-width: calc(100vw - 1rem);
   padding: 0.5rem 0.75rem; color: var(--text); background: var(--panel); font: 0.875rem/1.3 var(--ui);
 }
-#low-offer[hidden] { display: none; }
+#low-offer[hidden], #update-banner[hidden] { display: none; }
 @media (max-width: 700px) { #low-offer { bottom: calc(10rem + env(safe-area-inset-bottom)); } } /* the score bar sits above the dock on a phone */
-#low-offer button { min-height: 2.75rem; padding: 0 0.75rem; color: var(--text); background: transparent; border: 1px solid var(--edge); font: inherit; }
+#low-offer button, #update-banner button { min-height: 2.75rem; padding: 0 0.75rem; color: var(--text); background: transparent; border: 1px solid var(--edge); font: inherit; }
+/* The new version's banner (#1717) hangs at the top, over the boss bar: at the bottom it covered the board's near row, where a click must reach the marbles (#1716). */
+#update-banner { top: calc(0.5rem + env(safe-area-inset-top)); bottom: auto; z-index: 6; }
 #settings[aria-expanded='true'], #settings-menu button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
 #settings:focus-visible, #settings-menu button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* The gamepad (#1252) moves the focus from script, which the browser may not ring: while the pad is in use, every focused

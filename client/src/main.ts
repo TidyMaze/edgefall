@@ -353,7 +353,8 @@ import { ShipWalk } from './hubship';
 import { bayAt, route as rollRoute } from './hubroll';
 import { clearStray } from './modeswitch';
 import { indexedDbStore } from './idb';
-import { LocalSaves, type LocalGame } from './savegame';
+import { LocalSaves, replayMoves, type LocalGame } from './savegame';
+import { bannerText, fightToResume, keepForReload, leavesGame, noteFor, NOWHERE as NO_PLACE, placeOf, tabStore, takeResume, worldToResume, type Place } from './resume';
 import { LEGACY_UNLOCKED, readUnlocked, recordUnlocked } from './collector';
 import { undoAllowed, undoLength } from './undo';
 import { engineAt, replayKey, replayLabel, stepPly, type ReplayStep } from './replay';
@@ -457,17 +458,32 @@ const diag = new Diagnostics(() => performance.now(), console);
 // to before the first await: the new build can take over while this page is still loading.
 const serviceWorker = import.meta.env.PROD && 'serviceWorker' in navigator ? navigator.serviceWorker : null;
 const updateButton = document.getElementById('update') as HTMLButtonElement;
-updateButton.addEventListener('click', () => location.reload());
+// The new version's banner (#1717): Reload notes where the player is (resume.ts) and reloads; Later hides the banner, the Settings row stays.
+const updateBanner = document.getElementById('update-banner')!;
+const sessionStore = tabStore();
+let placeNow = (): Place => NO_PLACE; // set at the end of the start, with the game's state; the Open world saves itself every frame (#968)
+const reloadForUpdate = (): void => {
+  keepForReload(sessionStore, noteFor(placeNow()));
+  location.reload();
+};
+const showUpdateBanner = (): void => {
+  document.getElementById('update-text')!.textContent = bannerText(leavesGame(placeNow()));
+  updateBanner.hidden = false;
+};
+updateButton.addEventListener('click', reloadForUpdate);
+document.getElementById('update-reload')!.addEventListener('click', reloadForUpdate);
+document.getElementById('update-later')!.addEventListener('click', () => (updateBanner.hidden = true));
 if (serviceWorker) {
   const updating = serviceWorker.controller !== null; // a first install takes control, it is no update
   serviceWorker.addEventListener('controllerchange', () => {
     if (!updating) return;
     updateButton.hidden = false;
-    // The page reloads by itself as soon as nothing is at stake, once per build (#1437); the button stays meanwhile.
+    showUpdateBanner();
+    // The page reloads by itself as soon as nothing is at stake, once per build (#1437); the button and the banner stay meanwhile.
     const reloadWhenFree = (): void => {
       if (stakeNow()) return;
       clearInterval(waiting);
-      if (claimReload(() => sessionStorage, __BUILD__)) location.reload();
+      if (claimReload(() => sessionStorage, __BUILD__)) reloadForUpdate();
     };
     const waiting = setInterval(reloadWhenFree, 1000);
     reloadWhenFree();
@@ -7551,7 +7567,9 @@ async function publicWorldOnline(): Promise<boolean> {
   return !consentWanted() || (await onlineAllowed());
 }
 /** Opens the world of `seed`, online first when it is the public one and the page may (the opt-in is asked before anything is contacted). */
+let worldSeed = PUBLIC_SEED; // the world entered last, noted for a reload (#1717)
 async function enterWorld(seed: number, resume = true): Promise<void> {
+  worldSeed = seed;
   modeProbe.begin('world');
   placeFrom = null; // the world is the player's place again (#1593)
   syncExit();
@@ -8199,6 +8217,7 @@ if (serviceWorker) {
       setInterval(check, 15 * 60_000);
     })
     .catch(() => undefined);
+  placeNow = () => placeOf({ fight, history, worldActive: openWorld.active, worldSeed, lair: lairFrom, wild: wildFrom, others: [online, rankedMode, royale, trainer] });
   stakeNow = () =>
     atStake({
       online: online !== null,
@@ -8227,6 +8246,12 @@ applyView(); // the stored closer board view (#1567)
 veilCanvas();
 document.body.appendChild(renderer.domElement);
 if (resumed?.boss) startBoss(resumed.boss.id, resumed.boss.seed, undefined, resumed, null, resumed.boss.mirror); // a Stalker fight comes back under its fog (#1122)
+// Back where the player was before a reload for a new version (#1717): the boss fight replayed to its last move, or the Open world.
+const back = takeResume(sessionStore);
+const fightBack = fightToResume(back, boss_ids(), (id, seed, mirror, moves) => replayMoves(moves, () => encounterFor(Encounter, id, seed, undefined, undefined, mirror)));
+if (fightBack) startBoss(fightBack.id, fightBack.seed, undefined, fightBack, null, fightBack.mirror);
+const worldBack = worldToResume(back);
+if (worldBack !== null) void enterWorld(worldBack);
 if (!hub) void botTurn(); // a resumed game saved while the bot was thinking
 // Used by the browser checks to wait for a draw: under automation the loop skips frames (#216), so a frame is not a draw (#365).
 hookHost.__draws = () => draws;

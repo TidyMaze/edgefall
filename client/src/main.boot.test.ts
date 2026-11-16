@@ -95,6 +95,37 @@ describe('the service worker (#193)', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
+  it('shows the banner when a new build takes over: Later hides it, Reload notes the boss fight and reloads (#1717)', async () => {
+    vi.stubEnv('PROD', true);
+    const { listeners } = serviceWorker({});
+    const game = await boot('?bot=off');
+    await game.settle();
+    expect(byId('update-banner').hidden).toBe(true);
+    listeners.controllerchange!();
+    expect(byId('update-banner').hidden).toBe(false);
+    expect(byId('update-text').textContent).toBe('New version ready. Reloading keeps where you are.');
+    byId('update-later').click();
+    expect(byId('update-banner').hidden).toBe(true);
+    expect(byId('update').hidden).toBe(false); // the Settings row stays
+    startBoss('echo');
+    const reload = vi.fn();
+    vi.stubGlobal('location', { ...location, reload });
+    byId('update-reload').click();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(JSON.parse(sessionStorage.getItem('ab-alone.update-resume')!)).toMatchObject({ kind: 'fight', id: 'echo', moves: [] });
+    sessionStorage.removeItem('ab-alone.update-resume');
+  });
+
+  it('comes back to the noted boss fight, or to the noted Open world, after the reload (#1717)', async () => {
+    sessionStorage.setItem('ab-alone.update-resume', JSON.stringify({ kind: 'fight', id: 'echo', seed: 5, mirror: false, moves: [] }));
+    await boot('?bot=off');
+    expect(document.body.dataset.boss).toBe('echo');
+    expect(sessionStorage.getItem('ab-alone.update-resume')).toBe(''); // taken once
+    sessionStorage.setItem('ab-alone.update-resume', JSON.stringify({ kind: 'world', seed: 7 }));
+    await boot('?bot=off');
+    await vi.waitFor(() => expect(document.body.dataset.openworld).toBe('7'), { timeout: 20000 });
+  });
+
   it('offers nothing when the first install takes control', async () => {
     vi.stubEnv('PROD', true);
     const { worker, update, listeners } = serviceWorker(null);

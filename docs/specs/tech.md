@@ -631,7 +631,12 @@ visit. No dependency: a hand-written service worker and a build step that lists 
 - **Update:** each load calls `registration.update()` (Chrome does not check by itself on a
   reload), and so does an open tab when it comes back to the foreground and every 15 minutes
   (#1437); offline or refused, the game goes on. The new worker installs and takes over, and the
-  page shows **New version: reload**. Nothing at stake: the page then reloads by itself, once per
+  page shows **New version: reload** in Settings and a banner at the top of the window (#1717): "New version ready." with **Reload** and
+  **Later** (Later hides the banner, the Settings row stays). A reload for the new version, pressed or automatic, first notes where the
+  player is in the tab's `sessionStorage` (`ab-alone.update-resume`, `client/src/resume.ts`): a boss fight with its moves, replayed to its
+  last move at the next start, or the Open world, entered again (it saves itself every frame); a tower's or a wild marble's fight goes
+  back to its world. The daily (its attempts are counted), an online room, ranked, a Battle royale and a Trainer run do not come back:
+  the banner then reads "Reloading now leaves this game." Nothing at stake: the page then reloads by itself, once per
   build (`sessionStorage` key `ab-alone-auto-reload` holds the build the page ran; no storage, no
   automatic reload). At stake, the button stays and the reload comes at the first moment nothing
   is (`client/src/autoreload.ts`): an online room, the ranked queue, a boss fight, daily or lair,
