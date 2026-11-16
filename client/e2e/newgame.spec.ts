@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { CONFIRM_MS } from '../src/newgame';
 import { startMode } from './modes';
 
 // New game (#230): it leaves the local game in progress for the start position, bot on or off as it was,
@@ -107,7 +108,7 @@ test('New game asks for a confirmation, then starts over from the start position
   await expect.poll(() => plies(page)).toBe(2);
 });
 
-test('New game without a move starts over at once; the confirmation lapses after 4 seconds', async ({ page }) => {
+test('New game without a move starts over at once; the confirmation lapses after its window (CONFIRM_MS, 6 s)', async ({ page }) => {
   await load(page, './?bot=off');
   const button = page.locator('#new-game');
   await button.click(); // no move yet: nothing to lose, no confirmation
@@ -120,7 +121,7 @@ test('New game without a move starts over at once; the confirmation lapses after
   await expect(button).toHaveText('Confirm new game');
   // fastForward jumps and fires each due timer once; runFor would also run every frame in between, about 40
   // draws of the board, which took 17 s under load.
-  await page.clock.fastForward(3_900);
+  await page.clock.fastForward(CONFIRM_MS - 100);
   await expect(button).toHaveText('Confirm new game');
   await page.clock.fastForward(100);
   await expect(button).toHaveAttribute('aria-label', 'New game'); // lapsed, the game goes on
