@@ -275,7 +275,7 @@ export function followFrame(hull: THREE.Box3, bays: readonly { box: THREE.Box3 }
   return { scale, position, top, bottom, lo: centre - halfView, hi: centre + halfView };
 }
 
-/** The bays of a shell as the file places them: each with the floor point the marble stands on and its box (in the file's units), the tap target. */
+/** The bays of a shell as the file places them: each with the floor point the marble stands on (the middle of the bay) and its box (in the file's units), the tap target. */
 export interface BayBox extends Bay {
   box: THREE.Box3;
 }
@@ -286,17 +286,19 @@ export function baysOf(root: THREE.Object3D): BayBox[] {
     const mesh = node as THREE.Mesh;
     const part = mesh.isMesh ? partOf(mesh.name) : null;
     if (part?.kind !== 'bay') return;
-    const at = new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld);
-    bays.push({ deck: part.deck!, room: part.room, x: at.x, y: at.y, box: new THREE.Box3().setFromObject(mesh) });
+    // the node stands at the bay's left corner (its box spans x to x + 1): the marble stands in the middle of the box, on its floor (#1728)
+    const box = new THREE.Box3().setFromObject(mesh);
+    bays.push({ deck: part.deck!, room: part.room, x: (box.min.x + box.max.x) / 2, y: new THREE.Vector3().setFromMatrixPosition(mesh.matrixWorld).y, box });
   });
   return bays;
 }
-/** The x of the lift shaft: where the car's node stands, 0 for a file with none. */
+/** The x of the lift shaft: the middle of the car, 0 for a file with none. */
 export function liftOf(root: THREE.Object3D): number {
   root.updateMatrixWorld(true);
   let x = 0;
   root.traverse((node) => {
-    if ((node as THREE.Mesh).isMesh && partOf(node.name)?.kind === 'car') x = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).x;
+    // the middle of the car, not its node at the shaft's left edge: the marble waits in the middle of the shaft (#1728)
+    if ((node as THREE.Mesh).isMesh && partOf(node.name)?.kind === 'car') x = new THREE.Box3().setFromObject(node).getCenter(new THREE.Vector3()).x;
   });
   return x;
 }

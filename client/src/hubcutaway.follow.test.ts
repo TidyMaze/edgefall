@@ -100,7 +100,7 @@ describe('the lift column on the window', () => {
     const cut = await ready(360, 640);
     cut.place({ x: 0.58, y: 0.24 }, 1);
     const p = cut.liftWorld();
-    expect(p.x).toBeCloseTo(-0.5 * cut.group.scale.x + cut.group.position.x); // the car's node stands at x -0.5
+    expect(p.x).toBeCloseTo(-0.25 * cut.group.scale.x + cut.group.position.x); // the middle of the car, 0.5 wide from its node at x -0.5 (#1728)
     expect(p.z).toBeCloseTo(cut.bayBoxes()[0]!.box.max.z);
     expect(new Cutaway(async () => ship(), () => undefined).liftWorld().z).toBe(0);
   });

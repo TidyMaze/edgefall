@@ -70,9 +70,12 @@ describe('the bays, the marble and the car (#1691)', () => {
     expect([together.marble, together.car]).toEqual([null, null]);
   });
 
-  it('reads the bays of a file: deck, room, the floor point of the node and its box', () => {
+  it('reads the bays of a file: deck, room, the floor point in the middle of its box, and the box', () => {
     const bays = baysOf(full().scene);
-    expect(bays.map((b) => [b.deck, b.room, b.x, b.y])).toEqual([['mess', 'bot', 0.58, 0.24], ['mess', 'echo', 1.58, 0.24]]);
+    expect(bays.map((b) => [b.deck, b.room, +b.x.toFixed(6), b.y])).toEqual([['mess', 'bot', 0.58, 0.24], ['mess', 'echo', 1.58, 0.24]]); // boxes centred on their nodes here
+    const corner = node('hub_wide_bay_mess_bot', [1, 1, 1, 1], at(3, 0.24));
+    corner.geometry.translate(0.5, 0.5, 0); // as in the file: the node at the bay's left corner (#1728)
+    expect(baysOf(file(corner))[0]!.x).toBeCloseTo(3.5);
     expect(bays[0]!.box.getCenter(new THREE.Vector3()).x).toBeCloseTo(0.58);
   });
 

@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { describe, expect, it, vi } from 'vitest';
 import { framing } from './camera';
-import { Cutaway, CUTAWAY_VIEW, FILL, GLOW, bakeShip, cutawayFile, cutawayFrame, glowOf, goalRoom, partOf, roomState, shellFor, shipMaterial, shipState, type ShipState } from './hubcutaway';
+import { Cutaway, CUTAWAY_VIEW, FILL, GLOW, baysOf, bakeShip, liftOf, cutawayFile, cutawayFrame, glowOf, goalRoom, partOf, roomState, shellFor, shipMaterial, shipState, type ShipState } from './hubcutaway';
 
 const fs = 'node:fs/promises'; // untyped: the client has no Node types
 const { readFile } = (await import(/* @vite-ignore */ fs)) as { readFile(path: URL): Promise<Uint8Array> };
@@ -319,6 +319,26 @@ describe('the exported files (#1689)', () => {
     const lateTris = bakeShip(scene, LATE)!.geometry.getIndex()!.count;
     const newTris = bakeShip(scene, NEW)!.geometry.getIndex()!.count;
     expect(lateTris).not.toBe(newTris);
+  });
+  // #1728: a bay's node stands at its left corner in the file (its box spans x to x + 1): the marble stood on the bay's edge, half on the
+  // next one. Every bay's marble point is the middle of its box, and the lift's foot the middle of the shaft, where the file's marble is.
+  it.each([['tall'], ['wide']] as const)('puts the marble in the middle of every bay of the %s shell and of its lift shaft', async (layout) => {
+    const scene = await parse(`hub-cutaway-${layout}`);
+    const bays = baysOf(scene);
+    expect(bays.length).toBeGreaterThan(30);
+    for (const bay of bays) {
+      const middle = bay.box.getCenter(new THREE.Vector3());
+      expect(bay.x, `${bay.deck} ${bay.room}`).toBeCloseTo(middle.x, 3);
+      expect(bay.y, `${bay.deck} ${bay.room}`).toBeCloseTo(bay.box.min.y, 3); // on its floor
+    }
+    let shaft = 0;
+    let marble = 0;
+    scene.traverse((o) => {
+      if (/_shaft_/.test(o.name)) shaft = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()).x;
+      if (/_marble$/.test(o.name)) marble = o.getWorldPosition(new THREE.Vector3()).x;
+    });
+    expect(liftOf(scene)).toBeCloseTo(shaft, 2);
+    expect(liftOf(scene)).toBeCloseTo(marble, 2);
   });
 });
 
