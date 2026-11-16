@@ -99,6 +99,8 @@ export const gapFill = (zoom: number): number => {
 export interface NeonGrid {
   hero: THREE.UniformNode<'vec2', THREE.Vector2>;
   traces: THREE.Texture;
+  /** The night's share, 0 by day to 1 at night (the view's `shine`): the circuit and the far dimming are the night's (#1747). */
+  night?: THREE.UniformNode<'float', number>;
 }
 /** The look's numbers: each trace is its own cell's ground `trace` lighter in linear light, so at most 1.2:1 over it, and no colour of
  * its own (#1656; the cyan grid line is the arena's alone); quieter far from the hero (full within `NEAR`, a fifth past `FAR`), and the far
@@ -130,11 +132,12 @@ export function edgeMaterial(look: { emissive: number; roughness: number; gain: 
   if (look.emissiveNode) material.emissiveNode = look.emissiveNode; // the water's foam and ripples (#1101)
   if (look.neon) {
     const { hero, traces } = look.neon;
+    const night = look.neon.night ?? float(1); // by day the ground is plain and even: the circuit and the dim far ground come with the night (#1747)
     const flatWorld = vec2(positionWorld.x, positionWorld.z);
     const near = float(1).sub(smoothstep(NEON_GRID.near, NEON_GRID.far, length(flatWorld.sub(hero)))); // 1 round the hero, 0 far out
     const quiet = mix(float(NEON_GRID.quiet), float(1), near);
-    const circuit = texture(traces, flatWorld.mul(NEON_GRID.traceScale)).r.mul(NEON_GRID.trace).mul(top).mul(quiet); // the cell's own colour, a share lighter (#1656)
-    material.colorNode = (material.colorNode as ReturnType<typeof vec3>).mul(mix(float(NEON_GRID.farDim), float(1), near)).mul(float(1).add(circuit)); // the far ground is darker
+    const circuit = texture(traces, flatWorld.mul(NEON_GRID.traceScale)).r.mul(NEON_GRID.trace).mul(top).mul(quiet).mul(night); // the cell's own colour, a share lighter (#1656)
+    material.colorNode = (material.colorNode as ReturnType<typeof vec3>).mul(mix(float(1), mix(float(NEON_GRID.farDim), float(1), near), night)).mul(float(1).add(circuit)); // the far ground is darker at night
     let emissive: THREE.Node = color(new THREE.Color(...NEON_GRID.floor));
     if (look.emissiveNode) emissive = (emissive as ReturnType<typeof vec3>).add(look.emissiveNode as ReturnType<typeof vec3>);
     if (lift) emissive = (emissive as ReturnType<typeof vec3>).add(lift as ReturnType<typeof vec3>);
