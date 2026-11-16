@@ -9,5 +9,6 @@ describe('the line of a biome (#1742)', () => {
     expect(biomeLine('forest', 15, [1, 2, 13], 12, [7])).toBe('Forest · towers 2/3 · logs 1/2');
     expect(biomeLine('archipelago', 15, [], 12, [])).toBe('Archipelago · towers 0/2 · logs 0/2');
     expect(biomeLine('meadow', 0, [], 0, [])).toBe('Meadow');
+    expect(biomeLine('forest', 15, [], 12, [], 'Jungle')).toBe('Jungle · towers 0/3 · logs 0/2'); // the outer ring's name (#1741)
   });
 });

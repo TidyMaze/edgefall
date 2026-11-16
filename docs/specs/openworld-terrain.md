@@ -145,6 +145,12 @@ water on seeds 1 to 4.
   when that cell is free and nothing was broken or pushed, the slide itself not sliding again (`biomerules.ts`, `slideOnIce`). Not done: a
   pushed marble sliding on the ice (follow-up).
 
+- **Rings (#1741)**: past `OUTER_RING` (250) cells from the spawn each biome shows its harsh outer one: the meadow a steppe, the forest a
+  jungle, the tundra a crystal plain, the desert salt flats, the badlands a volcanic field, the archipelago a swamp, 12 in all. Their
+  ground and props lean to the outer colour and the banner names them (`biomerings.ts`). A look only: the rules stay the sextant's biome's,
+  the world and its saves are unchanged. **Borders (#1740)**: a ground cell's colour averages the biomes within `BLEND_REACH` (4) cells
+  and its tree or boulder is drawn from them, so two biomes mix over a gradient.
+
 ## 5. Relief (#988)
 
 Client only, after #983 (it needs the eight heights).

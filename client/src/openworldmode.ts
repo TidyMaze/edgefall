@@ -32,6 +32,7 @@ import { ICON } from './openworldlairicon';
 import { twistOf } from './openworldtwist';
 import { placesReached, type PlaceLineKind } from './placelines';
 import { biomeLine } from './openworldbiomes';
+import { ringName } from './biomerings';
 
 /** The walk of the hero to a far cell, the bridge's `world_path` (docs/specs/openworld.md section 4): the seed, the cell the hero
  * stands on, the cell asked for, the cells it cannot enter (enemies, lairs) and the broken cells (#1154), as `q, r` pairs; its answer
@@ -1439,15 +1440,17 @@ export class OpenWorldMode {
 
   /** The phase on the page (`openworldPhase`, #1496), written when it changes. */
   /** The biome the banner last named (#1742). */
-  private named: Biome | null = null;
+  private named: string | null = null;
   private bannerTimer = 0;
   /** Names the biome the hero enters, with what is left there (`biomeLine`), for 3 s: at the first sight of a world, and at each border. */
   private nameBiome(): void {
     const biome = this.biome;
     const banner = document.getElementById('openworld-biome');
-    if (!biome || biome === this.named || !banner) return;
-    this.named = biome;
-    banner.textContent = biomeLine(biome, this.lairs.length, this.beaten, this.logs.length, this.found);
+    if (!biome || !banner) return;
+    const name = ringName(biome, this.hero!.at[0], this.hero!.at[1]); // the outer ring's biome too (#1741)
+    if (name === this.named) return;
+    this.named = name;
+    banner.textContent = biomeLine(biome, this.lairs.length, this.beaten, this.logs.length, this.found, name);
     banner.hidden = false;
     banner.classList.remove('fade');
     void banner.offsetWidth; // the fade starts again

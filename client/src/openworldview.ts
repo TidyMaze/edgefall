@@ -26,6 +26,7 @@ import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './ne
 import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength, wearSkin } from './openworldstripe';
 import { wrapPi } from './openworldtwist';
 import { fogScale, seenThrough } from './biomerules';
+import { ringTint } from './biomerings';
 
 /** The most chunks loaded on each side of the hero's chunk, at the widest zoom: the instanced meshes hold all of them (#976).
  * Raised or lowered by measure (the rebuild time, the frame time, the memory), never by dropping detail. Ten covers the
@@ -611,7 +612,8 @@ const BLEND_SAMPLES: readonly Axial[] = [[0, 0], ...[2, BLEND_REACH].flatMap((d)
 export function mixedGround(ground: Exclude<Ground, 'water'>, q: number, r: number, own: Biome): number {
   let [red, green, blue] = [0, 0, 0];
   for (const [dq, dr] of BLEND_SAMPLES) {
-    const c = biomeGround(ground, biomeAt(q + dq, r + dr) ?? own);
+    const biome = biomeAt(q + dq, r + dr) ?? own;
+    const c = ringTint(biomeGround(ground, biome), biome, q + dq, r + dr); // the outer ring's harsher land (#1741)
     red += c >> 16;
     green += (c >> 8) & 0xff;
     blue += c & 0xff;
@@ -2368,7 +2370,8 @@ export class OpenWorldView {
   private stand(tile: Tile, q: number, r: number, p: { x: number; z: number }, top: number, lay: Lay, near: boolean): void {
     const v = variety(q, r);
     const prop = this.propOf(tile, q, r);
-    const tint = glowTint(prop === 'tree' || prop === 'boulder' ? BIOME_LOOK[propBiome(q, r, tile.biome)].prop : WHITE, shapingAt(shaped, q, r)); // a biome's own prop has its own colours (#1733), lit by a tower or a gate near (#1749)
+    const from = propBiome(q, r, tile.biome);
+    const tint = glowTint(prop === 'tree' || prop === 'boulder' ? ringTint(BIOME_LOOK[from].prop, from, q, r) : WHITE, shapingAt(shaped, q, r)); // a biome's own prop has its own colours (#1733), lit by a tower or a gate near (#1749)
     if (tile.terrain === 'peak') lay('mountain', near, p.x, top + (1.2 + v * 0.8) / 2, p.z, 1.2 + v * 0.8, WHITE);
     else if (tile.terrain === 'tree') lay(prop!, near, p.x, top + (1.6 + v * 0.8) / 2, p.z, 1.6 + v * 0.8, tint); // twice the pine's height (#1557 art round 3)
     else if (tile.terrain === 'boulder') lay(prop!, near, p.x, top + 0.2, p.z, 0.8, tint);

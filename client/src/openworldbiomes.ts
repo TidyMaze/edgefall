@@ -5,11 +5,11 @@ import { BIOMES, type Biome } from './openworld';
 const NAMES: Readonly<Record<Biome, string>> = { meadow: 'Meadow', forest: 'Forest', tundra: 'Tundra', desert: 'Desert', badlands: 'Badlands', archipelago: 'Archipelago' };
 
 /** The name of `biome`, then its towers beaten of `towers` (`beaten` the numbers beaten) and its logs found of `logs` (`found`); the name alone when it holds none. */
-export function biomeLine(biome: Biome, towers: number, beaten: readonly number[], logs: number, found: readonly number[]): string {
+export function biomeLine(biome: Biome, towers: number, beaten: readonly number[], logs: number, found: readonly number[], name: string = NAMES[biome]): string {
   const at = BIOMES.indexOf(biome);
   const here = (n: number): number[] => Array.from({ length: n }, (_, k) => k).filter((k) => k % 6 === at);
   const mine = here(towers);
   const notes = here(logs);
-  if (mine.length + notes.length === 0) return NAMES[biome];
-  return `${NAMES[biome]} · towers ${mine.filter((k) => beaten.includes(k)).length}/${mine.length} · logs ${notes.filter((k) => found.includes(k)).length}/${notes.length}`;
+  if (mine.length + notes.length === 0) return name;
+  return `${name} · towers ${mine.filter((k) => beaten.includes(k)).length}/${mine.length} · logs ${notes.filter((k) => found.includes(k)).length}/${notes.length}`;
 }

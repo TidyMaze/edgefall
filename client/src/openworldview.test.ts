@@ -1,4 +1,5 @@
 import './test/openworldwasm';
+import { ringTint } from './biomerings';
 import { relief, terrace } from './landshape';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { AMBIENT } from './openworldparticles';
@@ -214,6 +215,7 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     new OpenWorldView(new World((cx) => split(cx))); // the view reads the biomes of this world
     expect(mixedGround('grass', 20, 0, 'desert')).toBe(biomeGround('grass', 'desert')); // deep inside: its own colour
     expect(mixedGround('grass', -20, 0, 'forest')).toBe(biomeGround('grass', 'forest'));
+    expect(mixedGround('grass', 300, 0, 'desert')).toBe(ringTint(biomeGround('grass', 'desert'), 'desert', 300, 0)); // the outer ring's salt flats (#1741)
     const border = mixedGround('grass', 0, 0, 'desert');
     expect([border === biomeGround('grass', 'desert'), border === biomeGround('grass', 'forest')]).toEqual([false, false]); // between the two
     const near = Array.from({ length: 40 }, (_, r) => propBiome(1, r, 'desert'));
