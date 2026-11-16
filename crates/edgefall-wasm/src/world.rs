@@ -475,9 +475,13 @@ impl WorldFight {
     ) -> Option<PushResult> {
         let terrain = broken_terrain(seed, &broken);
         let blocks = self.blocks(&chunks);
-        let played =
-            self.overlay
-                .troop_push(&blocks, &pairs(&troop), terrain, (u64::from(seed), tick))?;
+        let played = self.overlay.troop_push_on(
+            &blocks,
+            &pairs(&troop),
+            terrain,
+            iced(seed),
+            (u64::from(seed), tick),
+        )?;
         Some(PushResult {
             troop: flat_of(&played.troop),
             foes: flat_of(&played.foes),
@@ -611,6 +615,13 @@ fn broken_terrain(seed: u32, broken: &[i32]) -> impl Fn(i32, i32) -> Option<Terr
         Some(Terrain::Boulder) if broken.contains(&(q, r)) => Some(Terrain::Rock),
         Some(Terrain::Tree) if broken.contains(&(q, r)) => Some(Terrain::Grass),
         other => other,
+    }
+}
+
+/// Whether a cell of the world `seed` is the tundra's ice, which carries a pushed marble one cell more (#1751).
+fn iced(seed: u32) -> impl Fn(i32, i32) -> bool {
+    move |q, r| {
+        world::cell(u64::from(seed), q, r).is_some_and(|cell| cell.biome == world::Biome::Tundra)
     }
 }
 
@@ -1025,7 +1036,9 @@ mod tests {
             .troop_push(1, vec![8, -30], vec![0, -2, 1, 9, -30], vec![], 1)
             .unwrap();
         assert!(out.ejected.is_empty());
-        assert_eq!(out.enemies, vec![10, -30]);
+        // herded one cell onto (10,-30), the tundra's ice, which carries it one more (#1751)
+        assert!(iced(1)(10, -30));
+        assert_eq!(out.enemies, vec![11, -30]);
     }
 
     #[test]

@@ -142,8 +142,9 @@ water on seeds 1 to 4.
 
 - **Light rules (#1739)**: the forest's fog closes in to `FOREST_SIGHT` (60 %) of its reach; the desert's mirage hides a marble past
   `MIRAGE` (8) cells of the hero until it comes near; the tundra's ice slides the hero one cell more the same way once a step has landed,
-  when that cell is free and nothing was broken or pushed, the slide itself not sliding again (`biomerules.ts`, `slideOnIce`). Not done: a
-  pushed marble sliding on the ice (follow-up).
+  when that cell is free and nothing was broken or pushed, the slide itself not sliding again (`biomerules.ts`, `slideOnIce`); the last enemy a push
+  moves onto the tundra slides one cell more the same way when that cell is open ground with no marble (#1751, `troop_push_on` in
+  edgefall-core, so the client and the MCP server agree).
 
 - **Rings (#1741)**: past `OUTER_RING` (250) cells from the spawn each biome shows its harsh outer one: the meadow a steppe, the forest a
   jungle, the tundra a crystal plain, the desert salt flats, the badlands a volcanic field, the archipelago a swamp, 12 in all. Their

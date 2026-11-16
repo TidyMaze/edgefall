@@ -188,6 +188,19 @@ impl Overlay {
         terrain: impl Fn(i32, i32) -> Option<Terrain>,
         (seed, tick): (u64, u32),
     ) -> Option<Played> {
+        self.troop_push_on(blocks, troop, terrain, |_, _| false, (seed, tick))
+    }
+
+    /// `troop_push` where the cells `iced` gives are the tundra's ice (#1751): the last enemy a push moves onto one slides one cell more
+    /// the same way, when that cell is open ground with no marble on it.
+    pub fn troop_push_on(
+        &mut self,
+        blocks: &[Block],
+        troop: &[Cell],
+        terrain: impl Fn(i32, i32) -> Option<Terrain>,
+        iced: impl Fn(i32, i32) -> bool,
+        (seed, tick): (u64, u32),
+    ) -> Option<Played> {
         let marbles = self.marbles_around(blocks, troop[0], PUSH_REACH);
         let foes: Vec<Cell> = marbles.iter().map(|marble| marble.at).collect();
         let line = worldfight::best_push(troop, &foes, &terrain);
@@ -200,6 +213,19 @@ impl Overlay {
         };
         let (mut after, mut enemies) = (troop.to_vec(), foes.clone());
         let ejected = worldfight::apply_push(&mut after, &mut enemies, &push);
+        if let worldfight::Outcome::Slides(to) = push.last {
+            let d = push.dir.vector();
+            let beyond = (to.0 + d.0, to.1 + d.1);
+            let open = terrain(beyond.0, beyond.1).is_some_and(|t| !t.blocked());
+            let empty = !after.contains(&beyond)
+                && !enemies.contains(&beyond)
+                && self.marbles_around(blocks, beyond, 0).is_empty();
+            if iced(to.0, to.1) && open && empty {
+                for m in enemies.iter_mut().filter(|m| **m == to) {
+                    *m = beyond; // the ice carries it one cell more
+                }
+            }
+        }
         self.play(&marbles, &enemies, &ejected);
         let homes = ejected
             .iter()
@@ -390,6 +416,50 @@ mod tests {
         assert_eq!(overlay.removed(), [(1, 0)]);
         assert_eq!(overlay.added(), [(2, 0)]);
         assert_eq!(overlay.beaten(), 0);
+    }
+
+    #[test]
+    fn on_the_ice_the_last_enemy_slides_one_cell_more_when_it_is_free() {
+        let chunks = [((0, 0), vec![(1, 0), (3, 3)], (0, 0))];
+        let ice = |q: i32, _r: i32| q == 2;
+        let mut overlay = Overlay::new();
+        let played = overlay
+            .troop_push_on(&chunks, &[(0, 0), (-1, 0), (-2, 0)], grass, ice, (1, 0))
+            .unwrap();
+        assert_eq!(played.enemies, [(3, 0), (3, 3)]);
+        assert_eq!(overlay.added(), [(3, 0)]);
+        // a marble beyond, or a boulder, stops it on the ice
+        let held = [((0, 0), vec![(1, 0), (3, 0)], (0, 0))];
+        let mut overlay = Overlay::new();
+        let played = overlay
+            .troop_push_on(&held, &[(0, 0), (-1, 0), (-2, 0)], grass, ice, (1, 0))
+            .unwrap();
+        assert!(played.enemies.contains(&(2, 0)));
+        let rock = |q: i32, _r: i32| {
+            Some(if q == 3 {
+                Terrain::Boulder
+            } else {
+                Terrain::Grass
+            })
+        };
+        let mut overlay = Overlay::new();
+        let played = overlay
+            .troop_push_on(&chunks, &[(0, 0), (-1, 0), (-2, 0)], rock, ice, (1, 0))
+            .unwrap();
+        assert_eq!(played.enemies, [(2, 0), (3, 3)]);
+        // an ejected one does not slide
+        let water = |_q: i32, _r: i32| Some(Terrain::Water);
+        let mut overlay = Overlay::new();
+        let played = overlay
+            .troop_push_on(
+                &[((0, 0), vec![(1, 0)], (0, 0))],
+                &[(0, 0), (-1, 0), (-2, 0)],
+                water,
+                |_, _| true,
+                (1, 0),
+            )
+            .unwrap();
+        assert_eq!(played.ejected, [(1, 0)]);
     }
 
     #[test]
