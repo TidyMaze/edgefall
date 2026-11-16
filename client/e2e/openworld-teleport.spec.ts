@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { lowTierOnCi } from './modes';
 import { shot } from './shot';
+import { test as shared } from './shared-world';
 
 lowTierOnCi();
 
@@ -40,8 +41,8 @@ for (const { name, viewport, touch } of sizes) {
   test.describe(name, () => {
     test.use({ viewport, isMobile: touch, hasTouch: touch });
 
-    test('the Teleport button shows on the teleporter, under the Map button, and opens the map in the choice of a teleporter', async ({ page }) => {
-      await open(page);
+    // on the shared Open world page of its size (#1710): it closes the choice at its end, the next test finds the world
+    shared('the Teleport button shows on the teleporter, under the Map button, and opens the map in the choice of a teleporter', async ({ world: page }) => {
       const button = page.locator('#openworld-teleport');
       await expect(button).toBeHidden();
       await stand(page, [1, -1]); // next to the spawn's teleporter: it is in view
@@ -66,6 +67,8 @@ for (const { name, viewport, touch } of sizes) {
       for (let i = 0; i < 4; i++) await page.locator('#openworld-map').dispatchEvent('wheel', { deltaY: 400 }); // out, both in view
       await page.locator('#openworld-map canvas').evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished))); // the canvas fades in
       await shot(page, { path: `test-results/teleport-choice-${name.replaceAll(' ', '-')}.png` });
+      await page.keyboard.press('Escape'); // the choice closes
+      await expect(page.locator('#openworld-map-note')).toBeHidden();
     });
   });
 }
