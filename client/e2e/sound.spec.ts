@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ICONS } from '../src/icons';
 import { knockPitch } from '../src/sound';
+import { DIRECTIONS, encodeMove, type Move } from '../src/board';
 import { startMode } from './modes';
 
 // The ejection sound (world.md section 7): the page says which sound an ejection played in
@@ -29,30 +30,40 @@ const audio = (page: Page) => page.evaluate(() => (window as any).__audio());
 const gain = (page: Page, bus: string) => page.evaluate((b) => (window as any).__gain(b), bus);
 const tension = (page: Page) => page.evaluate(() => (window as any).__tension());
 
-// The 3v2 push of eject.spec.ts: Black pushes the last White marble of the q = -2 column off.
-async function loseGlass(click: Awaited<ReturnType<typeof open>>) {
-  await click([-2, 2], [-2, 3], [-2, 4], [-2, 1]);
-  await click([0, -3], [0, -2], [-1, -2]);
-  await click([-2, 1], [-2, 2], [-2, 3], [-2, 0]);
-  await click([-1, -2], [-1, -1], [-2, -2]);
+/** Plays the move of `cells` onto `to` (one of its marbles' neighbour) through the __playMoves hook, as a click would choose it: a
+ * software-GL runner draws each click, about 1 s each, and only the last move of a test needs to be a real gesture (#1710). */
+async function hookMove(page: Page, cells: [number, number][], to: [number, number]): Promise<void> {
+  const legal = (await page.evaluate(() => (window as any).__legal())) as Move[];
+  const same = (m: Move) => m.cells.length === cells.length && cells.every(([q, r]) => m.cells.some(([a, b]) => a === q && b === r));
+  const move = legal.find((m) => same(m) && m.cells.some(([q, r]) => q + DIRECTIONS[m.dir]![0] === to[0] && r + DIRECTIONS[m.dir]![1] === to[1]))!;
+  await page.evaluate((record) => (window as any).__playMoves([record]), encodeMove(move));
+}
+
+// The 3v2 push of eject.spec.ts: Black pushes the last White marble of the q = -2 column off. The four moves before the push are
+// played through the hook; the push is clicked, the gesture that lets the page make sound.
+async function loseGlass(click: Awaited<ReturnType<typeof open>>, page: Page) {
+  await hookMove(page, [[-2, 2], [-2, 3], [-2, 4]], [-2, 1]);
+  await hookMove(page, [[0, -3], [0, -2]], [-1, -2]);
+  await hookMove(page, [[-2, 1], [-2, 2], [-2, 3]], [-2, 0]);
+  await hookMove(page, [[-1, -2], [-1, -1]], [-2, -2]);
   await click([-2, 0], [-2, 1], [-2, 2], [-2, -1]);
 }
 
 // The same push turned half a turn, sides swapped: after one waiting move of Black, White pushes
 // a Black marble of the q = 2 column off.
-async function loseShell(click: Awaited<ReturnType<typeof open>>) {
-  await click([-2, 2], [-3, 2]); // Black waits: one marble W
-  await click([2, -2], [2, -3], [2, -4], [2, -1]);
-  await click([0, 3], [0, 2], [1, 2]);
-  await click([2, -1], [2, -2], [2, -3], [2, 0]);
-  await click([1, 2], [1, 1], [2, 2]);
+async function loseShell(click: Awaited<ReturnType<typeof open>>, page: Page) {
+  await hookMove(page, [[-2, 2]], [-3, 2]); // Black waits: one marble W
+  await hookMove(page, [[2, -2], [2, -3], [2, -4]], [2, -1]);
+  await hookMove(page, [[0, 3], [0, 2]], [1, 2]);
+  await hookMove(page, [[2, -1], [2, -2], [2, -3]], [2, 0]);
+  await hookMove(page, [[1, 2], [1, 1]], [2, 2]);
   await click([2, 0], [2, -1], [2, -2], [2, 1]);
 }
 
 test('no audio before a gesture, then a lost glass marble tolls', async ({ page }) => {
   const click = await open(page);
   expect(await audio(page)).toBe('none'); // browsers block audio before a gesture
-  await loseGlass(click);
+  await loseGlass(click, page);
   await expect(page.locator('body')).toHaveAttribute('data-ejections', '1');
   await expect(page.locator('body')).toHaveAttribute('data-sound', 'toll');
   expect(await audio(page)).toBe('running');
@@ -68,7 +79,7 @@ test('a move plays the knock of its marbles, lower for three', async ({ page }) 
 
 test('a lost enemy shell clacks', async ({ page }) => {
   const click = await open(page);
-  await loseShell(click);
+  await loseShell(click, page);
   await expect(page.locator('#hud')).toContainText('White ejected 1/6');
   await expect(page.locator('body')).toHaveAttribute('data-sound', 'clack');
 });
@@ -103,7 +114,7 @@ test('the effects slider at 0 mutes the ejection and the knock, and the game pla
   await effects.focus();
   await page.keyboard.press('Home');
   await page.keyboard.press('Escape');
-  await loseGlass(click);
+  await loseGlass(click, page);
   await expect(page.locator('#hud')).toContainText('Black ejected 1/6');
   await expect(page.locator('body')).toHaveAttribute('data-sound', 'none');
   await expect(page.locator('body')).toHaveAttribute('data-knock', 'none'); // the knock of the last move is silent too
