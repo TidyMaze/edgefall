@@ -51,6 +51,16 @@ const opened = (over: Partial<MinimapData> = {}, hero: Axial = [0, 0]) => {
   return { map, src, root: document.getElementById('openworld-map')! };
 };
 
+describe('the map\'s key of the biomes (#1750)', () => {
+  it('lists the six biomes with the colour of their ground', () => {
+    const { map } = opened();
+    const items = [...document.querySelectorAll<HTMLElement>('#openworld-map-legend li')];
+    expect(items.map((li) => li.textContent)).toEqual(['Meadow', 'Forest', 'Tundra', 'Desert', 'Badlands', 'Archipelago']);
+    expect(items[1]!.querySelector('i')!.style.background).not.toBe(items[3]!.querySelector('i')!.style.background);
+    map.close();
+  });
+});
+
 describe('WorldMap', () => {
   it('opens full screen over the page on the hero, a canvas of the window size, and closes', () => {
     const { map, src, root } = opened({}, [5, -3]);

@@ -5,7 +5,8 @@
 import type { Axial } from './board';
 import { pinchScale, wheelScale } from './camera';
 import { cellAtPoint } from './openworld';
-import { drawMap, groundOffset, screenOffset, type MinimapData } from './openworldminimap';
+import { drawMap, groundOffset, screenOffset, terrainColour, type MinimapData } from './openworldminimap';
+import { BIOMES } from './openworld';
 
 /** The px a cell takes when the map opens, and the bounds of its zoom: the widest view keeps the cells to draw in the hundred thousands. */
 export const UNIT = 8;
@@ -36,6 +37,8 @@ export class WorldMap {
   private travel = 0;
   /** A click on a cell of the map: nothing by default. */
   pick: (cell: Axial) => void = () => {};
+  /** The key of the biomes' grounds (#1750), filled at each opening (the look may have changed their colours). */
+  private readonly legend = document.createElement('ul');
 
   constructor(private readonly source: MapSource) {
     this.root.id = 'openworld-map';
@@ -43,7 +46,8 @@ export class WorldMap {
     this.root.setAttribute('aria-label', 'Map of the Open world');
     this.caption.id = 'openworld-map-note';
     this.caption.setAttribute('role', 'status');
-    this.root.append(this.canvas, this.caption);
+    this.legend.id = 'openworld-map-legend'; // the biomes' key (#1750)
+    this.root.append(this.canvas, this.caption, this.legend);
     this.root.addEventListener('pointerdown', (e) => this.down(e));
     this.root.addEventListener('pointermove', (e) => this.move(e));
     this.root.addEventListener('pointerup', (e) => this.up(e));
@@ -65,6 +69,7 @@ export class WorldMap {
   /** Opens the map over the page, on `hero`, at the default zoom, on a `width` x `height` px canvas; `choose` for the choice of a
    * teleporter. */
   open(hero: Axial, width: number, height: number, choose = false): void {
+    this.legend.innerHTML = BIOMES.map((b) => `<li><i style="background:${terrainColour('grass', b)}"></i>${b[0]!.toUpperCase()}${b.slice(1)}</li>`).join(''); // the colour the map draws a biome's grass in
     this.centre = [...hero];
     this.unit = UNIT;
     this.choosing = choose;
