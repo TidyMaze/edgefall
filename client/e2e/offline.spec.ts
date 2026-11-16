@@ -125,6 +125,7 @@ test('a new build reloads the idle page once, never twice (#1437)', async ({ pag
   await page.evaluate(() => ((window as any).__marker = 'old'));
   await takeover();
   await expect(page.locator('#update')).toHaveJSProperty('hidden', false); // the first row of Settings, its dot on the cog (#1693)
-  await page.waitForTimeout(1500);
+  // The handler decides at once, in the event (main.ts reloadWhenFree, location.reload is synchronous): a reload would have begun; 300 ms lets it unload (#1710).
+  await page.waitForTimeout(300);
   expect(await marker()).toBe('old');
 });
