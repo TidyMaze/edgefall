@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { lowTierOnCi, startMode, enterBay } from './modes';
 import { loseByRepetition } from './fight-end';
 import { shot } from './shot';
+import { test as shared } from './shared-world';
 
 lowTierOnCi();
 
@@ -115,8 +116,8 @@ for (const { name, viewport, touch } of sizes) {
     test.use({ viewport, isMobile: touch, hasTouch: touch });
 
     for (const [kind, shown] of [['town', 'data-hub'], ['dungeon', 'data-run'], ['tower', 'data-boss']] as const) {
-      test(`a ${kind} of the world is left by the first slot, labelled World, and the hero is on the entrance cell, #1517`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7');
+      // On the page the spec's tests share at this size (shared-world.ts): the boot is paid once, not per test (#1710).
+      shared(`a ${kind} of the world is left by the first slot, labelled World, and the hero is on the entrance cell, #1517`, async ({ world: page }) => {
         await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
         await exitIs(page, 'Hub'); // the world's own exit is in the same slot
         const [q, r] = await cellOf(page, kind);
@@ -136,41 +137,48 @@ for (const { name, viewport, touch } of sizes) {
   });
 }
 
-test('a lair fight with a ply played asks for a second press, labelled Sure?, as New game does; Back asks nothing, #1517', async ({ page }) => {
-  await page.goto('./?bot=off&openworld=7');
-  await expect(body(page)).toHaveAttribute('data-openworld-at', '0,0');
+/** Stands the hero beside the first tower, walks it in and answers the bay, past the place's transition: the lair fight is on. */
+async function intoLair(page: Page): Promise<[number, number]> {
   const [q, r] = await cellOf(page, 'tower');
   await page.evaluate(([q, r]) => (window as unknown as Hooks).__openworldFixture({ hero: [q - 1, r], troop: [], enemies: [] }), [q!, r!]);
   await page.keyboard.press('ArrowRight');
   await enterBay(page);
   await expect(body(page)).toHaveAttribute('data-boss', /.+/);
   await page.mouse.click(5, 5); // a press skips the transition of the place to its end (#1519)
+  return [q!, r!];
+}
+/** Plays one ply of the Echo's board, Black up one. */
+async function onePly(page: Page): Promise<void> {
+  const click = (a: number, b: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [a, b]);
+  await click(0, 2);
+  await click(0, 1);
+  await expect.poll(() => page.evaluate(() => (window as any).__plies())).toBeGreaterThan(0);
+}
+
+// Two tests on the shared page (#1710): the one of before entered the lair three times, 8 s on CI.
+shared('a lair fight with no ply leaves at the first press; with a ply played it asks for a second press, labelled Sure?, as New game does, #1517', async ({ world: page }) => {
+  const [q, r] = await intoLair(page);
   await firstSlot(page).click(); // no ply played: nothing to lose, the first press leaves at once
-  await expect(body(page)).toHaveAttribute('data-openworld-at', `${q! - 1},${r}`);
+  await expect(body(page)).toHaveAttribute('data-openworld-at', `${q - 1},${r}`);
   await page.keyboard.press('ArrowRight'); // back onto the tower
   await enterBay(page);
   await expect(body(page)).toHaveAttribute('data-boss', /.+/);
   await page.mouse.click(5, 5);
-  const click = (a: number, b: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [a, b]);
-  await click(0, 2);
-  await click(0, 1); // the Echo's board, Black up one
-  await expect.poll(() => page.evaluate(() => (window as any).__plies())).toBeGreaterThan(0);
+  await onePly(page);
   await firstSlot(page).click();
   await expect(firstSlot(page)).toHaveAttribute('data-label', 'Sure?');
   await expect(firstSlot(page)).toHaveClass(/confirm/);
   await expect(body(page)).toHaveAttribute('data-boss', /.+/); // the fight is still there
   await firstSlot(page).click();
-  await expect(body(page)).toHaveAttribute('data-openworld-at', `${q! - 1},${r}`);
+  await expect(body(page)).toHaveAttribute('data-openworld-at', `${q - 1},${r}`);
   await exitIs(page, 'Hub');
-  await page.keyboard.press('ArrowRight');
-  await enterBay(page);
-  await expect(body(page)).toHaveAttribute('data-boss', /.+/);
-  await page.mouse.click(5, 5);
-  await click(0, 2);
-  await click(0, 1);
-  await expect.poll(() => page.evaluate(() => (window as any).__plies())).toBeGreaterThan(0);
+});
+
+shared('Browser Back leaves a lair fight with a ply played and asks nothing, #1517', async ({ world: page }) => {
+  const [q, r] = await intoLair(page);
+  await onePly(page);
   await page.goBack(); // Browser Back leaves with no question (ui.md 4.9)
-  await expect(body(page)).toHaveAttribute('data-openworld-at', `${q! - 1},${r}`);
+  await expect(body(page)).toHaveAttribute('data-openworld-at', `${q - 1},${r}`);
 });
 
 test('a wild fight is left by the first slot too: Flee, and the hero is back in the world, #1517', async ({ page }) => {
