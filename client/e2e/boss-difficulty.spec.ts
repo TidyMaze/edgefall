@@ -31,7 +31,9 @@ test('the Medal room shows the wins of the attempts of each boss, and the first 
     'ab-alone.boss-tally': JSON.stringify({ echo: { wins: 2, attempts: 5 }, hull: { wins: 0, attempts: 3 } }),
   });
   await startMode(page, 'hub');
-  await click(page, 0, 2); // the Medal room
+  await expect(page.locator('body')).toHaveAttribute('data-hub', 'mess 0,1');
+  await click(page, 0, 2); // the Medal wall
+  await page.locator('#bay-row-1').click(); // its sheet's first row, Medal wall, reads the medals (#1693)
   const reader = page.locator('#reader');
   await expect(reader).toContainText('The Echo: 7 turns. Won 2 of 5.');
   await expect(reader).toContainText('The Hull: Not beaten. Won 0 of 3.');
