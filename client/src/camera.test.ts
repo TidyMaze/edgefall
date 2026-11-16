@@ -195,6 +195,23 @@ describe('fitView, bug #691', () => {
     expect(fitView({ ...fit, distance: fit.distance / 1.02 }, [near], 1280, 720).distance).toBeGreaterThan(fit.distance / 1.02);
   });
 
+  it('keeps a point near the camera above the dock: a bottom band `bottom` px tall is no room to fit in (#1716)', () => {
+    const near = { x: 0, y: 0, z: 6 };
+    const plain = fitView(resetView(), [near], 1280, 720);
+    const docked = fitView(resetView(), [near], 1280, 720, 80);
+    expect(docked.distance).toBeGreaterThan(plain.distance); // drawn back farther, the point clears the band
+    expect(fitView(docked, [near], 1280, 720, 80)).toEqual(docked);
+    expect(fitView(resetView(), [{ x: 0, y: 0, z: -6 }], 1280, 720, 80)).toEqual(fitView(resetView(), [{ x: 0, y: 0, z: -6 }], 1280, 720)); // a far point: the band is at the bottom only
+  });
+
+  it('may draw back past DIST_MAX when the caller gives a farther cap: The Dual Room is 7 rings wide (#1716)', () => {
+    const far = { x: 0, y: 0, z: 40 };
+    expect(fitView(resetView(), [far], 1280, 720).distance).toBe(DIST_MAX);
+    const fit = fitView(resetView(), [far], 1280, 720, 0, 30);
+    expect(fit.distance).toBeGreaterThan(DIST_MAX);
+    expect(fit.distance).toBeLessThanOrEqual(30);
+  });
+
   it('a phone held upright, whose width is the board, draws back farther for a point off the side', () => {
     const side = { x: 6, y: 0, z: 0 };
     expect(fitView(resetView(), [side], 1280, 720)).toEqual(resetView());

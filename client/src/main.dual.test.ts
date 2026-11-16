@@ -294,6 +294,7 @@ describe('main.ts The Dual Room (#947, #955)', () => {
 });
 
 describe('main.ts The Dual Room on the terrace (#1374)', () => {
+  let plainDistance = 0;
   it('opens from the Blender camera, drawn back until both rooms fit', async () => {
     const game = await boot('?bot=off', { reducedMotion: true });
     fightDual(game);
@@ -302,5 +303,17 @@ describe('main.ts The Dual Room on the terrace (#1374)', () => {
     expect(view.azimuth).toBe(0);
     expect(view.polar).toBeCloseTo((40 * Math.PI) / 180);
     expect(view.distance).toBeGreaterThanOrEqual(13.6);
+    plainDistance = view.distance;
+  });
+
+  it('draws back farther when the dock runs along the bottom, so no marble of the player room lies under it (#1716)', async () => {
+    const box = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return (this.id === 'dock' ? { top: innerHeight - 66, height: 66, bottom: innerHeight, left: 0, right: 400, width: 400, x: 0, y: innerHeight - 66 } : { top: 0, height: 0, bottom: 0, left: 0, right: 0, width: 0, x: 0, y: 0 }) as DOMRect;
+    });
+    onTestFinished(() => box.mockRestore());
+    const game = await boot('?bot=off', { reducedMotion: true });
+    fightDual(game);
+    await vi.waitFor(() => expect(document.body.dataset.scene).toBe('table-zero'));
+    expect(game.hook<View>('__view').distance).toBeGreaterThan(plainDistance);
   });
 });

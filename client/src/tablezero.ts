@@ -227,8 +227,8 @@ export function boardPoints(cells: readonly (readonly [number, number])[], scale
 }
 
 /** The Blender camera for a board of `radius` (a radius 4 board is at 13.6), drawn back until `points` are on the window: the play area is never cropped. */
-export function fitTerrace(points: readonly { x: number; y: number; z: number }[], radius: number, width: number, height: number): View {
-  return fitView({ ...BLENDER_VIEW, distance: (BLENDER_VIEW.distance * radius) / 4 }, points, width, height);
+export function fitTerrace(points: readonly { x: number; y: number; z: number }[], radius: number, width: number, height: number, bottom = 0, max?: number): View {
+  return fitView({ ...BLENDER_VIEW, distance: (BLENDER_VIEW.distance * radius) / 4 }, points, width, height, bottom, max);
 }
 
 /** The props of the hub deck (scene_hub_deck.glb): per kind of prop its ring, the prop and its shadow, each placed relative to the prop; and the bar of a locked lift. */

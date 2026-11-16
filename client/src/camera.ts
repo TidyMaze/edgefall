@@ -43,7 +43,10 @@ export const resetView = (radius = 4): View => ({
 // FIT_MARGIN of its half size from the edges (#691): The Pulsar's beacons stand off the board's corners. At most DIST_MAX.
 // The board's centre stays in the middle of the window's width, the HUD plate folds out of the way instead (#957).
 export const FIT_MARGIN = 0.03;
-export function fitView(view: View, points: readonly Vec3[], width: number, height: number): View {
+// `bottom`: the height in px of a band at the window's bottom no point may fall in, the dock's (#1716): in The Dual Room its buttons
+// covered the back rows of the player's room, and a click on those marbles pressed Hub or Retry.
+export function fitView(view: View, points: readonly Vec3[], width: number, height: number, bottom = 0, max = DIST_MAX): View {
+  const floor = -(1 - FIT_MARGIN) + (2 * bottom) / height; // the lowest screen height a point may take, in -1..1
   const tanV = Math.tan((framing(width, height) * Math.PI) / 360);
   const tanH = tanV * (width / height);
   const fits = (distance: number): boolean => {
@@ -57,11 +60,11 @@ export function fitView(view: View, points: readonly Vec3[], width: number, heig
       const depth = d.x * f.x + d.y * f.y + d.z * f.z;
       const sx = (d.x * right.x + d.z * right.z) / (depth * tanH);
       const sy = (d.x * up.x + d.y * up.y + d.z * up.z) / (depth * tanV);
-      return Math.max(Math.abs(sx), Math.abs(sy)) <= 1 - FIT_MARGIN;
+      return Math.max(Math.abs(sx), Math.abs(sy)) <= 1 - FIT_MARGIN && sy >= floor;
     });
   };
   let distance = view.distance;
-  while (distance < DIST_MAX && !fits(distance)) distance = Math.min(DIST_MAX, distance * 1.01);
+  while (distance < max && !fits(distance)) distance = Math.min(max, distance * 1.01);
   return { ...view, distance };
 }
 

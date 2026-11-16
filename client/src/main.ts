@@ -512,14 +512,22 @@ const DUAL_BOARD_POINTS = boardPoints(DUAL_CELLS, 1, [0, 0.5]);
 const blenderBoard = (): boolean => fight?.id === 'ballast' || fight?.id === 'dual' || (run !== null && !fight); // the boards framed like the hub's (#1374)
 const terraceFramed = (): boolean => tableZeroActive({ room: keepRoom, ready: terraceReady });
 let cutawayShown = false; // the Hub Cutaway ship is drawn in place of the deck (#1689)
+/** The band the dock covers at the window's bottom, in px (#1716): The Dual Room's two rooms are fitted above it, so no marble of the
+ * player's room lies under Hub or Retry. None when the dock is not a row along the bottom (held sideways it is a column). */
+/** The Dual Room's two rooms reach 7 rings from the centre: at the player's farthest zoom (DIST_MAX) the terrace view cut them (#1716). */
+const DUAL_FIT_MAX = 30;
+const dockBand = (): number => {
+  const box = document.getElementById('dock')?.getBoundingClientRect();
+  return box && box.height > 0 && box.top > innerHeight / 2 ? innerHeight - box.top : 0;
+};
 const fightView = (): View => {
   if (hub && cutawayShown) return CUTAWAY_VIEW; // a fixed camera on the whole ship
   if (hub && terraceFramed()) return fitTerrace(HUB_POINTS, innerWidth < innerHeight ? 3.4 : 3.6, innerWidth, innerHeight);
   if (royale && terraceFramed()) return fitTerrace(ROYALE_POINTS, 4, innerWidth, innerHeight);
-  if (terraceFramed() && blenderBoard()) return fitTerrace(fight?.id === 'ballast' ? BALLAST_POINTS : fight?.id === 'dual' ? DUAL_BOARD_POINTS : RUN_POINTS, activeRadius(), innerWidth, innerHeight);
+  if (terraceFramed() && blenderBoard()) return fitTerrace(fight?.id === 'ballast' ? BALLAST_POINTS : fight?.id === 'dual' ? DUAL_BOARD_POINTS : RUN_POINTS, activeRadius(), innerWidth, innerHeight, fight?.id === 'dual' ? dockBand() : 0, fight?.id === 'dual' ? DUAL_FIT_MAX : undefined);
   if (hub) return resetView(innerWidth < innerHeight ? 3.4 : 3.6); // the hub's deck plan (#1249): its 37 cells and their plates, a little closer than a board, closer still upright
   if (fight?.id === 'pulsar') return fitView(resetView(), sceneRenderer.terraceOn ? PULSAR_BOUNDS.map((p) => (p.z > 0 ? { ...p, z: p.z * PULSAR_DOCK } : p)) : PULSAR_BOUNDS, innerWidth, innerHeight);
-  if (fight?.id === 'dual') return fitView({ ...resetView(), azimuth: DUAL_AZIMUTH, polar: DUAL_POLAR }, DUAL_POINTS, innerWidth, innerHeight);
+  if (fight?.id === 'dual') return fitView({ ...resetView(), azimuth: DUAL_AZIMUTH, polar: DUAL_POLAR }, DUAL_POINTS, innerWidth, innerHeight, dockBand(), DUAL_FIT_MAX);
   return resetView(activeRadius());
 };
 // The view last set by a fight start or Reset view (#696): while it is still the view, the player has not moved the
