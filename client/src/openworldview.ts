@@ -45,6 +45,14 @@ export const CAPACITY = {
   boulder: 5300,
   wall: 500,
   cap: 500,
+  // a biome's own tree or boulder (#1733): a share of the plain ones; a mesh grows when a build asks more
+  tree_meadow: 4000,
+  tree_forest: 6000,
+  tree_tundra: 2000,
+  tree_archipelago: 2000,
+  boulder_desert: 2000,
+  boulder_badlands: 2000,
+  boulder_tundra: 2000,
   enemies: 700,
   troop: TROOP + RECRUIT_MAX,
 } as const;
@@ -321,9 +329,28 @@ export const PROPS = {
   boulder: { geometry: shell(), color: 0x3a3631, emissive: 0x000000, flat: true, rim: 0x000000 }, // a frozen crew's shell: 20 triangles, warm charcoal, matte (#1315)
   wall: { geometry: new THREE.CylinderGeometry(0.5, 0.5, 1, 6), color: 0x14171b, emissive: 0x000000, flat: false },
   cap: { geometry: hexRing(0.54, 0.3), color: SODIUM, emissive: 0x6c4115, flat: false },
+  // A biome's own tree or boulder (#1733), from `openworld-biomes.glb`: painted by its vertex colours, so white; until its model is in, the
+  // plain prop stands in its place (`BIOME_PROPS`), so these shapes are never drawn.
+  tree_meadow: { geometry: new THREE.ConeGeometry(0.34, 1, 5), color: 0xffffff, emissive: 0x000000, flat: true },
+  tree_forest: { geometry: new THREE.ConeGeometry(0.34, 1, 5), color: 0xffffff, emissive: 0x000000, flat: true },
+  tree_tundra: { geometry: new THREE.ConeGeometry(0.34, 1, 5), color: 0xffffff, emissive: 0x000000, flat: true },
+  tree_archipelago: { geometry: new THREE.ConeGeometry(0.34, 1, 5), color: 0xffffff, emissive: 0x000000, flat: true },
+  boulder_desert: { geometry: shell(), color: 0xffffff, emissive: 0x000000, flat: true },
+  boulder_badlands: { geometry: shell(), color: 0xffffff, emissive: 0x000000, flat: true },
+  boulder_tundra: { geometry: shell(), color: 0xffffff, emissive: 0x000000, flat: true },
 } as const;
 type Prop = keyof typeof PROPS;
 const PROP_NAMES = Object.keys(PROPS) as Prop[];
+/** The biome props (#1733): each biome's own tree and boulder, where it has one, in `openworld-biomes.glb` (`ow_<prop>`). */
+export const BIOME_PROPS: Readonly<Record<Biome, { tree?: Prop; boulder?: Prop }>> = {
+  meadow: { tree: 'tree_meadow' },
+  forest: { tree: 'tree_forest' },
+  tundra: { tree: 'tree_tundra', boulder: 'boulder_tundra' },
+  desert: { boulder: 'boulder_desert' },
+  badlands: { boulder: 'boulder_badlands' },
+  archipelago: { tree: 'tree_archipelago' },
+};
+const VARIANTS = Object.values(BIOME_PROPS).flatMap((p) => [p.tree, p.boulder].filter((v): v is Prop => !!v));
 /** The props that have a model in Blender: the low-poly one in `client/models/openworld.glb` (`ow_<prop>`) and the detailed one
  * in `openworld-hi.glb` (`ow_<prop>_hi`), drawn near the hero (#989). */
 const MODELLED = ['mountain', 'tree', 'boulder', 'wall'] as const;
@@ -334,7 +361,7 @@ const LAIR_MODELS = ['lair', 'lair_beaten'] as const;
 export type PropGeometries = Partial<Record<Prop | (typeof LAIR_MODELS)[number], THREE.BufferGeometry>>;
 /** The geometries of both sets of models: `low` the low-poly props (and the lair landmarks), `high` the detailed ones. */
 export type PropModels = { low: PropGeometries; high: PropGeometries };
-export type ModelUrls = { low: string; high: string; lair?: string };
+export type ModelUrls = { low: string; high: string; lair?: string; biomes?: string };
 
 /** The geometries of the models named `ow_<name><suffix>` in the glTF at `url`; a failed load gives none, the procedural shapes stay. */
 async function readModels(
@@ -358,12 +385,13 @@ async function readModels(
 
 /** The models of both files: a failed file leaves its set empty, so the props it would give stay procedural or low-poly. */
 export async function loadModels(urls: ModelUrls, loader: { loadAsync(url: string): Promise<{ scene: THREE.Object3D }> }): Promise<PropModels> {
-  const [low, high, lair] = await Promise.all([
+  const [low, high, lair, biomes] = await Promise.all([
     readModels(urls.low, loader, ''),
     readModels(urls.high, loader, '_hi'),
     urls.lair ? readModels(urls.lair, loader, '', LAIR_MODELS) : {},
+    urls.biomes ? readModels(urls.biomes, loader, '', VARIANTS) : {},
   ]);
-  return { low: { ...low, ...lair }, high };
+  return { low: { ...low, ...lair, ...biomes }, high };
 }
 
 /** A detailed mesh holds the cells within `HI_RADIUS` of the hero: 3r(r+1)+1 of them, the most a build puts in one. */
@@ -722,6 +750,7 @@ export class OpenWorldView {
   /** The detailed meshes of the modelled props, and the props whose detailed model has arrived: only those draw near the hero. */
   private readonly detailed: Partial<Record<Prop, THREE.InstancedMesh>> = {};
   private readonly detailedReady = new Set<Prop>();
+  private readonly variantReady = new Set<Prop>(); // the biome props whose model is in (#1733)
   /** The instances of each props mesh by cell: a step moves the cells that cross `HI_RADIUS` between two meshes (#1054). */
   private readonly slots = new Map<THREE.InstancedMesh, Slots>();
   /** The hero cell the props are laid for: a step moves the props from it to the new cell. Undefined until a build lays them. */
@@ -949,7 +978,9 @@ export class OpenWorldView {
   useModels({ low, high }: PropModels): void {
     for (const prop of PROP_NAMES) {
       const geometry = low[prop];
-      if (geometry) this.paint(this.props[prop], this.neon ? neonProp(prop, geometry) : geometry);
+      if (!geometry) continue;
+      this.paint(this.props[prop], this.neon ? neonProp(prop, geometry) : geometry);
+      if (VARIANTS.includes(prop)) this.variantReady.add(prop); // a biome's own prop, laid from now on (#1733)
     }
     for (const prop of MODELLED) {
       const geometry = high[prop];
@@ -1091,7 +1122,8 @@ export class OpenWorldView {
   /** Whether the prop of `terrain` stands drawn on `cell` now: a break of another hero (#1305) plays its shards only then, the prop
    * of a cell on a chunk not laid is not in a mesh to take out. */
   hasProp([q, r]: Axial, terrain: Terrain): boolean {
-    const prop = PROP_OF[terrain];
+    const tile = this.world.tile(q, r);
+    const prop = tile && this.propOf({ ...tile, terrain });
     if (!prop || !this.laidHero) return false;
     return this.slots.get(this.route(prop, hexDistance([q, r], this.laidHero) <= HI_RADIUS))!.at.has(cellKey(q, r));
   }
@@ -1099,12 +1131,12 @@ export class OpenWorldView {
   /** The hero broke the `terrain` obstacle on `cell` at `now` (ms) (#1147): the world has the cell open already. Its prop leaves its mesh,
    * and its shards fly (a fade under `reduced` motion); the shards are particles, so a break allocates nothing. None past `ROLL_ZOOM`. */
   smash([q, r]: Axial, terrain: Terrain, now: number, reduced: boolean): void {
-    const prop = PROP_OF[terrain]!;
+    const tile = this.world.tile(q, r)!;
+    const prop = this.propOf({ ...tile, terrain })!; // the cell is open already: the prop it had
     this.removeProp(this.route(prop, hexDistance([q, r], this.laidHero!) <= HI_RADIUS), cellKey(q, r)); // the hero has been shown: the props are laid
     if (this.drawnLevel > ROLL_ZOOM) return;
     const p = axialTo3D(q, r);
-    const tile = this.world.tile(q, r)!;
-    this.particles.shatter(p.x, topOf(GROUND[tile.terrain], tile.height, q, r) + 0.2, p.z, now, PROPS[prop].color, reduced);
+    this.particles.shatter(p.x, topOf(GROUND[tile.terrain], tile.height, q, r) + 0.2, p.z, now, PROPS[PROP_OF[terrain]!].color, reduced);
   }
 
   /** Moves what the shaders move to `now` (ms) (docs/specs/openworld-animation.md sections 3 and 4): the shore foam and the sway of the trees
@@ -2278,13 +2310,20 @@ export class OpenWorldView {
     return grown;
   }
 
+  /** The prop of a tile's obstacle: its biome's own tree or boulder once that model is in (#1733), else the plain one. */
+  private propOf(tile: Tile): Prop | undefined {
+    const own = tile.terrain === 'tree' ? BIOME_PROPS[tile.biome].tree : tile.terrain === 'boulder' ? BIOME_PROPS[tile.biome].boulder : undefined;
+    return own && this.variantReady.has(own) ? own : PROP_OF[tile.terrain];
+  }
+
   /** The prop a tile carries on its ground, `top` high, tinted by its biome when it is a tree or a boulder. */
   private stand(tile: Tile, q: number, r: number, p: { x: number; z: number }, top: number, lay: Lay, near: boolean): void {
     const v = variety(q, r);
-    const tint = BIOME_LOOK[tile.biome].prop;
+    const prop = this.propOf(tile);
+    const tint = prop === 'tree' || prop === 'boulder' ? BIOME_LOOK[tile.biome].prop : WHITE; // a biome's own prop has its own colours (#1733)
     if (tile.terrain === 'peak') lay('mountain', near, p.x, top + (1.2 + v * 0.8) / 2, p.z, 1.2 + v * 0.8, WHITE);
-    else if (tile.terrain === 'tree') lay('tree', near, p.x, top + (1.6 + v * 0.8) / 2, p.z, 1.6 + v * 0.8, tint); // twice the pine's height (#1557 art round 3)
-    else if (tile.terrain === 'boulder') lay('boulder', near, p.x, top + 0.2, p.z, 0.8, tint);
+    else if (tile.terrain === 'tree') lay(prop!, near, p.x, top + (1.6 + v * 0.8) / 2, p.z, 1.6 + v * 0.8, tint); // twice the pine's height (#1557 art round 3)
+    else if (tile.terrain === 'boulder') lay(prop!, near, p.x, top + 0.2, p.z, 0.8, tint);
     else if (tile.terrain === 'wall') {
       lay('wall', near, p.x, top + WALL / 2, p.z, WALL, WHITE);
       lay('cap', false, p.x, top + WALKWAY + CAP / 2, p.z, CAP, WHITE); // the sodium ring round the walkway, the merlons through it (#1557)

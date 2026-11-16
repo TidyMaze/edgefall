@@ -70,6 +70,7 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
           low: `${import.meta.env.BASE_URL}assets/pbr/openworld.glb`,
           high: `${import.meta.env.BASE_URL}assets/pbr/openworld-hi.glb`,
           lair: `${import.meta.env.BASE_URL}assets/pbr/openworld-lair.glb`,
+          biomes: `${import.meta.env.BASE_URL}assets/pbr/openworld-biomes.glb`, // each biome's own tree and boulder (#1733)
         },
         meshoptLoader(),
       ),

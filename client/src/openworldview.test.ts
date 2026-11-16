@@ -373,6 +373,15 @@ describe('loading the Blender models (client/models/openworld.glb, openworld-hi.
     expect(models.high).toEqual({});
   });
 
+  it('reads each biome\'s own tree and boulder from the biomes file, with the low-poly props (#1733)', async () => {
+    const biomes = '/assets/pbr/openworld-biomes.glb';
+    const all = { ...files, [biomes]: sceneOf(['ow_tree_forest', 'ow_boulder_desert', 'ow_tree']) }; // a plain name there is not read
+    const models = await loadModels({ ...urls, biomes }, { loadAsync: async (url: string) => ({ scene: all[url]! }) });
+    expect(models.low.tree_forest).toBeDefined();
+    expect(models.low.boulder_desert).toBeDefined();
+    expect(models.low.tree).toBe((files[urls.low]!.getObjectByName('ow_tree') as THREE.Mesh).geometry);
+  });
+
   it('gives none when both loads fail, so the procedural shapes stay', async () => {
     const loader = { loadAsync: async () => Promise.reject(new Error('404')) };
     expect(await loadModels(urls, loader)).toEqual({ low: {}, high: {} });
@@ -1565,6 +1574,36 @@ describe('the biomes look (openworld-terrain.md section 4, #984)', () => {
     const m = mesh(view, name);
     return Array.from({ length: m.count }, (_, i) => new THREE.Color().fromArray(m.instanceColor!.array, i * 3).getHex());
   };
+
+  it('lays a biome\'s own tree and boulder once its model is in, the plain ones before, untinted; a break takes it out (#1733)', () => {
+    const world = new World(byBiome);
+    const view = new OpenWorldView(world);
+    view.show([0, 0]);
+    const trees = mesh(view, 'prop-tree').count;
+    expect(mesh(view, 'prop-tree_forest').count).toBe(0); // no model yet: the plain tree
+    const painted = (): THREE.BufferGeometry => {
+      const g = new THREE.BoxGeometry();
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.getAttribute('position').count * 3).fill(1), 3));
+      return g;
+    };
+    view.useModels({ low: { tree_forest: painted(), boulder_tundra: painted() }, high: {} });
+    view.show([0, 0]);
+    expect(mesh(view, 'prop-tree_forest').count).toBeGreaterThan(0);
+    expect(mesh(view, 'prop-boulder_tundra').count).toBeGreaterThan(0);
+    expect(mesh(view, 'prop-tree').count).toBeLessThan(trees); // the forest's trees left the plain mesh
+    expect(mesh(view, 'prop-boulder_desert').count).toBe(0); // no model for it: the desert keeps the plain boulder
+    const forest = mesh(view, 'prop-tree_forest');
+    expect(new THREE.Color().fromArray(forest.instanceColor!.array, 0).getHex()).toBe(0xffffff); // the model's own colours, untinted
+    // A forest tree in view: the cell (CHUNK, 0) is in column cx = 1, the forest, its first cell a tree (code 6).
+    const cell: [number, number] = [CHUNK, 0];
+    expect(world.tile(...cell)).toMatchObject({ terrain: 'tree', biome: 'forest' });
+    expect(view.hasProp(cell, 'tree')).toBe(true);
+    const n = forest.count;
+    world.smash(...cell);
+    view.smash(cell, 'tree', 100, false);
+    expect(mesh(view, 'prop-tree_forest').count).toBe(n - 1);
+    expect(view.hasProp(cell, 'tree')).toBe(false);
+  });
 
   it('colours the grass of every height by its biome, and mixes the biome into its shore, uplands and peaks (#1734)', () => {
     expect(groundColour(at(3, 'grass', 'meadow'), 'grass')).toBe(LOOK.grass.color);

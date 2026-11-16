@@ -28,6 +28,15 @@ const colourAt = (g: THREE.BufferGeometry, i: number): THREE.Color => new THREE.
 
 afterEach(() => applyNeonWorld(false, palette));
 
+describe('a biome\'s own prop under the look (#1733)', () => {
+  it('keeps its painted colours', () => {
+    const g = new THREE.BoxGeometry();
+    g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(g.getAttribute('position').count * 3).fill(0.5), 3));
+    expect(neonProp('tree_forest', g)).toBe(g);
+    expect(neonProp('boulder_desert', g)).toBe(g);
+  });
+});
+
 describe('the neon palette of the Open world (#1424)', () => {
   it('puts one ground and one accent on each biome, the three waters and the beach, and gives the game its own back (#1656)', () => {
     const [grass, sand, mountain, biomes, water] = [LOOK.grass.color, LOOK.sand.color, PROPS.mountain.color, JSON.stringify(BIOME_LOOK), { ...WATER }];

@@ -141,6 +141,7 @@ const between = (dark: number, light: number, t: number): THREE.Color => linear(
 /** The model of a prop in the neon look: the file's light and shade in slate, the tree a calm violet crystal, the wall's sodium seam and the lair's lamp kept as lamps. */
 export function neonProp(prop: string, geometry: THREE.BufferGeometry): THREE.BufferGeometry {
   if (!geometry.hasAttribute('color')) return geometry;
+  if (/^(tree|boulder)_/.test(prop)) return geometry; // a biome's own prop keeps its painted colours (#1733)
   if (prop === 'mountain') return repaint(geometry, (_, t) => (t > 0.5 ? between(0x39466a, NEON.pedestalRing, t * 2 - 1) : between(0x1b2233, 0x39466a, t * 2))); // a cyan line on the ridges (#1557)
   if (prop === 'tree') return repaint(geometry, (_, t) => between(0x5c6048, 0xd2dca8, t));
   if (prop === 'wall') return repaint(geometry, (c, t) => (t > 0.5 ? c : between(0x0f1320, 0x2a3347, t * 2)));

@@ -108,6 +108,10 @@ mixed five climate biomes everywhere (#984), so every direction looked alike.
 - **What a biome changes**: the ground of every height in the 3D view and the minimap (#1734): its grass is the biome's ground, its sand,
   rock and peaks the game's colour with the biome mixed in (`BIOME_MIX`: 35, 40 and 30 %), in either look; and the density of the
   obstacles per open cell on the low ground. Water keeps its colour; the archipelago alone also changes the relief, as above.
+- **A biome's own props (#1733)**: the meadow's round tree, the forest's giant mushroom, the tundra's ice spire and ice block, the desert's
+  sandstone rock, the badlands' rock arch and the archipelago's palm, in `client/models/openworld-biomes.glb` (`ow_tree_<biome>`,
+  `ow_boulder_<biome>`, vertex colours, 28 to 38 triangles; source `art/blender/openworld-biomes.blend`). A cell takes its biome's prop once
+  the file is in (`BIOME_PROPS`), untinted, and the plain tree or boulder before; the obstacle, its break and its resource are unchanged.
 - **No new `Terrain`**: the tint is a colour, not a terrain. The ground and the props are tinted per instance,
   `LOOK[ground] x BIOME_TINT[biome]` (`setColorAt`), so no new mesh. The map paints a low grass cell in the same ground.
 - **Chunk bytes**: 3 per cell, `height, terrain, biome` (the biome code is the order of the `Biome` enum: `0` meadow to

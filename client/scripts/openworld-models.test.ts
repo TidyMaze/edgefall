@@ -151,3 +151,25 @@ describe('openworld-lair.glb', () => {
     expect(statSync(fileURLToPath(new URL('../models/openworld-lair.glb', import.meta.url))).size).toBeLessThan(20_000);
   });
 });
+
+// #1733: each biome's own tree and boulder, in `openworld-biomes.glb`: vertex colours, no texture, under 40 triangles each (instanced by the
+// thousand), in the box of the plain prop (one unit high, a cell's footprint), under the names the view reads (`BIOME_PROPS`).
+describe('openworld-biomes.glb', () => {
+  const model = json(read('openworld-biomes.glb'));
+  const NAMES = ['tree_meadow', 'tree_forest', 'tree_tundra', 'tree_archipelago', 'boulder_desert', 'boulder_badlands', 'boulder_tundra'];
+  it('holds the seven biome props, each painted, untextured, small and in the box', () => {
+    expect(model.images ?? []).toEqual([]);
+    for (const name of NAMES) {
+      const node = model.nodes.find((n) => n.name === `ow_${name}`);
+      expect(node, name).toBeDefined();
+      const primitive = model.meshes[node!.mesh]!.primitives[0]!;
+      expect(primitive.attributes, name).toHaveProperty('COLOR_0');
+      expect(model.accessors[primitive.indices]!.count / 3, name).toBeLessThanOrEqual(40);
+      const { min, max } = model.accessors[primitive.attributes.POSITION!]!;
+      expect(min![1]!, name).toBeCloseTo(-0.5, 1);
+      expect(max![1]!, name).toBeCloseTo(0.5, 1);
+      for (const axis of [0, 2]) expect(Math.max(-min![axis]!, max![axis]!), name).toBeLessThanOrEqual(0.36);
+    }
+  });
+});
+
