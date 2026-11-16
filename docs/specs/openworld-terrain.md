@@ -152,6 +152,10 @@ water on seeds 1 to 4.
   the world and its saves are unchanged. **Borders (#1740)**: a ground cell's colour averages the biomes within `BLEND_REACH` (4) cells
   and its tree or boulder is drawn from them, so two biomes mix over a gradient.
 
+- **Marked borders (#1752)**: each of the six sextant borders is drawn from the seed as a river, a ridge or plain, a third each. Past 40
+  cells from the spawn, the cells within 0.9 of a marked border (on its ragged line) are water on a river, sailed across, or peaks at
+  height 7 on a ridge, with a pass 3 cells wide every 16 cells of distance from the spawn. `WORLD_VERSION` 5: older saves start fresh.
+
 ## 5. Relief (#988)
 
 Client only, after #983 (it needs the eight heights).

@@ -10,7 +10,7 @@ use std::sync::{Mutex, PoisonError};
 
 /// The version of the generated world, saved with each Open world save (#968): bump it with every change of the generator, the
 /// same moment the pinned digest of the tests changes (the line of `the_generated_world_is_pinned_by_a_digest`).
-pub const WORLD_VERSION: u32 = 4;
+pub const WORLD_VERSION: u32 = 5;
 /// A chunk is `CHUNK` x `CHUNK` cells of the axial grid.
 pub const CHUNK: i32 = 16;
 /// The world is a hexagon of cells round the spawn `(0, 0)`: the cells within `WORLD_RADIUS` of it (#1440).
@@ -51,6 +51,61 @@ const BLEND: f64 = 3.0;
 const BLEND_SALT: u64 = 45;
 /// The draw of a cell against `meadow_bias` (salt `MEADOW_SALT`): below the bias it is meadow.
 const MEADOW_SALT: u64 = 46;
+/// Some borders of the sextants are marked (#1752): past `FEATURE_FROM` cells from the spawn, the cells within `FEATURE_HALF` of the
+/// border turn to a river (water, sailed across) or a ridge (peaks, with a pass `PASS_WIDTH` cells wide every `PASS_EVERY` cells of
+/// distance from the spawn), the kind of each of the six borders drawn from the seed (salt `FEATURE_SALT`): a river, a ridge or none.
+const FEATURE_SALT: u64 = 47;
+const FEATURE_FROM: i32 = 40;
+const FEATURE_HALF: f64 = 0.9;
+const PASS_EVERY: i32 = 16;
+const PASS_WIDTH: i32 = 3;
+
+/// What marks the sextants' border `b` (between the sextant `b` and `b + 1`) of the world `seed` (#1752).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BorderFeature {
+    River,
+    Ridge,
+    Plain,
+}
+
+/// The feature of the border `b` of the world `seed`: a third each.
+pub fn border_feature(seed: u64, b: usize) -> BorderFeature {
+    let draw = unit(seed, FEATURE_SALT, b as i32, 0);
+    if draw < 1.0 / 3.0 {
+        BorderFeature::River
+    } else if draw < 2.0 / 3.0 {
+        BorderFeature::Ridge
+    } else {
+        BorderFeature::Plain
+    }
+}
+
+/// The terrain a border feature gives `(q, r)`, its point turned `turn` as the biomes' borders are: water on a river, a peak on a ridge
+/// out of its passes, `None` off a marked border, near the spawn, or in a pass.
+fn feature_at(seed: u64, q: i32, r: i32, turn: f64) -> Option<Terrain> {
+    let from = distance(q, r);
+    if from < FEATURE_FROM {
+        return None;
+    }
+    let (x, y) = (
+        f64::from(q) + f64::from(r) / 2.0,
+        -(3f64.sqrt() / 2.0) * f64::from(r),
+    );
+    let reach = x.hypot(y);
+    let turns = (y.atan2(x) + turn) / (std::f64::consts::PI / 3.0);
+    let nearest = turns.round();
+    let frac = turns - nearest;
+    let inside = (0.5 - frac.abs()) * (std::f64::consts::PI / 3.0) * reach;
+    if inside >= FEATURE_HALF {
+        return None;
+    }
+    let b = (nearest as i64 + if frac > 0.0 { 0 } else { -1 }).rem_euclid(6) as usize;
+    match border_feature(seed, b) {
+        BorderFeature::River => Some(Terrain::Water),
+        BorderFeature::Ridge if from % PASS_EVERY >= PASS_WIDTH => Some(Terrain::Peak),
+        _ => None,
+    }
+}
 /// The biome of each sextant round the spawn, by the axial direction it is centred on: east, north-east, north-west, west,
 /// south-west and south-east (`openworld-terrain.md` section 4).
 pub const SEXTANTS: [Biome; 6] = [
@@ -503,6 +558,15 @@ impl Window {
             };
         }
         let (biome, sea) = self.biome(q, r);
+        let turn = (self.border.value(q, r) - 0.5) * BORDER_TURN;
+        if let Some(terrain) = feature_at(self.seed, q, r, turn) {
+            let height = if terrain == Terrain::Water { 1 } else { 7 };
+            return Cell {
+                height,
+                terrain,
+                biome,
+            };
+        }
         let elevation = self.height.value(q, r);
         let island = (HEIGHT_WEIGHTS[1] * self.height.levels[1].noise(q, r)
             + HEIGHT_WEIGHTS[2] * self.height.levels[2].noise(q, r))
@@ -1857,10 +1921,53 @@ mod tests {
     }
 
     #[test]
+    fn some_borders_are_a_river_or_a_ridge_with_passes_past_the_spawn() {
+        // each kind is drawn for some border of some seed
+        let kinds: Vec<BorderFeature> = (0..30)
+            .flat_map(|seed| (0..6).map(move |b| border_feature(seed, b)))
+            .collect();
+        for kind in [
+            BorderFeature::River,
+            BorderFeature::Ridge,
+            BorderFeature::Plain,
+        ] {
+            assert!(kinds.contains(&kind), "{kind:?}");
+        }
+        // the border between the sextants 0 and 1 runs at 30 degrees, through (2d, -d), d * 2 cells from the spawn; no turn here
+        let seed = (0..30)
+            .find(|&s| border_feature(s, 0) == BorderFeature::Ridge)
+            .unwrap();
+        assert_eq!(feature_at(seed, 100, -50, 0.0), Some(Terrain::Peak));
+        assert_eq!(feature_at(seed, 96, -48, 0.0), None); // a pass: 96 % 16 < 3
+        assert_eq!(feature_at(seed, 100, 0, 0.0), None); // the middle of a sextant
+        assert_eq!(feature_at(seed, 20, -10, 0.0), None); // near the spawn
+        let river = (0..30)
+            .find(|&s| border_feature(s, 0) == BorderFeature::River)
+            .unwrap();
+        assert_eq!(feature_at(river, 100, -50, 0.0), Some(Terrain::Water));
+        let plain = (0..30)
+            .find(|&s| border_feature(s, 0) == BorderFeature::Plain)
+            .unwrap();
+        assert_eq!(feature_at(plain, 100, -50, 0.0), None);
+        // at -30 degrees, through (d, d), lies the border 5, between the sextants 5 and 0
+        let other = (0..30)
+            .find(|&s| border_feature(s, 5) == BorderFeature::River)
+            .unwrap();
+        assert_eq!(feature_at(other, 30, 30, 0.0), Some(Terrain::Water));
+        // the generated world carries it, along its ragged border: some water and a peak at height 7 or a river at 1 near (100, -50)
+        let marked = (60..140)
+            .flat_map(|q| (-80..-20).map(move |r| (q, r)))
+            .filter_map(|(q, r)| cell(river, q, r))
+            .filter(|c| c.terrain == Terrain::Water && c.height == 1)
+            .count();
+        assert!(marked > 20, "{marked}");
+    }
+
+    #[test]
     fn the_generated_world_is_pinned_by_a_digest() {
         assert_eq!(
             (WORLD_VERSION, world_digest()),
-            (4, 16_742_511_850_258_042_212),
+            (5, 17_632_621_638_291_259_565),
             "WORLD_VERSION and digest of the reference world"
         );
     }

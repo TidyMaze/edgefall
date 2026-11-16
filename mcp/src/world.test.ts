@@ -308,12 +308,17 @@ describe('a walk', () => {
       if (!spot) return [];
       const [dq, dr] = STEPS[spot.dir]!;
       return [{ seed, to: [spot.at[0] + dq, spot.at[1] + dr] as const }];
-    })[0]!;
-    const open = world();
-    value(open.newWorld({ seed: lake.seed }));
-    const walked = value(open.walk({ q: lake.to[0], r: lake.to[1] }));
-    expect(walked.steps).toBeGreaterThan(0);
-    expect(code(lake.seed, ...lake.to)).toBe(0);
+    });
+    // the first lake a path reaches: a river border (#1752) can put the nearest one out of the walk's reach
+    const walks = lake.map(({ seed, to }) => {
+      const open = world();
+      value(open.newWorld({ seed }));
+      return { seed, to, walked: open.walk({ q: to[0], r: to[1] }) };
+    });
+    const reached = walks.find((w) => w.walked.ok)!;
+    expect(value(reached.walked).steps).toBeGreaterThan(0);
+    const lake1 = reached;
+    expect(code(lake1.seed, ...lake1.to)).toBe(0);
   });
 
   test('stays when the cell is the hero, a lair, an enemy, off the world or too far', () => {
