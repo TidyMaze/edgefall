@@ -769,10 +769,17 @@ describe('the public Open world online', () => {
     expect(byId('openworld-hide').getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('tells the player when the connection to another hero fails', async () => {
+  it('tells the player when the connection to another hero fails, and Retry joins a new room (#1670)', async () => {
     const game = await joined();
-    game.world()!.error('could not connect to peer p after exchanging SDP');
+    const first = game.world()!;
+    expect(byId('openworld-retry').hidden).toBe(true);
+    first.error('could not connect to peer p after exchanging SDP');
     expect(netText()).toContain('the direct connection failed');
+    expect(byId('openworld-retry').hidden).toBe(false);
+    byId('openworld-retry').click();
+    expect(first.closed).toBe(true);
+    expect(game.world()).not.toBe(first);
+    expect(byId('openworld-retry').hidden).toBe(false); // the error stands until a hero connects
   });
 
   // The signed break events (#1305): what the hero breaks goes out signed with its stored key, what a peer broke opens here.

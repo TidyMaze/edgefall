@@ -119,6 +119,7 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
   // automated page stays offline too unless it asks for the hook transport (?net=hook) or the opt-in dialog (?consent).
   const netBox = document.getElementById('openworld-online')!;
   const netHide = document.getElementById('openworld-hide') as HTMLButtonElement;
+  const netRetry = document.getElementById('openworld-retry') as HTMLButtonElement;
   const netName = document.getElementById('openworld-name') as HTMLInputElement;
   const nearby = document.getElementById('openworld-nearby')!;
   const emotes = document.getElementById('openworld-emotes')!;
@@ -143,6 +144,7 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
       if (netBox.hidden && status.available) netName.value = readName(store); // the field shows the stored name when the controls appear
       netBox.hidden = !status.available;
       document.getElementById('openworld-net')!.textContent = status.text;
+      netRetry.hidden = !status.retry; // a join error stands: the player can try again now (#1670)
       netHide.textContent = status.hidden ? 'Show' : 'Hide';
       netHide.setAttribute('aria-pressed', String(status.hidden));
       emoteButton.disabled = status.hidden; // nobody hears a hidden hero
@@ -170,6 +172,7 @@ export function wireOpenWorld(deps: OpenWorldDeps): OpenWorldParts {
   // The clock the enemy marbles wander by (#1511): the wall clock in ticks, so every peer sees them in the same places.
   mode.wander = () => deps.wanderTick() ?? Math.floor(Date.now() / FightState.tickMs);
   netHide.addEventListener('click', () => (netHide.getAttribute('aria-pressed') === 'true' ? peers.show() : peers.hide()));
+  netRetry.addEventListener('click', () => peers.retry());
   // The emotes and phrases (#1671): a fixed list, only its index goes on the wire; one a 2 s, the rest is dropped.
   emotes.replaceChildren(...EMOTES.map((text, id) => Object.assign(document.createElement('button'), { type: 'button', textContent: text, onclick: () => peers.speak(id) })));
   emoteButton.addEventListener('click', () => (emotes.hidden ? openEmotes() : closeEmotes()));

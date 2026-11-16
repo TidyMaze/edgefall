@@ -134,6 +134,24 @@ test('a public name goes out in the Hello and shows over a near hero, Hide leave
   await expect(page.locator('#openworld-net')).toContainText('the direct connection failed');
 });
 
+test('a join error shows Retry, which joins the room again at once; a hero joining hides it, #1670', async ({ page }) => {
+  await enter(page, PUBLIC);
+  const retry = page.locator('#openworld-retry');
+  await expect(page.locator('#openworld-net')).toHaveText('Online: nobody else here yet.'); // the room is joined
+  await expect(retry).toHaveAttribute('hidden');
+  await page.evaluate(() => (window as unknown as Hook & { __netPeerError: (m: string) => void }).__netPeerError('could not connect to peer p after exchanging SDP'));
+  await expect(page.locator('#openworld-net')).toHaveText('Online: a hero was found but the direct connection failed. Phone and work networks often block it; still trying.');
+  await showHud(page, '#openworld-retry'); // the plate may be folded behind its chip
+  await page.screenshot({ path: 'test-results/peers-retry.png' });
+  await page.evaluate(() => Object.assign(window, { __oldJoin: (window as unknown as Hook).__netPeerJoin }));
+  await clickHud(page, '#openworld-retry');
+  // a new room: the transport is opened again and binds a new join handler
+  await expect.poll(() => page.evaluate(() => (window as unknown as Hook & { __oldJoin: unknown }).__netPeerJoin !== (window as unknown as { __oldJoin: unknown }).__oldJoin)).toBe(true);
+  await expect(retry).not.toHaveAttribute('hidden'); // the error stands until a hero connects
+  await page.evaluate(() => (window as unknown as Hook).__netPeerJoin('p'));
+  await expect(retry).toHaveAttribute('hidden');
+});
+
 test('the Say menu sends an emote by index, a hero next to us shows its emote above it, the nearby list names it, #1671', async ({ page }) => {
   await enter(page, PUBLIC);
   await page.evaluate(() => {

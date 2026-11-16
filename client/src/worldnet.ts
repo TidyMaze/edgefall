@@ -49,10 +49,12 @@ const BREAK_GAP_MS = 100;
 /** A hero acts within this many cells of where it stands; an event further than that from its sender is a relayed one (a sync). */
 const NEAR = 12;
 
-/** What the HUD shows of the connection: `available` is false outside the public world (no controls), `hidden` when the player hides. */
+/** What the HUD shows of the connection: `available` is false outside the public world (no controls), `hidden` when the player hides,
+ * `retry` while a join error stands (the Retry button, #1670). */
 export interface NetStatus {
   available: boolean;
   hidden: boolean;
+  retry: boolean;
   text: string;
 }
 
@@ -65,7 +67,7 @@ export const RETRY_MAX_MS = 60000;
 const NOBODY = 'Online: nobody else here yet.';
 const heroes = (n: number): string => `Online: ${n} other ${n === 1 ? 'hero' : 'heroes'} here.`;
 const ERRORS: Record<string, string> = {
-  'ice-failed': 'Online: a hero was found but the direct connection failed. Your network may block it.',
+  'ice-failed': 'Online: a hero was found but the direct connection failed. Phone and work networks often block it; still trying.',
   'join-error': 'Online: a connection problem, still trying.',
 };
 
@@ -120,7 +122,7 @@ export class WorldPeersHost implements PeerHost {
 
   enter(seed: number, scene: THREE.Scene, camera: THREE.PerspectiveCamera, world: Pick<World, 'tile'>): void {
     this.leave();
-    if (seed !== PUBLIC_SEED || !this.allowed()) return void this.say({ available: false, hidden: false, text: '' });
+    if (seed !== PUBLIC_SEED || !this.allowed()) return void this.say({ available: false, hidden: false, retry: false, text: '' });
     this.entered = { scene, camera, world };
     this.start();
   }
@@ -133,7 +135,7 @@ export class WorldPeersHost implements PeerHost {
   /** Reports the status of the room as it is now. */
   private update(): void {
     const text = this.failed || (this.lastCount > 0 ? heroes(this.lastCount) : NOBODY);
-    if (text !== this.text) this.say({ available: true, hidden: false, text });
+    if (text !== this.text) this.say({ available: true, hidden: false, retry: this.failed !== '', text });
   }
 
   private start(): void {
@@ -145,6 +147,7 @@ export class WorldPeersHost implements PeerHost {
       this.failed = '';
       this.retryAt = null;
       this.retryWait = RETRY_MS;
+      this.update(); // the error and its Retry go at once, not at the next frame
       net.send(encodeHello(this.name()), peer);
       const here = sender.now();
       if (here) net.send(here, peer);
@@ -309,21 +312,30 @@ export class WorldPeersHost implements PeerHost {
   /** Joins the room again, keeping the error text until a peer connects, and the next rejoin due after a doubled wait: the text says
    * "still trying", so it keeps trying while nobody is here (#1670). */
   private rejoin(hero: Axial): boolean {
+    this.again(Math.min(this.retryWait * 2, RETRY_MAX_MS));
+    return this.running!.layer.update([], hero, [hero]);
+  }
+
+  /** The player's Retry (#1670): joins the room again now while a join error stands, the next rejoin RETRY_MS later. */
+  retry(): void {
+    if (this.running && this.failed) this.again(RETRY_MS);
+  }
+
+  private again(wait: number): void {
     const failed = this.failed;
     this.stop();
     this.start();
     this.failed = failed;
-    this.retryWait = Math.min(this.retryWait * 2, RETRY_MAX_MS);
-    this.retryAt = this.clock() + this.retryWait;
+    this.retryWait = wait;
+    this.retryAt = this.clock() + wait;
     this.update();
-    return this.running!.layer.update([], hero, [hero]);
   }
 
   /** Stops sending and receiving: peers drop this hero after 10 s, and it sees nobody. */
   hide(): void {
     if (!this.running) return;
     this.stop();
-    this.say({ available: true, hidden: true, text: 'Hidden: nobody sees you and you see nobody.' });
+    this.say({ available: true, hidden: true, retry: false, text: 'Hidden: nobody sees you and you see nobody.' });
   }
 
   /** Joins the room again after a Hide. */
@@ -350,6 +362,6 @@ export class WorldPeersHost implements PeerHost {
     this.stop();
     this.entered = null;
     this.held.clear();
-    if (wasHere) this.say({ available: false, hidden: false, text: '' });
+    if (wasHere) this.say({ available: false, hidden: false, retry: false, text: '' });
   }
 }

@@ -291,9 +291,9 @@ describe('WorldPeersHost', () => {
   it('reports the status the player reads: nobody yet, a count, and nothing in a private world', () => {
     const { nets, host, reports, enter } = setup();
     enter(7);
-    expect(reports.at(-1)).toEqual({ available: false, hidden: false, text: '' });
+    expect(reports.at(-1)).toEqual({ available: false, hidden: false, retry: false, text: '' });
     enter();
-    expect(reports.at(-1)).toEqual({ available: true, hidden: false, text: 'Online: nobody else here yet.' });
+    expect(reports.at(-1)).toEqual({ available: true, hidden: false, retry: false, text: 'Online: nobody else here yet.' });
     nets[0]!.data(encodeHello(), 'p');
     nets[0]!.data(encodePos(1, 0, 0), 'p');
     host.frame(0, [0, 0]);
@@ -306,14 +306,14 @@ describe('WorldPeersHost', () => {
     host.frame(400, [0, 0]);
     expect(reports).toHaveLength(count); // only a change is reported
     host.leave();
-    expect(reports.at(-1)).toEqual({ available: false, hidden: false, text: '' });
+    expect(reports.at(-1)).toEqual({ available: false, hidden: false, retry: false, text: '' });
   });
 
   it('shows a join error to the player, and clears it when a peer connects', () => {
     const { nets, host, reports, enter } = setup();
     enter();
     nets[0]!.fail('could not connect to peer p after exchanging SDP; configure TURN servers');
-    expect(reports.at(-1)!.text).toBe('Online: a hero was found but the direct connection failed. Your network may block it.');
+    expect(reports.at(-1)!.text).toBe('Online: a hero was found but the direct connection failed. Phone and work networks often block it; still trying.');
     nets[0]!.fail('handshake timed out');
     expect(reports.at(-1)!.text).toBe('Online: a connection problem, still trying.');
     nets[0]!.join('p');
@@ -369,6 +369,33 @@ describe('WorldPeersHost', () => {
     expect(rooms).toHaveLength(6);
   });
 
+  it('offers Retry while a join error stands, and Retry joins the room again at once, the next rejoin 15 s later (#1670)', () => {
+    const { nets, host, reports, rooms, clock, enter } = setup();
+    enter();
+    expect(reports.at(-1)!.retry).toBe(false);
+    host.retry(); // nothing failed: nothing to retry
+    expect(rooms).toHaveLength(1);
+    clock.now = 0;
+    nets[0]!.fail('handshake timed out');
+    expect(reports.at(-1)!.retry).toBe(true);
+    host.frame(RETRY_MS, [0, 0]); // a first rejoin: the next one is due 30 s later
+    expect(rooms).toHaveLength(2);
+    clock.now = RETRY_MS + 1000;
+    host.retry();
+    expect(nets[1]!.closed).toBe(true);
+    expect(rooms).toHaveLength(3);
+    expect(reports.at(-1)).toEqual({ available: true, hidden: false, retry: true, text: 'Online: a connection problem, still trying.' });
+    host.frame(clock.now + RETRY_MS - 1, [0, 0]);
+    expect(rooms).toHaveLength(3);
+    host.frame(clock.now + RETRY_MS, [0, 0]); // the wait went back to 15 s
+    expect(rooms).toHaveLength(4);
+    nets[3]!.join('p');
+    expect(reports.at(-1)).toEqual({ available: true, hidden: false, retry: false, text: 'Online: nobody else here yet.' }); // at once, no frame needed
+    host.hide();
+    host.retry(); // hidden: Show joins, not Retry
+    expect(rooms).toHaveLength(4);
+  });
+
   it('does not rejoin when a hero is connected, or after the join error cleared', () => {
     const { nets, host, rooms, clock, enter } = setup();
     enter();
@@ -396,7 +423,7 @@ describe('WorldPeersHost', () => {
     host.hide();
     expect(nets[0]!.closed).toBe(true);
     expect(root.children).toHaveLength(0);
-    expect(reports.at(-1)).toEqual({ available: true, hidden: true, text: 'Hidden: nobody sees you and you see nobody.' });
+    expect(reports.at(-1)).toEqual({ available: true, hidden: true, retry: false, text: 'Hidden: nobody sees you and you see nobody.' });
     expect(host.frame(10, [0, 0])).toBe(false);
     host.show();
     expect(rooms).toHaveLength(2);
