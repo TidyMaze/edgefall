@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import page from '../index.html?raw';
 
 // The page's controls, in their places (#839, #1032, docs/specs/thumb-dock.md): the thumb dock at the bottom holds the
-// game's controls in order, Settings starts with the update row, and the top column keeps the
+// game's controls in order, Settings holds no update row (the top banner does, #1724), and the top column keeps the
 // cog, the lobby controls and the invite link.
 const doc = new DOMParser().parseFromString(page, 'text/html');
 const children = (id: string): string[] => [...doc.getElementById(id)!.children].map((el) => el.id);
@@ -39,8 +39,10 @@ describe('The page controls', () => {
     expect(children('online')).toEqual(['settings-box', 'auto-reason', 'import-file']);
   });
 
-  it('Settings starts with the update row (#1693); the page has no Modes menu, its lock lines, Quick game or World button (#1697)', () => {
-    expect(children('settings-menu')[0]).toBe('update');
+  it('Settings starts empty, its rows added by main.ts, with no update row: a new version is the top banner (#1724); the page has no Modes menu, its lock lines, Quick game or World button (#1697)', () => {
+    expect(children('settings-menu')).toEqual([]);
+    expect(doc.getElementById('update')).toBeNull();
+    expect(doc.getElementById('update-banner')).not.toBeNull();
     for (const id of ['mode-menu', 'modes', 'quick-game', 'open-world-entry', 'openworld-quick', 'lock-banner', 'lock-note', 'menu-view', 'boss-list', 'boss-fight', 'reset-view']) expect(doc.getElementById(id), id).toBeNull();
     expect(children('starters')).toContain('play-online');
   });
