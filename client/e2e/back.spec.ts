@@ -38,6 +38,7 @@ for (const [name, enter, shown] of MODES) {
 }
 
 test('Back from the Hub returns to the table, and a Back on the table leaves the page, #1564', async ({ page }) => {
+  await page.goto('./icons/icon-192.png'); // a page before the game, as a player comes from one: Firefox keeps no Back entry for a tab's first blank page (#1709)
   await page.goto('./?bot=off&net=hook');
   await expect(page.locator('#hud')).toContainText('Black to move');
   await pick(page, 'hub');
@@ -49,6 +50,7 @@ test('Back from the Hub returns to the table, and a Back on the table leaves the
 });
 
 test('a mode left by its own button leaves no entry to press twice, #1564', async ({ page }) => {
+  await page.goto('./icons/icon-192.png'); // a page to go back to, in every browser (#1709)
   await page.goto('./?bot=off&net=hook');
   await expect(page.locator('#hud')).toContainText('Black to move');
   await pick(page, 'hub');

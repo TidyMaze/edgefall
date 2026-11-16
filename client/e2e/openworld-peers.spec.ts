@@ -26,6 +26,8 @@ async function enter(page: Page, seed: number): Promise<void> {
   await page.goto(`./?bot=off&net=hook&quality=low&openworld=${seed}`);
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe(String(seed));
+  // the world's frames run: its first entry builds the programs behind the veil, where no frame draws the other heroes (#1582); WebKit lifts it last (#1713)
+  await expect.poll(() => page.evaluate(() => document.body.dataset.veil)).toBeUndefined();
 }
 
 // A peer's positions closer than MIN_GAP_MS (100 ms, flood guard in worldpeers.ts) are refused: Firefox and WebKit are quick enough to send the next one inside it.
