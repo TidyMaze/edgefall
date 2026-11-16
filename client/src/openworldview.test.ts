@@ -2168,6 +2168,22 @@ describe('the marbles wear the skins of the ship (#1176)', () => {
     for (const m of [hero, troop, foes]) expect(m.colorNode).not.toBeNull(); // the ring is the one cue of the team
   });
 
+  it('changes the skins of the marbles in place when Settings changes them (#1726)', () => {
+    const view = new OpenWorldView(new World(grass), new FightState(), { player: skin(), shell: skin() });
+    const of = (name: string) => (view.scene.getObjectByName(name) as THREE.Mesh).material as THREE.MeshStandardNodeMaterial;
+    const before = [of('hero'), of('troop'), of('enemies'), view.ejected.material as THREE.MeshStandardNodeMaterial];
+    const versions = before.map((m) => m.version);
+    const [player, shell] = [skin(), skin()];
+    player.roughness = 0.11;
+    shell.color.set(0x112233);
+    view.setSkins({ player, shell });
+    expect([of('hero'), of('troop'), of('enemies'), view.ejected.material]).toEqual(before); // the same materials, their ring kept
+    expect([before[0]!.map, before[1]!.map, before[0]!.roughness]).toEqual([player.map, player.map, 0.11]);
+    expect([before[2]!.map, before[3]!.map, before[2]!.color.getHex()]).toEqual([shell.map, shell.map, 0x112233]);
+    before.forEach((m, i) => expect(m.version).toBeGreaterThan(versions[i]!)); // compiled again with the new maps
+    for (const m of before.slice(0, 3)) expect(m.colorNode).not.toBeNull();
+  });
+
   it('keeps the plain looks of the marbles when no skin is given', () => {
     const view = new OpenWorldView(new World(grass));
     expect(((view.scene.getObjectByName('hero') as THREE.Mesh).material as THREE.MeshStandardNodeMaterial).map).toBeNull();

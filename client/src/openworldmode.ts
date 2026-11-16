@@ -636,6 +636,14 @@ export class OpenWorldMode {
     this.wild(); // a marble the hero was put next to fights at once
   }
 
+  /** Settings changed a skin (#1726): the open world's marbles wear the skins read again; no world open, nothing to dress. */
+  async reskin(): Promise<void> {
+    if (!this.view || !this.skins) return;
+    const skins = await this.skins();
+    this.view?.setSkins(skins);
+    this.dirty = true; // drawn again with them
+  }
+
   /** Shows the steering mode in the HUD (#1137), and drops a walk when steering is off: called when a world opens and when the
    * Settings item changes. */
   refreshMode(): void {

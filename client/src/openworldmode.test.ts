@@ -1521,6 +1521,24 @@ describe('the marbles wear the skins of the ship (#1176)', () => {
     expect(enemies!.map).toBe(skins.shell.map);
   });
 
+  it('reads the skins again when Settings changes one, and does nothing with no world open (#1726)', async () => {
+    let skins = worn();
+    const asked = vi.fn(async () => skins);
+    const m = new OpenWorldMode(
+      (_seed, cx, cy) => bytes(cx, cy), () => new Int32Array(), async () => ({ low: {}, high: {} }), () => true,
+      worldSaves(memoryStore(), 1), undefined, undefined, asked,
+    );
+    await m.reskin(); // no world yet: nothing to dress
+    expect(asked).not.toHaveBeenCalled();
+    await m.open(1, 800, 600);
+    skins = worn();
+    await m.reskin();
+    expect(asked).toHaveBeenCalledTimes(2);
+    const [hero, enemies] = lookOf(m, 'hero', 'enemies');
+    expect(hero!.map).toBe(skins.player.map);
+    expect(enemies!.map).toBe(skins.shell.map);
+  });
+
   it('keeps the plain looks when a world is entered with no skins', () => {
     const m = mode();
     m.enter(1, 800, 600);

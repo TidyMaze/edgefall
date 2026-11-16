@@ -23,7 +23,7 @@ import { ICON } from './openworldlairicon';
 import { relief, shadeTop, shapeLand, shapingAt, type Landmarks, type Shaping } from './landshape';
 import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightWorldDay, neonHeroRim, neonMarbleRim, neonStars, neonWorldOn } from './neonlook';
 import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './neonworld';
-import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength } from './openworldstripe';
+import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength, wearSkin } from './openworldstripe';
 import { wrapPi } from './openworldtwist';
 
 /** The most chunks loaded on each side of the hero's chunk, at the widest zoom: the instanced meshes hold all of them (#976).
@@ -1810,6 +1810,14 @@ export class OpenWorldView {
    * view is not drawn after. Its materials are not disposed: a disposed material releases its pipeline, so the next entry compiled
    * every shader of the world again (#1710). Kept, the renderer holds their programs, one per shader, for the materials of the next
    * view to reuse; the materials themselves hold no texture and go with the view. */
+  /** Settings changed a skin while the world is open (#1726): the hero and the troop wear the new player skin, the foes and the ejected
+   * marble the new shell skin, on their own materials, so their ring and glow stay. */
+  setSkins(skins: MarbleSkins): void {
+    const of = (mesh: THREE.Mesh) => mesh.material as THREE.MeshStandardNodeMaterial;
+    for (const mesh of [this.hero, this.troop]) wearSkin(of(mesh), skins.player);
+    for (const mesh of [this.foes, this.ejected]) wearSkin(of(mesh), skins.shell);
+  }
+
   dispose(): void {
     this.drain();
     this.moves = [];

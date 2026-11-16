@@ -23,6 +23,7 @@ function fakeMode(): { mode: OpenWorldMode; calls: [string, unknown[]][] } {
     leave: method('leave'),
     resize: method('resize'),
     refreshMode: method('refreshMode'),
+    reskin: method('reskin', Promise.resolve()),
     press: method('press'),
     orbit: method('orbit'),
     cancelWalk: method('cancelWalk'),
@@ -63,6 +64,7 @@ describe('OpenWorldHandle, #1578', () => {
     // the questions of every pointer, key, resize and setting are answered with nothing to do
     handle.resize(1, 2);
     handle.refreshMode();
+    handle.reskin();
     handle.press(1, 2, 3, 4);
     handle.orbit(5);
     handle.cancelWalk();
@@ -110,6 +112,7 @@ describe('OpenWorldHandle, #1578', () => {
     expect(handle.frame(render, 5)).toBe(true);
     handle.resize(1, 2);
     handle.refreshMode();
+    handle.reskin();
     handle.press(1, 2, 3, 4);
     handle.orbit(5);
     handle.cancelWalk();
@@ -127,6 +130,7 @@ describe('OpenWorldHandle, #1578', () => {
       ['frame', [render, 5]],
       ['resize', [1, 2]],
       ['refreshMode', []],
+      ['reskin', []],
       ['press', [1, 2, 3, 4]],
       ['orbit', [5]],
       ['cancelWalk', []],

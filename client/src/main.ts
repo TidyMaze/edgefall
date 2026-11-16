@@ -1143,6 +1143,7 @@ const toggles: Record<string, () => void> = {
     skin = nextSkin(skin);
     writeSkin(store, skin);
     marbleMaterials[1] = shellMaterial(skin);
+    openWorld.reskin(); // the Open world's marbles too (#1726)
     refresh();
   },
   'reduced-motion': () => {
@@ -1159,6 +1160,7 @@ const toggles: Record<string, () => void> = {
     glass = nextGlassSkin(glass);
     writeGlassSkin(store, glass);
     marbleMaterials[2] = glassMaterial(glass);
+    openWorld.reskin(); // the Open world's marbles too (#1726)
     refresh();
   },
   palette: () => {

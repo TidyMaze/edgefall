@@ -80,6 +80,9 @@ export class OpenWorldHandle {
   refreshMode(): void {
     this.parts?.mode.refreshMode();
   }
+  reskin(): void {
+    void this.parts?.mode.reskin(); // a skin changed in Settings (#1726)
+  }
   press(...args: Args<'press'>): void {
     this.parts?.mode.press(...args);
   }

@@ -42,18 +42,23 @@ export interface MarbleSkins {
   shell: THREE.MeshStandardMaterial;
 }
 
+/** Dresses `material` in the colour, maps and finish of `skin` (#1176), its stripe and glow nodes kept: when a world opens, and again
+ * when Settings changes a skin while it is open (#1726). The material compiles again for the new maps. */
+export function wearSkin(material: THREE.MeshStandardNodeMaterial, skin: THREE.MeshStandardMaterial): void {
+  const { color, roughness, metalness, emissive, emissiveIntensity, map, normalMap, roughnessMap, metalnessMap, aoMap, emissiveMap } = skin;
+  material.color.copy(color);
+  material.emissive.copy(emissive);
+  Object.assign(material, { roughness, metalness, emissiveIntensity, map, normalMap, roughnessMap, metalnessMap, aoMap, emissiveMap });
+  material.needsUpdate = true;
+}
+
 /** A marble material with the stripe of `look`, its strength read from the `fade` uniform (see `stripeStrength`). Its colour is
  * the base, mixed toward the stripe colour across the band of the great circle. With a `skin` (#1176) the material wears its
  * colour, maps and finish, so the stripe is the one cue of the team. With a `glow` (0 to 1, a uniform node of the view, #1496) the marble
  * shines with `share` of its own colour in proportion to it: the hero and the troop stay readable at night. */
 export function stripedMaterial(look: MarbleLook, fade: Fade, skin?: THREE.MeshStandardMaterial, glow?: Fade, share = GLOW_SHARE): THREE.MeshStandardNodeMaterial {
   const material = new THREE.MeshStandardNodeMaterial({ color: look.base, roughness: look.roughness });
-  if (skin) {
-    const { color, roughness, metalness, emissive, emissiveIntensity, map, normalMap, roughnessMap, metalnessMap, aoMap, emissiveMap } = skin;
-    material.color.copy(color);
-    material.emissive.copy(emissive);
-    Object.assign(material, { roughness, metalness, emissiveIntensity, map, normalMap, roughnessMap, metalnessMap, aoMap, emissiveMap });
-  }
+  if (skin) wearSkin(material, skin);
   const stripe = uniform(new THREE.Color(look.stripe));
   // The direction of the point on the marble, in its own frame: a sphere's unit normal, so it turns with the marble.
   const direction = normalize(varying(positionLocal));
