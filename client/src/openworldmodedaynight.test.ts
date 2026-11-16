@@ -50,6 +50,8 @@ describe('the biome entered (#1742)', () => {
     expect([banner.hidden, banner.textContent!.split(' · ')[0]]).toEqual([false, 'Forest']);
     m.frame(() => {}, 48);
     expect(banner.textContent!.startsWith('Forest')).toBe(true); // the same biome: no new banner
+    m.leave();
+    expect(banner.hidden).toBe(true); // leaving the world hides it
     banner.remove();
     vi.useRealTimers();
   });

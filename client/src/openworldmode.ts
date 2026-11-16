@@ -976,6 +976,13 @@ export class OpenWorldMode {
     if (this.view.setTime(this.tod, !reduced)) this.dirty = true; // the sky and the sun, drawn again as they change
     this.markPhase();
     this.nameBiome(); // the biome entered (#1742)
+    if (this.slide && now >= this.slide.at) {
+      const { to } = this.slide;
+      this.slide = null;
+      this.sliding = true; // one slide: it does not slide again
+      this.roll(to, now);
+      this.sliding = false;
+    }
     if (this.phases.changed(this.view, this.phase)) this.cue('time-of-day'); // dusk, night, day: the first sight of a world is silent
     this.stepWander(now);
     if (this.calmUntil > 0 && now >= this.calmUntil) {
@@ -1118,8 +1125,21 @@ export class OpenWorldMode {
     this.persist();
     this.mark(document.body.dataset.openworld!);
     this.fileReached();
+    this.slideOnIce(from, played !== null, at + span * slowBy()); // the tundra's ice (#1739)
     return true;
   }
+
+  /** The tundra's ice (#1739): a roll that ends on a tundra cell, with nothing broken nor pushed, slides one cell more the same way once the
+   * glide has landed, when that cell is free; the slide itself does not slide again. */
+  private slideOnIce(from: Axial, pushed: boolean, landed: number): void {
+    const at = this.hero!.at;
+    if (this.sliding || pushed || this.hero!.smashed || this.world!.tile(at[0], at[1])?.biome !== 'tundra') return;
+    const beyond: Axial = [2 * at[0] - from[0], 2 * at[1] - from[1]];
+    const free = enter(this.world!, this.fight, at, beyond) === 'rolls' && !this.lairs.some((cell) => same(cell, beyond)) && !this.places.some(({ cell }) => same(cell, beyond));
+    if (free) this.slide = { to: beyond, at: landed };
+  }
+  private slide: { to: Axial; at: number } | null = null;
+  private sliding = false;
 
   /** Tally files the first town, gate, tower or remembered biome the hero reaches (#1315) in the HUD's line, once per kind. */
   private fileReached(): void {

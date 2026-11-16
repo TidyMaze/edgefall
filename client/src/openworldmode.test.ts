@@ -556,6 +556,34 @@ function cliff(_seed: number, cx: number, cy: number): Uint8Array {
   return out;
 }
 
+describe('the tundra\'s ice (#1739)', () => {
+  const flat = (biome: number) => (_seed: number, cx: number, cy: number): Uint8Array => {
+    if (Math.abs(cx) > 3 || Math.abs(cy) > 3) return new Uint8Array();
+    const out = new Uint8Array(CHUNK * CHUNK * 3);
+    for (let i = 0; i < CHUNK * CHUNK; i++) out.set([1, 2, biome], i * 3);
+    return out;
+  };
+  it('slides the hero one cell more on the tundra once the step has landed, once; the meadow stops', () => {
+    const ice = mode(undefined, flat(2), () => true);
+    ice.enter(1, 800, 600);
+    ice.fixture({ hero: [0, 0], troop: [], enemies: [] });
+    tap(ice, 'ArrowRight');
+    ice.release('ArrowRight');
+    expect(body().openworldAt).toBe('1,0');
+    ice.frame(() => {}, performance.now() + 2000);
+    expect(body().openworldAt).toBe('2,0'); // slid one more
+    ice.frame(() => {}, performance.now() + 4000);
+    expect(body().openworldAt).toBe('2,0'); // and no further
+    const grass = mode(undefined, flat(0), () => true);
+    grass.enter(1, 800, 600);
+    grass.fixture({ hero: [0, 0], troop: [], enemies: [] });
+    tap(grass, 'ArrowRight');
+    grass.release('ArrowRight');
+    grass.frame(() => {}, performance.now() + 2000);
+    expect(body().openworldAt).toBe('1,0');
+  });
+});
+
 describe('a cliff too high (#1744)', () => {
   it('refuses a step up more than two levels: the hero never stands on the cliff top', () => {
     const steep = (_seed: number, cx: number, cy: number): Uint8Array => {
