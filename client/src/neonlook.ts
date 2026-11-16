@@ -92,8 +92,10 @@ export const NEON_WHITE_GLOW = 0.8;
  * blobs and never long diagonal bands across the ground, and a warm earth-tinted ambient in place of the cold violet-grey one. */
 export const WORLD_DAY = { sun: 0xffe3bf, sunIntensity: 3.4, elevation: 52, azimuth: 50, hemiSky: 0xfff1de, hemiGround: 0x5a4d3c, hemiIntensity: 3.3 } as const;
 
+/** The day sky of the one look (#1747): the terrace look's blue (daynight.ts `WORLD_LOOKS.day`). */
+export const DAY_SKY = 0x93b5d9;
 export const NEON_WORLD_LOOKS: Readonly<Record<Phase, WorldLook>> = {
-  day: { sky: NEON.sky, ...WORLD_DAY, water: 0xffffff, glow: 0, stars: 1, horizon: 1 },
+  day: { sky: DAY_SKY, ...WORLD_DAY, water: 0xffffff, glow: 0, stars: 0, horizon: 0 }, // the terrace's blue day sky, no stars: one look that turns with the hour (#1747)
   dusk: { sky: mixHex(NEON.sky, NEON.violet, 0.35), sun: mixHex(NEON_LIGHT.sun, NEON.violet, 0.45), sunIntensity: 2.4, elevation: 14, azimuth: 62, hemiSky: mixHex(NEON_LIGHT.skyMix, NEON.violet, 0.4), hemiGround: NEON.ground, hemiIntensity: 2.2, water: mixHex(0xffffff, NEON.violet, 0.35), glow: 0.4, stars: 0.5, horizon: 2 },
   night: { sky: NEON.sky, sun: NEON.pedestalRing, sunIntensity: 1.7, elevation: 38, azimuth: -30, hemiSky: NEON.rimLight, hemiGround: NEON.groundFar, hemiIntensity: 2.2, water: mixHex(mixHex(0xffffff, NEON.cyan, 0.3), NEON.sky, 0.5), glow: 1, stars: 1.8, horizon: 0.6 }, // the land 1.4:1 over the lakes (#1656)
 };

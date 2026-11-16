@@ -111,13 +111,13 @@ describe('the sky of the Open world view', () => {
 });
 
 describe('the sky of the Open world under the neon look (#1536)', () => {
-  it('starts on the neon day: the black sky and fog, the cold sun, the violet-white hemisphere', () => {
+  it('starts on the day of the one look: the blue sky and fog, the warm sun, the violet-white hemisphere (#1747)', () => {
     setNeonWorldOn(true);
     const view = made();
     const { sun, hemisphere } = lights(view);
     const day = NEON_WORLD_LOOKS.day;
-    expect((view.scene.background as THREE.Color).getHex()).toBe(airNeon(NEON.sky));
-    expect(view.scene.fog!.color.getHex()).toBe(airNeon(NEON.sky));
+    expect((view.scene.background as THREE.Color).getHex()).toBe(airNeon(day.sky));
+    expect(view.scene.fog!.color.getHex()).toBe(airNeon(day.sky));
     expect([sun.color.getHex(), sun.intensity]).toEqual([day.sun, boostedSun(day)]);
     expect([hemisphere.color.getHex(), hemisphere.groundColor.getHex(), hemisphere.intensity]).toEqual([day.hemiSky, day.hemiGround, boostedSky(day)]);
   });

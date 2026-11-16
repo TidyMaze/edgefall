@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { color as tslColor } from 'three/tsl';
 import type { Node } from 'three/webgpu';
 import { neonShellFor, NEON, NEON_CELL_SCALE, NEON_HIDDEN, NEON_LIGHT, WORLD_DAY, lightNeon, targetArrowMaterial, neonEdgeGeometry, neonGlow, neonEdgeMaterial, neonLookOn, neonMaterial, neonPaint, neonPedestal, neonStars, NEON_TELL, nextToSight, neonBreachGeometry, neonEggGeometry, neonVoidGeometry, neonVoidMaterial, neonCrackMap, neonFogGeometry, neonTells, neonVeil, tellLook, NEON_RIM, NEON_GLOSS, NEON_WHITE_RIM, NEON_WHITE_SHADE, NEON_SHEEN, neonMarbleRim, marbleSheen, NEON_HERO_RIM, neonHeroRim } from './neonlook';
-import { mixHex } from './daynight';
+import { mixHex, WORLD_LOOKS } from './daynight';
 import { mergeByMaterial } from './tablezero';
 import { scalePower } from './lightpanel';
 import { DECK_NAMES } from './deck';
@@ -423,10 +423,10 @@ describe('the tells of the neon look (#1424)', () => {
 });
 
 describe('the Open world under the neon look: day, dusk and night (#1536)', () => {
-  it('its day is the look the neon look ships: the black sky, the cold sun, the violet-white hemisphere, no glow', () => {
+  it('its day is the terrace\'s blue sky with the warm high sun, the violet-white hemisphere, no glow (#1747)', () => {
     const day = NEON_WORLD_LOOKS.day;
     // #1687: the world's day is warm and high (52 degrees: short shadows, no long diagonal bands), not the arena's cold low sun
-    expect([day.sky, day.sun, day.sunIntensity, day.elevation, day.azimuth]).toEqual([NEON.sky, WORLD_DAY.sun, WORLD_DAY.sunIntensity, WORLD_DAY.elevation, WORLD_DAY.azimuth]);
+    expect([day.sky, day.sun, day.sunIntensity, day.elevation, day.azimuth]).toEqual([WORLD_LOOKS.day.sky, WORLD_DAY.sun, WORLD_DAY.sunIntensity, WORLD_DAY.elevation, WORLD_DAY.azimuth]);
     expect([day.hemiSky, day.hemiGround, day.hemiIntensity, day.glow]).toEqual([WORLD_DAY.hemiSky, WORLD_DAY.hemiGround, WORLD_DAY.hemiIntensity, 0]);
     expect(WORLD_DAY.elevation).toBeGreaterThan(NEON_LIGHT.elevation * 2);
   });
@@ -445,8 +445,8 @@ describe('the Open world under the neon look: day, dusk and night (#1536)', () =
 
   it('phases the sky and the lakes with the clock: the stars out at night, the horizon glowing at dusk, the lakes violet then cyan (#1536)', () => {
     const { day, dusk, night } = NEON_WORLD_LOOKS;
-    expect([day.stars, dusk.stars, night.stars]).toEqual([1, 0.5, 1.8]);
-    expect([day.horizon, dusk.horizon, night.horizon]).toEqual([1, 2, 0.6]);
+    expect([day.stars, dusk.stars, night.stars]).toEqual([0, 0.5, 1.8]); // no stars in the blue day sky (#1747)
+    expect([day.horizon, dusk.horizon, night.horizon]).toEqual([0, 2, 0.6]);
     expect(day.water).toBe(0xffffff);
     expect(dusk.water).toBe(mixHex(0xffffff, NEON.violet, 0.35));
     expect(night.water).toBe(mixHex(mixHex(0xffffff, NEON.cyan, 0.3), NEON.sky, 0.5)); // the lakes darker by night: the land reads 1.4:1 over them (#1656)

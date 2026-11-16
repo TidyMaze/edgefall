@@ -1,7 +1,7 @@
 import './test/openworldwasm';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three/webgpu';
-import { NEON, WORLD_DAY, neonSunPosition, neonWorldOn } from './neonlook';
+import { DAY_SKY, NEON, WORLD_DAY, neonSunPosition, neonWorldOn } from './neonlook';
 import { MOTE_KEEP, NEON_BIOME, WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, applyNeonWorld, mapColour, neonProp, neonTraces } from './neonworld';
 import { AMBIENT } from './openworldparticles';
 const GAME_MOTES = Object.fromEntries(Object.entries(AMBIENT).map(([b, l]) => [b, l!.colour])); // the game's own, before the look
@@ -117,15 +117,17 @@ describe('the neon palette of the Open world (#1424)', () => {
 });
 
 describe('the Open world view with the look (#1424)', () => {
-  it('has a black sky with stars that follow the camera, the warm high sun (#1687), 30 % shadows and its models painted', () => {
+  it('has the blue day sky and a near-black night sky with stars that follow the camera (#1747), the warm high sun (#1687), 30 % shadows and its models painted', () => {
     applyNeonWorld(true, palette);
     const view = new OpenWorldView(new World(bytes));
     view.show([0, 0]);
     const biome = (view as unknown as { world: World }).world.tile(0, 0)!.biome;
-    const sky = new THREE.Color(NEON.sky).lerp(new THREE.Color(BIOME_LOOK[biome].ground), NEON_SKY_MIX).getHex(); // the biome's dark ground in a near-black sky (#1736)
+    const sky = new THREE.Color(DAY_SKY).lerp(new THREE.Color(BIOME_LOOK[biome].ground), NEON_SKY_MIX).getHex(); // the day's blue, leaned to the biome's ground (#1736, #1747)
     expect((view.scene.background as THREE.Color).getHex()).toBe(sky);
     expect((view.scene.fog as THREE.Fog).color.getHex()).toBe(sky);
-    expect(new THREE.Color(sky).getHSL({ h: 0, s: 0, l: 0 }).l).toBeLessThan(0.12); // still near black
+    view.setTime(9 * 60_000, false); // night
+    expect((view.scene.background as THREE.Color).getHSL({ h: 0, s: 0, l: 0 }).l).toBeLessThan(0.12); // near black
+    view.setTime(0, false);
     const stars = view.scene.getObjectByName('starfield')!;
     expect(stars.position.toArray()).toEqual(view.camera.position.toArray());
     expect(stars.position.length()).toBeGreaterThan(0);
