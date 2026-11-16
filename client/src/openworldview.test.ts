@@ -17,6 +17,8 @@ import {
   BIOME_LOOK,
   CAPACITY,
   groundColour,
+  shadedGround,
+  shapeWorld,
   footprint,
   GROUND,
   GROUNDS,
@@ -191,6 +193,14 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     expect(tundra).not.toBe(desert);
     expect((view.scene.fog as THREE.Fog).color.getHex()).toBe(tundra);
     expect(BIOME_SKY.desert).not.toBe(BIOME_SKY.tundra);
+  });
+
+  it('pools a town\'s or a teleporter\'s light on the land round it, never on the water (#1745)', () => {
+    shapeWorld({ lairs: [], gates: [], lights: [{ cell: [0, 0], colour: 0x19e6ff }] });
+    const tile = { terrain: 'grass', height: 1, biome: 'meadow' } as Tile;
+    expect(shadedGround(tile, 'grass', 1, 0)).not.toBe(groundColour(tile, 'grass'));
+    expect(shadedGround({ ...tile, terrain: 'water' }, 'water', 1, 0)).toBe(groundColour({ ...tile, terrain: 'water' }, 'water'));
+    shapeWorld({ lairs: [], gates: [], lights: [] });
   });
 
   it('hides a marble of the desert past the mirage (#1739)', () => {
