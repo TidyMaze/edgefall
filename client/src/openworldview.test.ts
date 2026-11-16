@@ -193,6 +193,20 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     expect(BIOME_SKY.desert).not.toBe(BIOME_SKY.tundra);
   });
 
+  it('hides a marble of the desert past the mirage (#1739)', () => {
+    const desert = (cx: number, cy: number): Uint8Array => {
+      if (Math.abs(cx) > 2 || Math.abs(cy) > 2) return new Uint8Array();
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([3, 2, BIOMES.indexOf('desert')], i * 3);
+      return out;
+    };
+    const fight = Object.assign(new FightState(), { chunkEnemies: (_w: World, kx: number, ky: number): Axial[] => (kx === 0 && ky === 0 ? [[3, 0], [12, 0]] : []) });
+    const view = new OpenWorldView(new World(desert), fight);
+    view.show([0, 0]);
+    view.updateEnemies();
+    expect((view.scene.getObjectByName('enemies') as THREE.InstancedMesh).count).toBe(1); // (12, 0) is past the mirage's 8 cells
+  });
+
   it('lifts a cell by its height, water lies low, and varies props by cell without chance', () => {
     expect(topOf('water', 0, 0, 0)).toBeLessThan(topOf('grass', 0, 0, 0));
     expect(topOf('grass', 3, 0, 0)).toBeGreaterThan(topOf('grass', 1, 0, 0));

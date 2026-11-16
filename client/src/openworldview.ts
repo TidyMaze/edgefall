@@ -25,6 +25,7 @@ import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightWorldDay, neonHeroRim, ne
 import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './neonworld';
 import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength, wearSkin } from './openworldstripe';
 import { wrapPi } from './openworldtwist';
+import { fogScale, seenThrough } from './biomerules';
 
 /** The most chunks loaded on each side of the hero's chunk, at the widest zoom: the instanced meshes hold all of them (#976).
  * Raised or lowered by measure (the rebuild time, the frame time, the memory), never by dropping detail. Ten covers the
@@ -1213,6 +1214,7 @@ export class OpenWorldView {
   show(at: Axial, troop: readonly Axial[] = [], glide?: { now: number; span: number; pace?: Pace }): void {
     this.heroCell = [at[0], at[1]];
     const biome = this.world.tile(at[0], at[1])?.biome;
+    if (biome === 'desert' || this.skyBiome === 'desert') this.updateEnemies(); // the mirage follows the hero (#1739)
     if (biome && biome !== this.skyBiome) {
       this.skyBiome = biome; // the sky leans toward the new biome's air (#1736)
       this.applyLook();
@@ -1717,7 +1719,7 @@ export class OpenWorldView {
       this.drawnChunks = ''; // the screen moved past the margin: the ground is laid again for it
     }
     this.fog.near = CAMERA_DISTANCE * k;
-    this.fog.far = (this.neon ? NEON_FOG_BEYOND : FOG_BEYOND) * depth;
+    this.fog.far = (this.neon ? NEON_FOG_BEYOND : FOG_BEYOND) * depth * fogScale(this.heroBiome); // the forest's fog closes in (#1739)
     this.camera.far = this.fog.far * 1.5; // the planes reach past the fog: no ground is clipped
     this.camera.updateProjectionMatrix();
     const hero = cellAtPoint(at.x, at.z);
@@ -2090,7 +2092,7 @@ export class OpenWorldView {
     const reach = this.loadedReach;
     for (let ky = cy - reach; ky <= cy + reach; ky++) {
       for (let kx = cx - reach; kx <= cx + reach; kx++) {
-        for (const cell of this.fight.chunkEnemies(this.world, kx, ky)) enemyCells.push(cell);
+        for (const cell of this.fight.chunkEnemies(this.world, kx, ky)) if (seenThrough(this.heroBiome, this.heroCell, cell)) enemyCells.push(cell); // the desert's mirage (#1739)
       }
     }
     this.place(this.foes, enemyCells);
