@@ -120,7 +120,40 @@ class CulledLightsNode extends THREE.LightsNode {
 }
 
 export class CulledLighting extends THREE.Lighting {
+  /** The lights node of each scene drawn, and the nodes of the scenes released, for the next scenes (#1711). */
+  private readonly nodes = new WeakMap<THREE.Scene, THREE.LightsNode>();
+  private readonly free: THREE.LightsNode[] = [];
+
   override createNode(lights: THREE.Light[] = []): THREE.LightsNode {
     return new CulledLightsNode().setLights(lights);
+  }
+
+  // As three's, but a new scene takes the node a released scene gave back: the loop keeps its node ids, so the shaders keep their
+  // code (three names the loop's arrays and orders a group's uniforms by node id) and three finds the programs it linked. Each entry
+  // of the Open world linked about 60 new programs and deleted none (#1711).
+  override getNode(scene: THREE.Scene): THREE.LightsNode {
+    if (scene.isScene !== true && (scene as { isGroup?: boolean }).isGroup !== true) return super.getNode(scene); // a mesh drawn alone
+    let node = this.nodes.get(scene);
+    if (node === undefined) {
+      node = this.free.pop() ?? this.createNode();
+      this.nodes.set(scene, node);
+    }
+    return node;
+  }
+
+  /** A scene left for good gives its lights node to the next scene drawn. */
+  static releaseScene(lighting: THREE.Lighting, scene: THREE.Scene): void {
+    // WebGL's lights node holds no texture: it goes to the next world entered, whose shaders then match the ones linked (#1711). Another
+    // lighting's node (clustered lighting, 2 GPU textures per scene) is freed, or each world entered leaks them (#1258).
+    if (lighting instanceof CulledLighting) lighting.release(scene);
+    else (lighting.getNode(scene) as { dispose?(): void }).dispose?.();
+  }
+
+  /** A scene left for good gives its lights node to the next scene drawn. */
+  release(scene: THREE.Scene): void {
+    const node = this.nodes.get(scene);
+    if (node === undefined) return;
+    this.nodes.delete(scene);
+    this.free.push(node);
   }
 }

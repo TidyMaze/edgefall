@@ -1806,21 +1806,19 @@ export class OpenWorldView {
     this.retired.push(...replaced);
   }
 
-  /** Frees the GPU objects of the view: each geometry and material of its scene, once, and what it replaced and has not drained.
-   * The view is not drawn after. */
+  /** Frees the GPU objects of the view: each geometry of its scene, once, its lights, and what it replaced and has not drained. The
+   * view is not drawn after. Its materials are not disposed: a disposed material releases its pipeline, so the next entry compiled
+   * every shader of the world again (#1710). Kept, the renderer holds their programs, one per shader, for the materials of the next
+   * view to reuse; the materials themselves hold no texture and go with the view. */
   dispose(): void {
     this.drain();
     this.moves = [];
     const geometries = new Set<THREE.BufferGeometry>();
-    const materials = new Set<THREE.Material>();
     this.scene.traverse((object) => {
       if ((object as THREE.Light).isLight) object.dispose(); // the sun's shadow map and the node of each light: a world left leaves no texture behind (#1520)
-      if (!(object as THREE.Mesh).isMesh) return;
-      geometries.add((object as THREE.Mesh).geometry);
-      materials.add((object as THREE.Mesh).material as THREE.Material);
+      if ((object as THREE.Mesh).isMesh) geometries.add((object as THREE.Mesh).geometry);
     });
     geometries.forEach((geometry) => geometry.dispose());
-    materials.forEach((material) => material.dispose());
   }
 
   /** Stands the landmark of each boss lair on its cell (#1170): `cells` in lair order, `beaten` the numbers of the lairs beaten. The

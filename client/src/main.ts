@@ -64,6 +64,7 @@ import { CELL_LAYER, instanceCells, instanceMarbles } from './instancedcells';
 import sceneOverrides from './sceneoverrides.json';
 import { ClusteredLighting } from 'three/examples/jsm/lighting/ClusteredLighting.js';
 import { CulledLighting } from './culledlighting';
+import { instancesAsAttributes } from './webglprograms';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { Diagnostics, copyText, gameInfo, renderCostText, type RenderCost } from './diagnostics';
 import { BLOOD_DROPS, BLOOD_MS, bloodAt, bloodStainAt } from './blood';
@@ -635,6 +636,7 @@ const renderer = new THREE.WebGPURenderer({ antialias: matchMedia('(pointer: coa
 // which draws nothing, would read 0 draw calls: the counts are zeroed by hand before each real draw instead (#1245).
 renderer.info.autoReset = false;
 await renderer.init().catch(bootFailed);
+instancesAsAttributes(renderer.backend); // each world entry links its programs once, not again at every entry (#1711)
 const gpu = new GpuCost(gpuOn && renderer.hasFeature('timestamp-query'), gpuMetricOf(renderer.backend as TimedRenderer['backend']));
 // One drawn frame's GPU time, read a frame later (three resolves the queries asynchronously) into the window of its mode:
 // its span on WebGPU, from the first pass start to the last pass end (#1645).
@@ -7505,9 +7507,7 @@ const openWorld = new OpenWorldHandle(async () =>
       return { player: neonShellFor(neonLook, glass === DEFAULT_GLASS_SKIN, terraceGlass, marbleMaterials[2]!), shell: neonShellFor(neonLook, skin === DEFAULT_SKIN, terraceShell, marbleMaterials[1]!) };
     },
     steering: () => steering,
-    // The lights node the renderer keeps per scene holds GPU textures (clustered lighting: 2 per scene) that nothing else frees, so
-    // each world entered leaked them (#1258).
-    releaseScene: (scene) => void (renderer.lighting.getNode(scene) as { dispose?(): void }).dispose?.(),
+    releaseScene: (scene) => CulledLighting.releaseScene(renderer.lighting, scene), // the scene's lights node, freed or handed on (#1258, #1711)
     startLair: (seed, lair, phase, brought, relics) => openBay(towerBay(boss_ids()[lair % boss_ids().length]!), { seed, kind: 'tower' }, { seed, lair, phase, brought, relics }, 0), // the tower opens the ship on the boss's bay (#1694)
     onPlace: (seed, kind, index, biome, contract) => {
       // A town opens the ship on the Mess, a gate on the Mining cut (#1593, #1694): every town the same ship for now.

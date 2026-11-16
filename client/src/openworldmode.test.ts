@@ -492,7 +492,7 @@ describe('the troop pushes after a step (docs/specs/openworld.md section 4, #967
 });
 
 describe('leaving the Open world frees its view, every time (#981)', () => {
-  it('enters and leaves 30 times: each view is disposed, with each of its geometries and materials once', () => {
+  it('enters and leaves 30 times: each view is disposed, with each of its geometries once, and its materials kept for the renderer to reuse their programs (#1710)', () => {
     const disposeView = vi.spyOn(OpenWorldView.prototype, 'dispose');
     const disposeGeometry = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
     const disposeMaterial = vi.spyOn(THREE.Material.prototype, 'dispose');
@@ -505,19 +505,13 @@ describe('leaving the Open world frees its view, every time (#981)', () => {
     const views = disposeView.mock.contexts as OpenWorldView[];
     expect(views).toHaveLength(30);
     let geometries = 0;
-    let materials = 0;
     for (const view of views) {
-      const seen = { g: new Set<THREE.BufferGeometry>(), m: new Set<THREE.Material>() };
-      view.scene.traverse((object) => {
-        if (!(object as THREE.Mesh).isMesh) return;
-        seen.g.add((object as THREE.Mesh).geometry);
-        seen.m.add((object as THREE.Mesh).material as THREE.Material);
-      });
-      geometries += seen.g.size;
-      materials += seen.m.size;
+      const seen = new Set<THREE.BufferGeometry>();
+      view.scene.traverse((object) => void ((object as THREE.Mesh).isMesh && seen.add((object as THREE.Mesh).geometry)));
+      geometries += seen.size;
     }
     expect(disposeGeometry).toHaveBeenCalledTimes(geometries);
-    expect(disposeMaterial).toHaveBeenCalledTimes(materials);
+    expect(disposeMaterial).not.toHaveBeenCalled();
     expect(m.active).toBe(false);
     vi.restoreAllMocks();
   });

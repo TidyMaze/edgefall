@@ -28,6 +28,39 @@ describe('CulledLighting (#882)', () => {
     expect(made.getLights()).toEqual([light]);
   });
 
+  it('hands the lights node of a released scene to the next scene, so its shaders keep their code and their programs (#1711)', () => {
+    const lighting = new CulledLighting();
+    const left = new THREE.Scene();
+    const node = lighting.getNode(left);
+    lighting.release(left);
+    const next = new THREE.Scene();
+    expect(lighting.getNode(next)).toBe(node); // the same loop, the same node ids: three finds the programs it linked
+    expect(lighting.getNode(next)).toBe(node);
+    expect(lighting.getNode(left)).not.toBe(node); // a released scene drawn again gets a node of its own
+    lighting.release(new THREE.Scene()); // a scene never drawn has no node to give back
+    expect(lighting.getNode(new THREE.Scene())).not.toBe(node);
+  });
+
+  it('gives a mesh drawn alone three\'s own node, and a group a node of its own (#1711)', () => {
+    const lighting = new CulledLighting();
+    expect(lighting.getNode(new THREE.Mesh() as unknown as THREE.Scene)).toBe(new CulledLighting().getNode(new THREE.Mesh() as unknown as THREE.Scene)); // three's default node
+    const group = new THREE.Group() as unknown as THREE.Scene;
+    expect(lighting.getNode(group)).toBe(lighting.getNode(group));
+  });
+
+  it('on a scene left, hands its node on under WebGL, frees it under another lighting (#1258, #1711)', () => {
+    const lighting = new CulledLighting();
+    const left = new THREE.Scene();
+    const node = lighting.getNode(left);
+    CulledLighting.releaseScene(lighting, left);
+    expect(lighting.getNode(new THREE.Scene())).toBe(node);
+    const other = new THREE.Lighting();
+    const scene = new THREE.Scene();
+    const dispose = vi.spyOn(other.getNode(scene), 'dispose');
+    CulledLighting.releaseScene(other, scene);
+    expect(dispose).toHaveBeenCalledOnce();
+  });
+
   it('declares the direct light sums before the lights, so the sums outlive each light\'s branch', () => {
     const order: string[] = [];
     const sum = (name: string): { addAssign: (v: number) => void } => ({ addAssign: (v) => void order.push(`${name} += ${v}`) });

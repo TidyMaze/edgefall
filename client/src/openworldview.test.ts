@@ -1356,7 +1356,7 @@ describe('the Open world view frees its GPU objects (#981)', () => {
     freed.forEach((seen) => expect(seen).toHaveBeenCalledOnce());
   });
 
-  it('disposes every geometry and material of its scene once, the models it was given included', () => {
+  it('disposes every geometry of its scene once, the models it was given included, and keeps its materials: the renderer keeps their compiled programs for the next entry (#1710)', () => {
     const view = new OpenWorldView(new World(bytes));
     view.useModels({ low: { tree: new THREE.BoxGeometry() }, high: { tree: new THREE.BoxGeometry() } });
     view.show([0, 0]);
@@ -1368,11 +1368,10 @@ describe('the Open world view frees its GPU objects (#981)', () => {
     view.dispose();
     expect(disposeGeometry.mock.calls.length).toBe(geometries.size);
     expect(new Set(disposeGeometry.mock.contexts)).toEqual(geometries);
-    expect(disposeMaterial.mock.calls.length).toBe(materials.size);
-    expect(new Set(disposeMaterial.mock.contexts)).toEqual(materials);
+    expect(materials.size).toBeGreaterThan(0);
+    expect(disposeMaterial).not.toHaveBeenCalled();
     const detailed = mesh(view, 'prop-tree-hi'); // the detailed meshes are freed with the rest (#989)
     expect(disposeGeometry.mock.contexts).toContain(detailed.geometry);
-    expect(disposeMaterial.mock.contexts).toContain(detailed.material);
     vi.restoreAllMocks();
   });
 });
@@ -1822,13 +1821,13 @@ describe("the troop's push animation (docs/specs/openworld.md section 4, #967)",
     expect(view.animating).toBe(false);
   });
 
-  it('disposes the ejected marble with the rest of the view: its geometry and its material, once', () => {
+  it('disposes the ejected marble\'s geometry with the rest of the view and keeps its material, as the others (#1710)', () => {
     const view = settled(pushOf());
     const disposeGeometry = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
     const disposeMaterial = vi.spyOn(THREE.Material.prototype, 'dispose');
     view.dispose();
     expect(disposeGeometry.mock.contexts).toContain(view.ejected.geometry);
-    expect(disposeMaterial.mock.contexts).toContain(view.ejected.material);
+    expect(disposeMaterial.mock.contexts).not.toContain(view.ejected.material);
   });
 });
 
