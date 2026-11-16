@@ -432,20 +432,21 @@ export class OpenWorld {
 
   /** The height level of a cell (the first byte of the bridge's chunk), 0 off the world. */
   private height(q: number, r: number): number {
+    return this.byte(q, r, 0) ?? 0;
+  }
+
+  /** The byte `i` of the cell `(q, r)` in the bridge's chunk (0 height, 1 terrain, 2 biome), its chunk read once; `undefined` off the world. */
+  private byte(q: number, r: number, i: number): number | undefined {
     const [cx, cy] = [Math.floor(q / CHUNK), Math.floor(r / CHUNK)];
     const key = `${cx},${cy}`;
     let cells = this.chunks.get(key);
     if (!cells) this.chunks.set(key, (cells = this.rules.world_chunk(this.play!.seed, cx, cy)));
-    return cells[((r - cy * CHUNK) * CHUNK + (q - cx * CHUNK)) * 3] ?? 0;
+    return cells[((r - cy * CHUNK) * CHUNK + (q - cx * CHUNK)) * 3 + i];
   }
 
   /** The terrain code of a cell with the broken obstacles turned to ground, `undefined` off the world. */
   private terrain(q: number, r: number): number | undefined {
-    const [cx, cy] = [Math.floor(q / CHUNK), Math.floor(r / CHUNK)];
-    const key = `${cx},${cy}`;
-    let cells = this.chunks.get(key);
-    if (!cells) this.chunks.set(key, (cells = this.rules.world_chunk(this.play!.seed, cx, cy)));
-    const code = cells[((r - cy * CHUNK) * CHUNK + (q - cx * CHUNK)) * 3 + 1];
+    const code = this.byte(q, r, 1);
     if (code === undefined || code === OFF_WORLD) return undefined;
     // Only a boulder or a tree is ever broken: it is the ground it stood on now (client/src/openworld.ts `LEFT`).
     if (!this.play!.broken.some((cell) => same(cell, [q, r]))) return code;

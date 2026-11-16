@@ -267,7 +267,15 @@ pub fn world_step(row: i32, keys: u32, yaw: f64, steering: bool, free: u32) -> i
 /// What the hero's step from `(q, r)` to `(tq, tr)` does: `0` refused, `1` rolls, `2` breaks the obstacle (#1147). `terrain` is the
 /// bridge code of the target cell (`-1` or an unknown code: off the world), `occupied` whether an enemy stands on it.
 #[wasm_bindgen]
-pub fn world_enter(q: i32, r: i32, tq: i32, tr: i32, terrain: i32, occupied: bool, rise: i32) -> i32 {
+pub fn world_enter(
+    q: i32,
+    r: i32,
+    tq: i32,
+    tr: i32,
+    terrain: i32,
+    occupied: bool,
+    rise: i32,
+) -> i32 {
     let entry = worldstep::entry((q, r), (tq, tr), terrain_of_code(terrain), occupied, rise);
     match entry {
         Entry::Refused => 0,
@@ -891,7 +899,9 @@ mod tests {
 
     #[test]
     fn every_terrain_code_gives_its_entry() {
-        let codes: Vec<i32> = (0..8).map(|t| world_enter(0, 0, 1, 0, t, false, 0)).collect();
+        let codes: Vec<i32> = (0..8)
+            .map(|t| world_enter(0, 0, 1, 0, t, false, 0))
+            .collect();
         assert_eq!(codes, vec![1, 1, 1, 1, 0, 2, 2, 0]);
     }
 

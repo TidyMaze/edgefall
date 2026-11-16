@@ -164,6 +164,7 @@ describe('a new world', () => {
     const open = new OpenWorld(rules, bossIds);
     const rows = value(open.newWorld({ seed: 0 })).window.rows;
     expect(rows[3]!.cells).toBe('???HTTg');
+    expect(failure(open.step({ direction: 'W' })).message).toContain('off the world'); // no chunk there: no height either (#1744)
   });
 
   test('a cell past the edge, in a chunk the edge crosses, is a question mark (#1440)', () => {
