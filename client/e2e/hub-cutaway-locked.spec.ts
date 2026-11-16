@@ -24,8 +24,8 @@ for (const size of [{ width: 390, height: 844 }, { width: 1000, height: 700 }]) 
       await expect(bay(page, `mess:${room}`).locator('.cut-lock')).toHaveCount(1);
     }
     await expect(bay(page, 'mess:logs')).toHaveAttribute('data-state', 'lit');
-    await expect(bay(page, 'cargo:hull')).toHaveAttribute('data-state', 'dark');
-    await page.waitForTimeout(1500); // the canvas shows the ship a frame after __shipDrawn, seconds on a software tier
+    await expect(bay(page, 'cargo:hull')).toHaveCount(0); // a shut deck: no tile, one line says why (#1729)
+    await expect(page.locator('#ship-bays [data-deck="cargo"] .hub-locked')).toBeVisible();
     await page.screenshot({ path: `test-results/locked-ship-${size.width}.png` });
   });
 }

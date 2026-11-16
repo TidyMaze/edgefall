@@ -1,70 +1,59 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { boot, type Game } from './test/harness';
 
-// The Hub Cutaway (#1689), the only Hub (#1697). The ship itself (bake, states, shells) is tested in hubcutaway.test.ts; here the wiring of the page: the shell asked for, the camera and the plates.
+// The Hub, the only one (#1697), is a 2D menu since #1729: one titled group of tiles per deck, no 3D ship. The tiles themselves are tested in hubbays.test.ts; here the wiring of the page.
 
 const byId = (id: string): HTMLElement => document.getElementById(id)!;
 function ship(game: Game): void {
   byId('ship').click();
 }
-/** The Cutaway class of the page just booted (the harness resets the modules at each boot). */
-const cutawayClass = async (): Promise<typeof import('./hubcutaway').Cutaway> => (await import('./hubcutaway')).Cutaway;
 const cutawayFiles = (game: Game): string[] => game.models().filter((m) => m.startsWith('hub-cutaway'));
+const tile = (key: string): HTMLElement | null => document.querySelector<HTMLElement>(`#ship-bays [data-bay="${key}"]`);
 
-describe('the Hub Cutaway on the page (#1689)', () => {
-  it('is the default page (#1696): no query draws the ship', async () => {
-    const on = await boot('?bot=off');
-    ship(on);
-    await on.settle();
-    expect(cutawayFiles(on).length).toBeGreaterThan(0);
-  });
-
-  it('asks for the shell of the window one at a time, and draws the ship in the Hub only', async () => {
+describe('the 2D Hub on the page (#1729)', () => {
+  it('is a menu of the decks in the Hub only, with no ship file asked for', async () => {
     const game = await boot('?bot=off');
-    const sync = vi.spyOn((await cutawayClass()).prototype, 'sync');
-    expect(cutawayFiles(game)).toEqual([]); // not in the Hub yet: nothing asked for
+    expect(byId('ship-bays').hidden).toBe(true);
     ship(game);
     await game.settle();
-    expect(cutawayFiles(game)).toEqual(['hub-cutaway-wide.glb']); // jsdom's window is 1024 x 768
-    expect(sync.mock.calls.at(-1)![0]).toBe(true);
-    sync.mockRestore();
-  });
-
-  it('frames the whole ship while it is drawn, hides the plates, and gives the deck back when it goes', async () => {
-    const game = await boot('?bot=off&newplayer');
-    const sync = vi.spyOn((await cutawayClass()).prototype, 'sync').mockReturnValue(true);
-    game.hook('__startMode', 'hub'); // the Ship entry of the menu is locked for a new player
-    await game.settle();
     expect(document.body.dataset.hubCutaway).toBe('true');
-    const state = sync.mock.calls.at(-1)![3];
-    expect(state.waiting).toBe(true); // a new player: the first win awaited
-    expect(state.goal).toBe('bot'); // the House table (#1692)
-    expect([...state.open]).toEqual(['mess']);
-    sync.mockReturnValue(false);
-    dispatchEvent(new Event('resize'));
-    expect(document.body.dataset.hubCutaway).toBe('false');
-    sync.mockRestore();
+    expect(byId('ship-bays').hidden).toBe(false);
+    expect([...document.querySelectorAll<HTMLElement>('#ship-bays section.hub-deck')].map((d) => d.dataset.deck)).toEqual(['mess', 'cargo', 'furnace', 'chapel', 'bridge']);
+    expect(cutawayFiles(game)).toEqual([]); // no 3D ship
   });
 
-  it('says through window.__shipDrawn whether the ship is in the scene: not with the flag off, not outside the Hub', async () => {
-    await boot('?bot=off');
-    expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(false);
+  it('says through window.__shipDrawn whether the Hub menu is shown: not outside the Hub', async () => {
     const game = await boot('?bot=off');
+    expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(false);
     ship(game);
     await game.settle();
     expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(true);
     game.hook('__startMode', 'arena');
     await game.settle();
     expect((window as unknown as { __shipDrawn: boolean }).__shipDrawn).toBe(false);
+    expect(document.body.dataset.hubCutaway).toBe('false');
   });
 
-  it('points the ship at the next goal once the first win is not awaited', async () => {
+  it('marks the House table for a new player and the next boss once the first win is in', async () => {
+    const fresh = await boot('?bot=off&newplayer');
+    fresh.hook('__startMode', 'hub'); // the Ship entry of the menu is locked for a new player
+    await fresh.settle();
+    expect(tile('mess:bot')!.dataset.state).not.toBe('dark');
+    expect(tile('mess:echo')!.dataset.state).toBe('locked'); // the first win awaited (#1692)
     const game = await boot('?bot=off');
-    const sync = vi.spyOn((await cutawayClass()).prototype, 'sync').mockReturnValue(false);
     ship(game);
     await game.settle();
-    expect(sync.mock.calls.at(-1)![3]).toMatchObject({ waiting: false, goal: 'echo' });
-    sync.mockRestore();
+    expect(tile('mess:echo')!.dataset.state).toBe('goal');
+    expect(document.querySelector('#ship-bays [data-deck="cargo"] .hub-locked')).not.toBeNull();
+  });
+
+  it('opens the room at a tap on its tile, and a shut deck takes none', async () => {
+    const game = await boot('?bot=off');
+    ship(game);
+    await game.settle();
+    tile('mess:bot')!.click(); // the House table: a game against the bot, at once
+    await game.settle();
+    expect(document.body.dataset.hubCutaway).toBe('false');
   });
 });

@@ -141,7 +141,7 @@ describe('the moments of the ladder fire from main.ts (#1584)', () => {
   });
 
   it('the first visit of the Medal room is stage 3, once', async () => {
-    const game = await boot('?bot=off');
+    const game = await boot('?bot=off', { deck: true });
     await game.settle();
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [0, 1], beaten: [] }));
     byId('ship').click();

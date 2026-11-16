@@ -213,19 +213,15 @@ describe('the sheet holds the boss list (#1697)', () => {
   });
 });
 
-describe('the room the ship leaves for the dock (#1697)', () => {
+describe('the room the 2D Hub leaves for the dock (#1697, #1729)', () => {
   it('is the dock\'s height from the bottom, 6 px over it, when the dock is drawn (a tower\'s bay holds the exit)', async () => {
     const { run } = await open();
-    const { Cutaway } = await import('./hubcutaway');
     const rect = Element.prototype.getBoundingClientRect;
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
       return this.id === 'dock' ? ({ top: 700, height: 60 } as DOMRect) : rect.call(this);
     });
-    const sync = vi.spyOn(Cutaway.prototype, 'sync');
-    sync.mockClear(); // the spy of withBays is the same one: its calls so far are the opening's
     window.dispatchEvent(new Event('resize'));
     run(400);
-    const inset = sync.mock.calls.at(-1)![4] as { bottom: number };
-    expect(inset.bottom).toBeGreaterThanOrEqual(innerHeight - 700 + 6);
+    expect(Number.parseFloat(byId('ship-bays').style.bottom)).toBeGreaterThanOrEqual(innerHeight - 700 + 6); // the menu stops over the dock
   });
 });

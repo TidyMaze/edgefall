@@ -768,7 +768,8 @@ slot stays New game. A wild fight keeps Flee (F) in the first slot until it is o
 A boss or lair fight in progress with a ply played is not saved, so the exit asks for a second press, `Sure?` in the `.confirm` look, lapsing after `CONFIRM_MS` as New game does (`newgame.ts`); a fight over or with no ply, the world, the Hub, a town, a run, the Trainer and a table ask nothing, and Browser Back never asks.
 
 **The Hub Cutaway rewrites this table (#1698; amends Decision #1513, owner 2026-11-14).** Design: `cutaway-v2.html` on the `pr-screenshots` branch (`hub-cutaway/`).
-Status: the ship is the default Hub since #1696 (#1689, #1691, #1694). The Modes menu, Quick game, the dock's World button, the lock banner and note and `menuorder.ts` are gone (#1697). There is no `?hub=` switch: the old deck stays only as the picture shown while the ship's file loads. What follows is the default page.
+**The Hub is a 2D menu since #1729 (owner, 2026-11-16: no 3D, no ship to make sense of).** One titled group of tiles per deck (Mess, Cargo, Furnace, Chapel, Bridge) between the title plate and the dock, scrolling; a tile per room (`hubbays.ts` `hubMenu`, the rooms from the Hub plan, `hubBays`); a deck not open is titled locked with one line, "Locked: beat the boss of the deck below.", and no tiles. No ship file is loaded, no marble rolls and there is no lift: a tap on a tile opens its room at once, the first-entry confirm kept. Where the text below says bay, read tile; the marble, the lift, the route and the tag are gone.
+Status: the ship was the default Hub from #1696 (#1689, #1691, #1694) to #1729. The Modes menu, Quick game, the dock's World button, the lock banner and note and `menuorder.ts` are gone (#1697). There is no `?hub=` switch: the old deck stays only as the picture shown while the ship's file loads. What follows is the default page.
 
 **One home for every feature.** A feature starts in one place; any other screen may show its state and lead there, never start it.
 
@@ -781,16 +782,14 @@ Status: the ship is the default Hub since #1696 (#1689, #1691, #1694). The Modes
 opens the ship on the boss's deck, the boss's room amber and the first-entry confirm up (the deck is lit for the visit, shut or not). A gate does the same for the Mining cut, its
 biome kept; a town opens the Mess. Enter starts the same fight or run as a tap on the bay; Stay and the exit lead back to the tower or gate (`hubentry.ts`, #1694).
 
-**The next goal, always in sight (#1695).** The goal is the game's own (`nextGoal`; the House table while the first win is awaited), never a second rule. Its bay wears the beacon (amber sign, two
-rings that pulse unless motion is reduced); a dotted amber route runs from the marble up the lift and along the floor, and the marble's tag says the way (the deck to ride to, or the room); both redraw
-when the goal or the marble moves, and wait while the marble rolls. A phone has the goal line over the dock, a window the card with Go over the right shoulder: one tap rolls the marble to the goal's bay.
+**The next goal, always in sight (#1695).** The goal is the game's own (`nextGoal`; the House table while the first win is awaited), never a second rule. Its tile is amber (#1729). A phone has the goal line over the dock, a window the card with Go over the right shoulder (no tile under it): one tap opens the goal's room.
 With no room left (all five beaten) the line and the card say so and do nothing. A tower's or a gate's visit shows none of it. Code: `hubgoal.ts`.
 
 | Screen | Enter | Exit, first slot | State |
 |---|---|---|---|
 | Plain table | Hub, House table bay; New game | the exit, to the Hub (the table is no longer a home); none while the first win is awaited (the ship is not open yet) | Built (#1697) |
 | Hub (the ship) | Boot of a returning player; the exit of any mode | none: the home, no dock. Back goes to the table | Default |
-| A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its bay: the marble rolls there, the confirm asks, Enter starts | Hub | Default |
+| A table, a boss, the Daily, the Rogue-lite run, the Trainer, a battle royale, a ranked game | Tap its tile: the confirm asks, Enter starts | Hub | Default |
 | Open world | Hub, Airlock bay | Hub (the world saved) | Default |
 | Town | Roll onto a town: the ship opens on the Mess | World, hero on the entrance | Default |
 | Dungeon gate (the run) | Roll onto a gate: the ship opens on the Mining cut, the biome kept | Stay or the exit: World, hero on the entrance | Default |
@@ -806,7 +805,7 @@ in the Open world the plate keeps Nearest tower and Quick game goes. Two taps re
 **A new player (#1665 with the Cutaway).** Plays the guided first match first, then lands in the ship with only the Mess lit; the other decks stay dark with a padlock and open after
 the first win (the lock, section 4.10 above) as the old menu's locked rows did. A returning player still lands on the Hub at boot, and an invite link still opens its table.
 
-**Small phones** frame two or three decks around the marble. The shell is tall under 600 px wide or 500 px high, wide above (`hubcutaway.ts`). Measured on the real GPU path with the flag on: 19 draw calls since the bays and lift (#1691; 17 for the ship alone, #1689), 4,731 (tall) and 4,815 (wide) triangles in the frame.
+**Small phones** scroll the menu: two tiles a row at 360 to 390 px, every tile 44 px or more (`hub-cutaway.spec.ts`). A window keeps the right shoulder free for the goal card.
 
 Every feature, after:
 

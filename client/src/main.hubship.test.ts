@@ -2,8 +2,7 @@
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { boot, type Game } from './test/harness';
 
-// The Hub Cutaway as a place to tap (#1691): the bays are buttons over the ship, a tap rolls the marble there (lift between decks) and the room opens as the old deck's plate did,
-// the first-entry confirm kept, a shut hatch bumps, a tap or a key ends a roll, the arrow keys move it by hand, and the deck's invisible discs take no click.
+// The Hub as a place to tap: since #1729 a 2D menu, a tile per room, a tap opens the room as the old deck's plate did, the first-entry confirm kept; the deck's invisible discs take no click.
 // The roll itself (routes, steps, time) is tested in hubroll.test.ts and hubship.test.ts; here the wiring of the page.
 
 const byId = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -45,14 +44,11 @@ async function ship(query = '?bot=off', beaten: string[] = [], options: Paramete
 }
 
 describe('the bays as buttons', () => {
-  it('are drawn over the ship with their names, a shut deck dark and unnamed, and put on the window', async () => {
+  it('are tiles with their names in the 2D Hub, a shut deck with none (#1729)', async () => {
     await ship();
     expect(bay('mess:echo').getAttribute('aria-label')).toBe('The Echo, boss, Mess seat');
     expect(bay('cargo:crates')).toBeNull(); // a set piece
-    expect(bay('furnace:choir').dataset.state).toBe('dark');
-    expect(bay('furnace:choir').textContent).toBe('');
-    expect(bay('mess:bot').style.width).not.toBe('');
-    expect(Number.parseFloat(bay('mess:bot').style.left)).not.toBeNaN();
+    expect(bay('furnace:choir')).toBeNull(); // a shut deck: one line says why, no tile
   });
 
   it('is rolled on the model beneath by the test hook, as the bays\' arrival does (#1697)', async () => {
@@ -84,12 +80,9 @@ describe('the bays as buttons', () => {
 });
 
 describe('a tap on a bay', () => {
-  it('rolls the marble there and starts the room as the plate did, for a player who beat a boss', async () => {
-    const game = await ship('?bot=off', ['echo']);
-    const run = frames(game);
+  it('starts the room at once, as the plate did, for a player who beat a boss: no marble rolls there (#1729)', async () => {
+    await ship('?bot=off', ['echo']);
     bay('mess:bot').click();
-    expect(hub()).toBe('mess 0,0'); // on its way
-    run(200);
     expect(hub()).toBeUndefined(); // the House table started: the Hub is left
     expect(byId('hud').textContent).not.toContain('Hub');
   });
@@ -134,26 +127,7 @@ describe('a tap on a bay', () => {
     expect(document.body.dataset.deck).toBe('cargo');
   });
 
-  it('bumps at the hatch of the deck above the last open one, and Tally says her line', async () => {
-    const game = await ship();
-    const run = frames(game);
-    bay('cargo:run').click();
-    run(400);
-    run(400);
-    expect(hub()).toMatch(/^mess /);
-    expect(byId('hud').textContent).toContain('Lift to Cargo: locked');
-  });
 
-  it('is ended by another tap: no room opens for the first one', async () => {
-    const game = await ship('?bot=off', ['echo']);
-    const run = frames(game);
-    bay('mess:daily').click();
-    run(40);
-    bay('mess:logs').click(); // the first roll ends, the new one starts
-    run(800);
-    expect(byId('bay-sheet').hidden).toBe(false); // the Logs bay opens its sheet (#1693), the daily did not start
-    expect(hub()).toBeDefined();
-  });
 
   it('fades in where it goes under reduced motion', async () => {
     const game = await ship('?bot=off', ['echo'], { reducedMotion: true });
@@ -185,68 +159,12 @@ describe('the logs bay', () => {
 });
 
 describe('a small phone', () => {
-  it('frames the floors around the marble, makes a bay not whole in the room no button, and rides the lift with its two buttons, the camera following', async () => {
-    const game = await ship('?bot=off', ['echo', 'hull']);
-    expect(byId('ship-lift').hidden).toBe(true); // a window: the whole ship
-    vi.stubGlobal('innerWidth', 200);
-    vi.stubGlobal('innerHeight', 300);
-    window.dispatchEvent(new Event('resize'));
-    await game.settle();
-    const lift = (dir: string): HTMLButtonElement => document.querySelector<HTMLButtonElement>(`#ship-lift [data-lift="${dir}"]`)!;
-    expect(byId('ship-lift').hidden).toBe(false);
-    expect(byId('ship-veil').hidden).toBe(false);
-    expect(lift('up').disabled).toBe(false);
-    expect(lift('down').disabled).toBe(true); // the marble is on the lowest floor
-    expect(lift('up').style.width).toBe('44px');
-    expect([...document.querySelectorAll<HTMLElement>('#ship-bays .cut-bay')].some((b) => b.hidden)).toBe(true);
-    const run = frames(game);
-    lift('up').click();
-    run(2000);
-    expect(lift('down').disabled).toBe(false); // one floor up: the way down is open
-    lift('down').click();
-    run(2000);
-    expect(lift('down').disabled).toBe(true);
-    expect(hub()).toBe('mess 0,0'); // nothing opened
-    vi.stubGlobal('innerWidth', 1024);
-    vi.stubGlobal('innerHeight', 768);
-    window.dispatchEvent(new Event('resize'));
-    await game.settle();
-    expect(byId('ship-lift').hidden).toBe(true);
-    expect(byId('ship-veil').hidden).toBe(true);
-  });
   it('hides the lift buttons with the ship', async () => {
     const game = await ship('?bot=off', ['echo']);
     game.hook('__startMode', 'arena');
     await game.settle();
     expect(byId('ship-lift').hidden).toBe(true);
     expect(byId('ship-veil').hidden).toBe(true);
-  });
-});
-
-describe('the arrow keys', () => {
-  it('move the marble along a floor and up the lift, open nothing, and bump a shut hatch', async () => {
-    const game = await ship();
-    const run = frames(game);
-    expect(press('ArrowRight').defaultPrevented).toBe(true);
-    run(200);
-    expect(document.activeElement).toBe(bay('mess:bot')); // the marble stands in the bay: its button has the focus
-    expect(hub()).toBe('mess 0,0');
-    press('ArrowLeft');
-    run(200);
-    press('ArrowUp');
-    run(200);
-    press('ArrowUp'); // the hatch to Cargo is shut
-    expect(byId('hud').textContent).toContain('Lift to Cargo: locked');
-  });
-
-  it('end a roll on the way', async () => {
-    const game = await ship('?bot=off', ['echo']);
-    const run = frames(game);
-    bay('mess:daily').click();
-    run(40);
-    press('ArrowLeft');
-    run(200);
-    expect(hub()).toBe('mess 0,0');
   });
 });
 

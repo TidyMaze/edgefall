@@ -77,7 +77,7 @@ describe('main.ts, auto-play, #792', () => {
   });
 
   it('plays both sides of the hot-seat table, either side', async () => {
-    const game = await boot('?nodes=50');
+    const game = await boot('?nodes=50', { deck: true });
     byId('ship').click();
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [-1, 0], beaten: [] }));
     byId('ship').click();

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { TALL_BAYS } from './test/shipbays';
-import { bayButtons, bayRect, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
+import { bayButtons, bayRect, focusBay, hubBays, hubMenu, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
 import { shipState } from './hubcutaway';
 
 // The bays of the Hub Cutaway as tap targets (#1691): a button per bay with its name and state, a locked deck dark and unnamed, set pieces none.
@@ -12,6 +12,33 @@ const html = (beaten: string[] = [], waiting = false, goal: string | null = null
   return root;
 };
 const bay = (root: HTMLElement, key: string): HTMLElement => root.querySelector<HTMLElement>(`[data-bay="${key}"]`)!;
+
+// #1729: the Hub is a plain 2D menu: no ship, no marble, no lift; each deck a titled group of its rooms' tiles.
+describe('the 2D Hub menu (#1729)', () => {
+  it('lists every room of each deck from the Hub plan, no lift, no set piece, each once', () => {
+    const bays = hubBays();
+    expect(new Set(bays.map((b) => b.deck))).toEqual(new Set(['mess', 'cargo', 'furnace', 'chapel', 'bridge']));
+    expect(bays.filter((b) => b.deck === 'mess').map((b) => b.room).sort()).toEqual(['bot', 'daily', 'dual', 'echo', 'hotseat', 'logs', 'medals', 'online', 'royale', 'world']);
+    expect(bays.some((b) => b.room === 'lift')).toBe(false);
+    for (const deck of ['furnace', 'chapel', 'bridge']) expect(bays.filter((b) => b.deck === deck).length, deck).toBeGreaterThanOrEqual(4);
+    expect(bays.filter((b) => b.deck === 'cargo').map((b) => b.room).sort()).toEqual(['alien', 'assembly', 'hull', 'logs', 'railyard', 'run', 'swarm']); // the Mess's tables are the Mess's alone
+    const keys = bays.map((b) => `${b.deck}:${b.room}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('groups the tiles by deck in the order of the ship, each with its title; a deck not open is named locked, its tiles dark', () => {
+    const root = document.createElement('div');
+    root.innerHTML = hubMenu(shipState([], false, 'echo'), [], {}, false);
+    const decks = [...root.querySelectorAll<HTMLElement>('section.hub-deck')];
+    expect(decks.map((d) => d.dataset.deck)).toEqual(['mess', 'cargo', 'furnace', 'chapel', 'bridge']);
+    expect(decks[0]!.querySelector('h2')!.textContent).toBe('Mess');
+    expect(decks[1]!.querySelector('h2')!.textContent).toBe('Cargo · locked');
+    expect(decks[1]!.querySelectorAll('[data-bay]')).toHaveLength(0); // no dark tiles: one line says why
+    expect(decks[1]!.querySelector('.hub-locked')!.textContent).toBe('Locked: beat the boss of the deck below.');
+    expect(decks[0]!.querySelector<HTMLElement>('[data-bay="mess:echo"]')!.dataset.state).toBe('goal');
+    expect(root.querySelectorAll('[data-bay]').length).toBe(hubBays().filter((b) => b.deck === 'mess').length);
+  });
+});
 
 describe('the bay buttons', () => {
   it('are one per bay with a room, none for the set pieces (hold, crates, nave)', () => {

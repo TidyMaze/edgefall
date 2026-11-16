@@ -48,7 +48,7 @@ describe('the notice board', () => {
   });
 
   it('is not shown while the coach line teaches the first minutes, and comes once the player rolled', async () => {
-    const game = await boot('?firstrun');
+    const game = await boot('?firstrun', { deck: true }); // the coach teaches the deck's walk: the deck's cells, not the 2D Hub (#1729)
     byId('coldopen-skip').click();
     expect(byId('hub-coach').hidden).toBe(false);
     expect(byId('hub-board').hidden).toBe(true);

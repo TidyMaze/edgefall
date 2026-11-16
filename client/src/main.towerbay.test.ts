@@ -99,7 +99,7 @@ describe('a tower opens the ship on its boss bay (#1694)', () => {
     await settle();
     expect(data().hub).toBeTruthy();
     expect(byId('hub-confirm').hidden).toBe(true);
-    expect(bay('furnace:choir').dataset.state).toBe('dark');
+    expect(bay('furnace:choir')).toBeNull(); // the deck is shut again: no tile (#1729)
   });
 
   it('a tower whose deck is still shut opens the ship on that deck anyway, the bay lit, and Enter starts its fight', async () => {
@@ -115,6 +115,17 @@ describe('a tower opens the ship on its boss bay (#1694)', () => {
 });
 
 describe('a visit rolls to its own bay only (#1694)', () => {
+  it('on the deck, another room takes no roll either: no fight, the confirm stays (#1694)', async () => {
+    const game = await boot(QUERY, { deck: true });
+    await rollOnto(game, async () => tower(await lairOf('echo')));
+    const { roomsOf } = await import('./hub');
+    const [q, r] = roomsOf('mess').find((room) => room.door.kind === 'bot')!.cell;
+    game.click(q, r); // a tap elsewhere puts the confirm away, as on the deck; the room is not the visit's: nothing rolls there
+    await settle();
+    expect(data().boss).toBeUndefined();
+    expect(data().hub).toMatch(/^mess /);
+  });
+
   it('another bay takes no tap: no fight, no mode, the confirm stays', async () => {
     const game = await boot(QUERY);
     await rollOnto(game, async () => tower(await lairOf('echo')));

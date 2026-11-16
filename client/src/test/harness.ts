@@ -28,7 +28,7 @@ export interface BootOptions {
   /** A fake AudioContext (src/test/audio.ts), read back with `game.hook('__audio')`; none by default, as in a browser
    * without Web Audio. */
   audio?: boolean;
-  /** The deck is drawn and takes the taps, as before the ship's file has loaded: the ship is never drawn. */
+  /** The deck is drawn and takes the taps, in place of the 2D Hub menu (#1729): the room logic behind the menu's tiles, cell by cell. */
   deck?: boolean;
   /** The texture files under assets/ that fail to load, as a missing file would, `spaceship-bay.glb` included. The others
    * load, each a texture named after its file. */
@@ -355,6 +355,9 @@ export async function boot(url = '/', options: BootOptions = {}): Promise<Game> 
       class Unloaded extends mod.Cutaway {
         override sync(): boolean {
           return (this.group.visible = false);
+        }
+        override shows(): boolean {
+          return false; // no 2D menu either: the deck's cells take the taps (#1729)
         }
       }
       return { ...mod, Cutaway: Unloaded };

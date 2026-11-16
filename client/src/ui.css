@@ -1633,36 +1633,44 @@ body[data-openworld] #openworld-ask:not([hidden]) { display: block; }
 #settings-menu button.danger:focus-visible { outline: 2px solid var(--danger); outline-offset: 2px; }
 /* The Hub Cutaway (#1689): the ship stands in place of the deck, so the plates over the deck's cells have nothing to label. */
 body[data-hub-cutaway='true'] :is(#hub-labels, #hub-rail, #hub-board) { display: none; } /* the ship names its rooms and shows its decks locked or lit; the lift panel and the notice board stood over its bays (#1691) */
-/* The bays of the Cutaway (#1691): one button per bay over the ship, the rect of its bay, wall to wall. A phone shows the short name on a dark sign, a window the name and its line; a deck not open is dark and unnamed. */
-body[data-hub-cutaway='true'] #ship-bays { position: fixed; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+/* The 2D Hub (#1729): no ship, a page of tiles between the title plate and the dock (main.ts placeShip sets top and bottom), one titled group per deck. A tile shows its room's name and line; a deck
+   not open is titled locked and its tiles are dark and unnamed. */
+body[data-hub-cutaway='true'] #ship-bays { position: fixed; left: 0; right: 0; z-index: 1; overflow-y: auto; box-sizing: border-box; padding: 4px max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 14px; background: #070a12; box-shadow: 0 0 0 100vmax #070a12; }
+@media (min-width: 600px) and (min-height: 500px) { body[data-hub-cutaway='true'] #ship-bays { padding-right: 264px; } } /* a window: the goal card stands over the right shoulder, no tile under it */
+.hub-deck { width: 100%; max-width: 960px; margin: 0 auto; }
+.hub-deck h2 { margin: 0 0 6px; color: #e8edf5; font: 700 0.8125rem/1.2 var(--ui); letter-spacing: 0.12em; text-transform: uppercase; }
+.hub-deck[data-open='false'] h2 { color: #9aa3a8; }
+.hub-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
 body[data-hub-cutaway='true'] .cut-bay {
   --k: #7fd6e8;
-  position: absolute; box-sizing: border-box; margin: 0; padding: 3px 1px 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 1px; container-type: inline-size;
-  overflow: hidden; pointer-events: auto; cursor: pointer; background: transparent; border: 0; color: #c9d1d6; text-align: center; font: 600 0.5625rem/1.1 var(--ui);
+  position: relative; box-sizing: border-box; min-height: 64px; margin: 0; padding: 8px 10px; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; container-type: inline-size;
+  overflow: hidden; cursor: pointer; background: #111a26; border: 1px solid #2a3a4f; border-radius: 6px; color: #c9d1d6; text-align: left; font: 600 0.875rem/1.2 var(--ui);
 }
-.cut-bay .short, .cut-bay b, .cut-bay small { max-width: 100%; padding: 1px 3px; border-radius: 2px; background: rgba(14, 18, 20, 0.86); overflow-wrap: anywhere; }
+body[data-hub-cutaway='true'] .cut-bay:hover { border-color: var(--k); }
+.cut-bay .short, .cut-bay b, .cut-bay small { max-width: 100%; padding: 0; overflow-wrap: anywhere; }
 .cut-bay .short { color: var(--k); font-size: 0.625rem; white-space: nowrap; padding-inline: 2px; } /* a phone: one line of 10 px on a dark pill */
 .cut-bay[data-state='dark'] { background: rgba(2, 4, 6, 0.55); } /* a deck not open: dimmed, with a padlock on its beam */
 .cut-lock { position: absolute; top: 3px; left: 50%; width: 14px; height: 16px; transform: translateX(-50%); fill: #9aa3a8; stroke: #9aa3a8; stroke-width: 1.4; filter: drop-shadow(0 0 2px #000); }
 .cut-bay b, .cut-bay small { display: none; color: var(--k); font-weight: 600; }
 .cut-bay:focus-visible { outline: 2px solid #ffb000; outline-offset: -2px; }
 .cut-bay[data-state='locked'] { --k: #9aa3a8; }
-.cut-bay[data-state='goal'] .short, .cut-bay[data-state='goal'] b { background: #ffb000; color: #1a1300; }
+body[data-hub-cutaway='true'] .cut-bay[data-state='goal'] { border: 2px solid #ffb000; background: #2b2412; } /* the next goal: an amber tile */
+.hub-locked { margin: 0; padding: 10px 12px; border: 1px dashed #3b4a5c; border-radius: 6px; color: #9aa3a8; font: 400 0.8125rem/1.3 var(--ui); }
 .cut-bay[data-state='beaten'] { --k: #ffd43b; }
 .cut-bay[data-state='dark'] { cursor: not-allowed; }
 @media (max-width: 599px), (max-height: 499px) { body[data-hub-cutaway='true'] #hub-pips { display: none; } } /* a phone: the medal count would stand over the top bays */
 /* A bay wide enough (96 px, a deep window) shows its name and line; a narrower one the short name alone, one line, so no label crowds its neighbour or the marble's tag (#1702). */
 @container (min-width: 96px) {
   .cut-bay .short { display: none; }
-  .cut-bay b { display: block; font-size: 0.625rem; }
-  .cut-bay small { display: block; font-size: 0.5625rem; font-weight: 400; color: #c9d1d6; }
+  .cut-bay b { display: block; font-size: 0.875rem; }
+  .cut-bay small { display: block; font-size: 0.75rem; font-weight: 400; color: #c9d1d6; }
 }
 /* A tower's or a gate's visit to the ship (#1694): the dock holds the one exit, and on a phone the confirm sits under the title row, over the top deck, never over the target bay's row. */
 body[data-bay-visit] #dock > :not(#exit) { display: none; }
 body[data-bay-visit] #hud .tally { animation: none; } /* the line under the title says where the visit came from, and stays */
 body[data-hub-cutaway='true'] #hub-confirm .actions { gap: 8px; }
 body[data-hub-cutaway='true'] #hub-confirm .actions button { min-height: 44px; white-space: nowrap; }
-@media (orientation: portrait) { body[data-hub-cutaway='true'] #hub-confirm { top: calc(8.25rem + env(safe-area-inset-top)); bottom: auto; } }
+@media (orientation: portrait) { body[data-hub-cutaway='true'] #hub-confirm { top: auto; bottom: calc(5.25rem + env(safe-area-inset-bottom)); } } /* the 2D Hub (#1729): over the dock, under the tiles of the top of the menu, where the visit's tile stands */
 
 /* A small phone's Cutaway (#1691): the camera frames the floors around the marble, so a bay bigger than the whole ship allows stays whole; a bay not whole in the room is no button, and two
    lift buttons stand over the shaft above and below the room. */
@@ -1678,8 +1686,8 @@ body[data-hub-cutaway='true'] .cut-bay[data-here='true'] { box-shadow: inset 0 -
 #ship-lift button:disabled { opacity: 0.3; cursor: default; }
 #ship-lift button:focus-visible { outline: 2px solid #ffb000; outline-offset: 1px; }
 /* The locked ship (#1692): a bay that waits for the first win has a dashed edge and a padlock; the first win lights them with a spark. */
-.cut-bay[data-state='locked'] { outline: 1px dashed #9aa3a8; outline-offset: -2px; background: rgba(2, 4, 6, 0.35); }
-.cut-bay[data-state='locked'] .cut-lock { left: auto; right: 2px; top: 2px; width: 10px; height: 12px; transform: none; } /* in a corner: the name stays readable */
+body[data-hub-cutaway='true'] .cut-bay[data-state='locked'] { outline: 1px dashed #9aa3a8; outline-offset: -2px; background: #0b1018; }
+.cut-bay[data-state='locked'] .cut-lock { left: auto; right: 6px; top: 6px; width: 10px; height: 12px; transform: none; } /* in a corner: the name stays readable */
 .cut-bay[data-spark='1'] { animation: cut-spark 0.9s ease-out 2; }
 @keyframes cut-spark { 0% { box-shadow: inset 0 0 0 2px #ffe3bf, 0 0 18px #ffe3bf; background: rgba(255, 227, 191, 0.45); } 100% { box-shadow: inset 0 0 0 0 transparent, 0 0 0 transparent; background: transparent; } }
 :root[data-motion='reduced'] .cut-bay[data-spark='1'] { animation: none; box-shadow: inset 0 0 0 2px #ffe3bf; } /* the game's Reduced motion setting, not the media query (#379) */

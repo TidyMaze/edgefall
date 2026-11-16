@@ -339,7 +339,7 @@ import { bestTurns, loadMedals, medalLine, medalRoom, playerTurns, recordMedal, 
 import { loadProgress, recordWin, saveProgress } from './progress';
 import { HUB_CELLS, hubPath, neighbours, roomAt, START, step, type Door, type Spot as HubSpot } from './hub';
 import { gateBay, towerBay, visitCue, type BayEntry } from './hubentry';
-import { roomKey } from './hubroll';
+import { cellOf, roomKey } from './hubroll';
 import { entryConfirmDue, entryName, HUB_COACH, hubCoachDue, hubHelpOn, markEntered, markHubCoachDone, needsConfirm } from './hubcoach';
 import { createKitGlyph, type GlyphOptions } from './hubart';
 import { HubController } from './controller';
@@ -349,10 +349,8 @@ import { armed as fightArmed, bring, bringRelic, buy as buyMarble, buyRelic, hul
 import { workshopHtml } from './workshopview';
 import { labelsHtml, nextBossTitle, nextGoal, pipsHtml, railHtml, type Goal } from './hubview';
 import { Cutaway, CUTAWAY_VIEW, goalRoom, shellFor, shipState } from './hubcutaway';
-import { bayButtons, bayRect, focusBay, paintBays, placeBays, placeLift, placeVeil } from './hubbays';
-import { goalBay, goalLabel, goalWords, paintGoalText, placeGoal, wayTag } from './hubgoal';
-import { ShipWalk } from './hubship';
-import { bayAt, route as rollRoute } from './hubroll';
+import { hubMenu, paintBays, placeLift, placeVeil } from './hubbays';
+import { goalBay, goalWords, paintGoalText, placeGoal } from './hubgoal';
 import { clearStray } from './modeswitch';
 import { indexedDbStore } from './idb';
 import { LocalSaves, replayMoves, type LocalGame } from './savegame';
@@ -4370,7 +4368,7 @@ function wearKit(mesh: THREE.Mesh, kit: THREE.Mesh, y: number): void {
 const terraceFile = (name: string) => meshoptLoader().loadAsync(`${import.meta.env.BASE_URL}assets/pbr/${name}.glb`);
 // The Hub Cutaway (#1689): the ship. One shell is loaded at a time, the window's.
 const cutawaySpace = new THREE.Color(NEON.sky);
-const cutaway = new Cutaway(terraceFile, () => refresh());
+const cutaway = new Cutaway(terraceFile, refresh); // its file is never asked for since the 2D Hub (#1729): `shows` alone is read
 sceneRenderer.terrace.add(cutaway.group);
 /** Draws the ship in the Hub of the terrace, and the deck again anywhere else; the camera follows when the ship comes or goes. */
 const shipNow = (beaten: readonly string[]) => {
@@ -4381,23 +4379,6 @@ const shipNow = (beaten: readonly string[]) => {
 const shipBays = document.getElementById('ship-bays')!;
 const shipLift = document.getElementById('ship-lift')!;
 const shipVeil = document.getElementById('ship-veil')!;
-const ship = new ShipWalk({
-      bays: () => cutaway.bays,
-      lift: () => cutaway.lift,
-      open: () => shipNow(loadProgress(store).beaten).open,
-      read: () => readLore(store),
-      place: (pos, scale) => {
-        cutaway.place(pos, scale);
-        if (cutawayShown) placeShip(); // a small phone's camera follows the marble: the buttons go with the ship
-        dirty = CHANGE_DRAWS;
-      },
-      arrive: shipArrive,
-      reduced: reducedMotion,
-      now: () => performance.now(),
-      frame: (cb) => requestAnimationFrame(cb),
-      unframe: (id) => cancelAnimationFrame(id),
-      settle: (bay) => (focusBay(shipBays, bay), placeShipGoal()), // the route and the tag come back where the marble stands
-    });
 /** The roll ended on a room of the old Hub (or its shut hatch): the marble of the old model is put beside it and rolls on, so the confirm, the save, the lift's bump and the room's start are the plate's own. */
 function shipArrive({ deck, cell }: HubSpot): void {
   shipFrom = hub!.at;
@@ -4406,15 +4387,12 @@ function shipArrive({ deck, cell }: HubSpot): void {
   walk(cell);
   if (hubConfirm.hidden) shipFrom = null; // no confirm asked: the arrival stands; else Stay (cancelHubWalk) puts the marble of the old model back
 }
-shipLift.addEventListener('click', (e) => {
-  cancelHubWalk();
-  ship.ride((e.target as Element).closest<HTMLElement>('[data-lift]')!.dataset.lift === 'up' ? 1 : -1);
-});
-/** A tap on a bay, or on the goal line or its Go: the marble rolls there. */
+/** A tap on a tile, or on the goal line or its Go: the room opens at once (#1729: no marble rolls there), as the old deck's plate did, first-entry confirm kept; a deck not open takes no tap. */
 const rollTo = (key: string): void => {
   if (bayEntry && key !== `${bayEntry.deck}:${bayEntry.room}`) return; // a visit's other bays take no tap (#1694)
+  const [deck, room] = key.split(':') as [Deck, string];
   cancelHubWalk();
-  ship.tap(key);
+  shipArrive({ deck, cell: cellOf(deck, room, readLore(store))! }); // a tile is a room of an open deck (hubMenu), the goal's too
 };
 shipBays.addEventListener('click', (e) => rollTo((e.target as Element).closest<HTMLElement>('[data-bay]')!.dataset.bay!));
 // The next goal (#1695): the goal line on a phone, the card's Go in a window; the beacon, the route and the tag on the overlay.
@@ -4431,23 +4409,9 @@ function paintShipGoal(goal: Goal): void {
   paintGoalText(shipGoalLine, shipGoalCard, on ? goalWords(goal, locked) : null, shipGoalAt && `${shipGoalAt.deck}:${shipGoalAt.room}`);
   placeShipGoal();
 }
-/** The beacon on the goal's bay, the dotted route from the marble and its tag; the route and the tag wait while the marble rolls (it is between two floors). */
+/** No beacon, route or tag in the 2D Hub (#1729): the goal's tile is amber; the goal line stands over the dock. */
 function placeShipGoal(): void {
-  const at = shipGoalAt;
-  const stage = ship.stage;
-  const target = at && cutaway.bays.find((b) => b.deck === at.deck && b.room === at.room); // none while another shell loads
-  const box = at && cutaway.bayBoxes().find((b) => b.deck === at.deck && b.room === at.room);
-  const rect = box && bayRect(box.box, shipProject, cutaway.follow);
-  const point = (p: { x: number; y: number }): { x: number; y: number } => { const w = cutaway.worldPoint(p); return shipProject(w.x, w.y, w.z); };
-  const way = target && stage ? rollRoute(stage.floors, stage.at, target) : null;
-  // The tag stands over the top of its deck's row of bays, clear of the bays' labels (#1702): its foot is 12 px above its anchor.
-  const deckNow = stage?.floors.find((f) => f.y === stage.at.y)?.deck;
-  const rowTop = !way ? 0 : Math.min(...cutaway.bayBoxes().filter((b) => b.deck === deckNow).map((b) => bayRect(b.box, shipProject, cutaway.follow)).filter((r) => !r.hidden).map((r) => r.y));
-  placeGoal(shipGoalLayer, {
-    route: way && way.points.map(point),
-    ring: rect && !rect.hidden ? rect : null,
-    tag: way && { ...point(stage!.at), y: Math.min(point(stage!.at).y, rowTop + 12), ...wayTag(stage!.floors, stage!.at, target!, goalLabel(target!)) },
-  }, innerWidth);
+  placeGoal(shipGoalLayer, { route: null, ring: null, tag: null }, innerWidth);
   shipGoalLine.style.bottom = `${dockGap()}px`; // over the dock
 }
 /** The room the ship leaves to the title plate over it and the dock under it, so that no bay sits under either (#1691). */
@@ -4457,32 +4421,26 @@ const dockGap = (): number => {
   const { top, height } = document.getElementById('dock')!.getBoundingClientRect();
   return height === 0 ? 8 : Math.max(0, innerHeight - top + 6);
 };
-const shipInset = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) - 40), bottom: dockGap() + (shellFor(innerWidth, innerHeight) === 'tall' && !bayEntry ? GOAL_LINE : 0) }); // a phone's goal line stands over the dock, no bay under it
+const shipInset = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) - 40), bottom: dockGap() + Math.min(1, shipGoalLine.getBoundingClientRect().height) * GOAL_LINE }); // only while the phone's line is drawn // a phone's goal line stands over the dock, no tile under it
 /** What a small phone's camera leaves at the top and the bottom: the whole of the plate and the gear, and the dock, so that no bay is drawn under them. */
 const shipSolid = (): { top: number; bottom: number } => ({ top: Math.max(0, Math.max(document.getElementById('hud')!.getBoundingClientRect().bottom, document.getElementById('settings')!.getBoundingClientRect().bottom) + 4), bottom: shipInset().bottom });
-const shipPoint = new THREE.Vector3();
-/** The window point of a point of the scene, for the bays' buttons. */
-const shipProject = (x: number, y: number, z: number): { x: number; y: number } => {
-  sceneRenderer.camera.updateMatrixWorld();
-  shipPoint.set(x, y, z).project(sceneRenderer.camera);
-  return { x: ((shipPoint.x + 1) / 2) * innerWidth, y: ((1 - shipPoint.y) / 2) * innerHeight };
-};
 /** The bays' buttons and the lift's two on the window: a small phone's camera frames the floors around the marble (`cutaway.follow`), the others show the whole ship. */
 function placeShip(): void {
-  const lift = cutaway.liftWorld();
-  placeBays(shipBays, cutaway.bayBoxes(), shipProject, cutaway.follow, { deck: cutaway.deck, bay: bayAt(cutaway.bays, ship.at) });
-  placeVeil(shipVeil, cutaway.follow, innerHeight);
-  placeShipGoal();
-  placeLift(shipLift, cutaway.follow, shipProject(lift.x, lift.y, lift.z).x, innerWidth);
+  // the 2D Hub (#1729): the tiles fill the window between the title plate and the dock; no lift, no veil, no route
+  const { top, bottom } = shipSolid();
+  shipBays.style.top = '0px'; // the page covers the window: the menu starts under the title plate
+  shipBays.style.paddingTop = `${top}px`;
+  shipBays.style.bottom = `${bottom}px`; // over the dock and a phone's goal line: no tile under them
+  shipBays.style.paddingBottom = '16px';
+  placeVeil(shipVeil, null, innerHeight);
+  placeLift(shipLift, null, 0, innerWidth);
 }
 function syncCutaway(): void {
   if (!hub) closeBay(); // the Hub is left: no sheet of its bays
   const { beaten } = loadProgress(store);
-  const shown = cutaway.sync(!!hub && sceneRenderer.terraceOn, innerWidth, innerHeight, shipNow(beaten), shipInset(), shipSolid());
-  if (shown) {
-    sceneRenderer.scene.background = cutawaySpace; // the ship floats in the dark, not in the deck's sky
-    ship.sync(hub!.at); // the marble on the spot the Hub saved, once per ship
-  }
+  cutaway.sync(false, innerWidth, innerHeight, shipNow(beaten)); // no 3D ship (#1729): the 2D menu stands in its place
+  const shown = cutaway.shows(!!hub && sceneRenderer.terraceOn);
+  if (shown) sceneRenderer.scene.background = cutawaySpace; // the dark behind the menu
   if (shown === cutawayShown) return;
   cutawayShown = shown;
   shipBays.hidden = !shown;
@@ -4631,7 +4589,7 @@ function refresh(): void {
     syncDishes();
     const goal = locked ? { text: LOCK_BANNER, deck: null, room: null } : nextGoal(beaten, ranRun(store)); // the next thing to do (#1524); the first win while the lock is on
     hubLabels.innerHTML = labelsHtml(hub.at, beaten, loadMedals(store), goal, locked); // a beaten boss's door shows its medal (#1249)
-    paintBays(shipBays, cutawayShown ? bayButtons(cutaway.bays, shipNow(beaten), beaten, loadMedals(store), locked, shipSpark) : '');
+    paintBays(shipBays, cutawayShown ? hubMenu(shipNow(beaten), beaten, loadMedals(store), locked, shipSpark) : ''); // the 2D Hub: a titled group of tiles per deck (#1729)
     paintShipGoal(goal);
     document.getElementById('hub-rail')!.innerHTML = railHtml(hub.at.deck, beaten, goal, locked);
     document.getElementById('hub-pips')!.innerHTML = pipsHtml(beaten, loadMedals(store));
@@ -6320,9 +6278,8 @@ function enterHub(at: HubSpot): void {
   roomOf = null;
   hub = new HubController(at);
   hub.enter(at);
-  ship.reset(); // the ship's marble on the spot entered (#1691)
   hubPlan.hidden = false;
-  hubCoach.hidden = !(helpOn && hubCoachDue(store, loadProgress(store).beaten));
+  hubCoach.hidden = !(helpOn && hubCoachDue(store, loadProgress(store).beaten) && !cutaway.shows(sceneRenderer.terraceOn)); // its lesson walks the deck's cells: none over the 2D Hub's tiles (#1729)
   view = fitted = fightView(); // the deck plan, framed closer (#1249)
   applyView();
   evalBar.hidden = hintButton.hidden = exportButton.hidden = importButton.hidden = newGameButton.hidden = true; // no game on in the hub, and no dock (#1697): a new game shows them again (#583, #589)
@@ -6349,7 +6306,6 @@ let askedFor: Axial | null = null; // the cell whose room the confirm asks about
 function cancelHubWalk(): void {
   if (hubWalking !== null) clearTimeout(hubWalking);
   hubWalking = null;
-  ship.cancel(); // the roll of the ship's marble too (#1691)
   if (shipFrom) {
     applyDeck(shipFrom.deck); // Stay on the confirm: the spot and the deck the roll started from, as the old plate left them
     hub!.at = shipFrom;
@@ -6540,7 +6496,7 @@ addEventListener('keydown', (e) => {
   if (!to) return;
   e.preventDefault(); // no page scroll
   cancelHubWalk();
-  if (cutawayShown) return ship.key(e.key); // along a floor, up and down the lift (#1691)
+  if (cutawayShown) return; // the 2D Hub's tiles take Tab and Enter (#1729); no marble to move
   walk(to);
 });
 addEventListener('keydown', (e) => {
@@ -8180,7 +8136,7 @@ const renderCost = (): RenderCost => {
 };
 // With ?gpustats the GPU time per mode is in it too (#1581), the capture docs/specs/tech.md section 5.6 checks.
 /** The Hub Cutaway ship is in the scene (read by the e2e tests; the canvas shows it a frame later, a slow software tier several seconds). */
-Object.defineProperty(window, '__shipDrawn', { configurable: true, get: () => cutaway.group.visible });
+Object.defineProperty(window, '__shipDrawn', { configurable: true, get: () => cutawayShown }); // the 2D Hub is shown (#1729)
 Object.defineProperty(window, '__renderCost', { configurable: true, get: () => ({ ...renderCost(), text: renderCostText(renderCost()), gpu: gpu.snapshot() }) });
 copyButton.addEventListener('click', async () => {
   const text = diag.text({

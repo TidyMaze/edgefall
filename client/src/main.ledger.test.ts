@@ -94,7 +94,7 @@ describe('the lines the world delivers are filed in the Ledger once seen (#1585)
 describe('the Medal room carries the line of stage 3 (#1586)', () => {
   /** Opens the Medal room from the Mess of the Hub. */
   async function medalRoom(storage: Record<string, string>): Promise<void> {
-    const game = await boot('?bot=off', { storage });
+    const game = await boot('?bot=off', { storage, deck: true }); // the room's door on the deck's cells (#1729: the 2D menu opens the same room)
     await game.settle();
     localStorage.setItem('ab-alone.progress', JSON.stringify({ version: 1, deck: 'mess', cell: [0, 1], beaten: [] }));
     byId('ship').click();

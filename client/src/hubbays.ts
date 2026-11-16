@@ -1,8 +1,8 @@
 // The bays of the Hub Cutaway as tap targets (#1691): one button per bay over the ship, wall to wall, with the name of its room (the short one on a phone, the full one and its
 // line in a window, ui.css) and its state; a deck not open is dark and unnamed. A set piece (hold, crates, nave) has no button. Strings and DOM only: the page projects the boxes.
-import type { Deck } from './deck';
-import { roomAt } from './hub';
-import { cellOf, type Bay } from './hubroll';
+import { DECK_NAMES, type Deck } from './deck';
+import { roomAt, roomsOf } from './hub';
+import { cellOf, roomKey, type Bay } from './hubroll';
 import { roomState, waitsFirstWin, type Follow, type ShipState } from './hubcutaway';
 import { roomLabel } from './hubview';
 
@@ -31,6 +31,32 @@ export function bayButtons(bays: readonly Bay[], st: ShipState, beaten: readonly
       return [`<button type="button" class="cut-bay" ${key} aria-label="${name}, ${line}"><b>${name}</b><small>${line}</small><span class="short">${short}</span>${state === 'locked' ? LOCK : ''}</button>`];
     })
     .join('');
+}
+
+/** The rooms of each deck the ship had (hub-cutaway files, #1691): the old plan's mode tables stand on every deck, the ship's on the Mess only. */
+const SHIP_ROOMS: Readonly<Record<Deck, readonly string[]>> = {
+  mess: ['echo', 'logs', 'hotseat', 'bot', 'online', 'royale', 'medals', 'dual', 'daily', 'world'],
+  cargo: ['hull', 'logs', 'alien', 'railyard', 'assembly', 'swarm', 'run'],
+  furnace: ['choir', 'logs', 'coop', 'core', 'magnetizer'],
+  chapel: ['chaplain', 'logs', 'stalker', 'overseer'],
+  bridge: ['ballast', 'logs', 'ranked', 'trainer', 'pulsar'],
+};
+/** The rooms of each deck as the 2D Hub lists them (#1729): the ship's rooms that the Hub's plan (hub.ts) has a door for, no 3D file. */
+export function hubBays(): Bay[] {
+  return DECK_NAMES.flatMap((deck, y) => {
+    const doors = new Set(roomsOf(deck).map((r) => roomKey(r.door)));
+    return SHIP_ROOMS[deck].filter((room) => doors.has(room) && cellOf(deck, room)).map((room, x) => ({ deck, room, x, y }));
+  });
+}
+
+/** The 2D Hub (#1729): one titled group per deck, in the ship's order, holding its rooms' tiles (`bayButtons`); a deck not open says so in its title. */
+export function hubMenu(st: ShipState, beaten: readonly string[], medals: Readonly<Record<string, number>>, waiting: boolean, spark = false): string {
+  const bays = hubBays();
+  return DECK_NAMES.map((deck) => {
+    const open = st.open.has(deck);
+    const tiles = open ? `<div class="hub-tiles">${bayButtons(bays.filter((b) => b.deck === deck), st, beaten, medals, waiting, spark)}</div>` : '<p class="hub-locked">Locked: beat the boss of the deck below.</p>';
+    return `<section class="hub-deck" data-deck="${deck}" data-open="${open}"><h2>${title(deck)}${open ? '' : ' · locked'}</h2>${tiles}</section>`;
+  }).join('');
 }
 
 export interface BayBox {

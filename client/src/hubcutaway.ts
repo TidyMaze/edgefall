@@ -338,6 +338,11 @@ export class Cutaway {
 
   /** Shows the ship of the window's shell in `state`, or hides it (`on` false); true when the ship is drawn. A file that does not load leaves the ship off. */
   /** `inset` is what the whole ship leaves to the plate and the dock (the dome may stand behind the plate); `solid` what a small phone's camera leaves, no bay drawn under it. */
+  /** Whether the Hub's 2D menu stands in the deck's place (#1729): in the Hub of the terrace, no file to wait for. */
+  shows(on: boolean): boolean {
+    return on;
+  }
+
   sync(on: boolean, width: number, height: number, state: ShipState, inset: Inset = NO_INSET, solid: Inset = inset): boolean {
     if (!on) return (this.group.visible = false);
     const layout = shellFor(width, height);

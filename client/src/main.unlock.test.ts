@@ -45,7 +45,7 @@ describe('the landing of a new player', () => {
   });
 
   it('a Hub opened by a hook wears the lock on its boss and mode doors, and rolling onto one starts nothing; a table still starts', async () => {
-    const game = await boot('?newplayer');
+    const game = await boot('?newplayer', { deck: true });
     game.hook('__enterMode', 'hub');
     expect(document.body.dataset.hub).toBe('mess 0,0');
     const plate = (cell: string): HTMLElement => document.querySelector<HTMLElement>(`#hub-labels [data-cell="${cell}"]`)!;
