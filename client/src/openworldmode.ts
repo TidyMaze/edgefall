@@ -1136,8 +1136,10 @@ export class OpenWorldMode {
    * glide has landed, when that cell is free; the slide itself does not slide again. */
   private slideOnIce(from: Axial, pushed: boolean, landed: number): void {
     const at = this.hero!.at;
-    if (this.sliding || this.onRoute || pushed || this.hero!.smashed || this.world!.tile(at[0], at[1])?.biome !== 'tundra') return;
+    const tile = this.world!.tile(at[0], at[1]);
+    if (this.sliding || this.onRoute || pushed || this.hero!.smashed || tile?.biome !== 'tundra' || tile.terrain === 'water') return; // ice is land: a boat does not slide (#1441)
     const beyond: Axial = [2 * at[0] - from[0], 2 * at[1] - from[1]];
+    if (this.world!.tile(beyond[0], beyond[1])?.terrain === 'water') return; // nor slides onto the water
     const free = enter(this.world!, this.fight, at, beyond) === 'rolls' && !this.lairs.some((cell) => same(cell, beyond)) && !this.places.some(({ cell }) => same(cell, beyond));
     if (free) this.slide = { to: beyond, at: landed };
   }

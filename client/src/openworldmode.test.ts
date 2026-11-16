@@ -581,6 +581,26 @@ describe('the tundra\'s ice (#1739)', () => {
     grass.release('ArrowRight');
     grass.frame(() => {}, performance.now() + 2000);
     expect(body().openworldAt).toBe('1,0');
+    const lake = (_seed: number, cx: number, cy: number): Uint8Array => { // tundra land west of q = 1, tundra water from it: no slide on or onto water
+      const out = flat(2)(0, cx, cy);
+      if (cx === 0 && cy === 0) for (let i = 0; i < CHUNK * CHUNK; i++) if (i % CHUNK >= 1 && Math.floor(i / CHUNK) === 0) out.set([0, 0, 2], i * 3);
+      return out;
+    };
+    const sail = mode(undefined, lake, () => true);
+    sail.enter(1, 800, 600);
+    sail.fixture({ hero: [-1, 0], troop: [], enemies: [] });
+    tap(sail, 'ArrowRight');
+    sail.release('ArrowRight');
+    sail.frame(() => {}, performance.now() + 2000);
+    expect(body().openworldAt).toBe('0,0'); // the ice ends at the shore: no slide onto the water
+    tap(sail, 'ArrowRight');
+    sail.release('ArrowRight');
+    sail.frame(() => {}, performance.now() + 2000);
+    expect(body().openworldAt).toBe('1,0'); // onto the water, it stops
+    tap(sail, 'ArrowRight');
+    sail.release('ArrowRight');
+    sail.frame(() => {}, performance.now() + 4000);
+    expect(body().openworldAt).toBe('2,0'); // on the water, a boat does not slide
     const route = () => Int32Array.of(1, 0, 2, 0, 3, 0); // the way the engine gives (#1137)
     const held = new OpenWorldMode(flat(2), () => new Int32Array(), async () => ({ low: {}, high: {} }), () => true, worldSaves(memoryStore(), 1), undefined, undefined, undefined, undefined, undefined, route); // a walk keeps to its cells, no slide between its steps
     held.enter(1, 800, 600);
