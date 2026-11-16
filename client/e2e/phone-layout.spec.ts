@@ -419,7 +419,7 @@ async function settingsReachable(page: Page): Promise<void> {
   await expect(page.locator('#settings')).toBeEnabled();
   await page.locator('#settings').click();
   await openAdvanced(page); // the developer tools are shut under Advanced (#1566)
-  await expect(page.locator('#settings-menu button')).toHaveCount(26); // New version: reload, the first row (#1693), Console, in Advanced (#1693), Reset everything with its Erase and Cancel (#1684), Ledger shares Import with Logs (#1585), Guide shares Steering (#1293), Steering (#1137), Copy diagnostics (#1032, the last row), Render mode (#763), Difficulty (#704), Flat HUD shares Reduced motion (#391), glass shares shell (#377), Palette shares Theme (#381), Transcript shares Sound (#516), Logs shares Import (#513), Free camera (#938)
+  await expect(page.locator('#settings-menu button')).toHaveCount(27); // Quality (#1715), New version: reload, the first row (#1693), Console, in Advanced (#1693), Reset everything with its Erase and Cancel (#1684), Ledger shares Import with Logs (#1585), Guide shares Steering (#1293), Steering (#1137), Copy diagnostics (#1032, the last row), Render mode (#763), Difficulty (#704), Flat HUD shares Reduced motion (#391), glass shares shell (#377), Palette shares Theme (#381), Transcript shares Sound (#516), Logs shares Import (#513), Free camera (#938)
   const rows = await page.evaluate(() =>
     [...document.querySelectorAll('#settings-menu button')].filter((el) => el.getClientRects().length > 0).map((el) => { // Erase and Cancel wait out of sight (#1684)
       el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); // the menu scrolls where it is shorter than its rows (#382, #904)
