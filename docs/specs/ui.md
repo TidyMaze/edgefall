@@ -834,7 +834,7 @@ Every feature, after:
 | Quick game | Gone: it is the House table, two taps away |
 | Sound, display, accessibility, difficulty, steering, the Guide | Settings (unchanged) |
 | Export and import a game, diagnostics, FPS, render, free camera, Console | Settings, Advanced (unchanged) |
-| New version: reload | Settings, first row, the dot on the cog; a banner at the top with Reload and Later (#1717, tech.md) |
+| New version | A banner at the top with Reload and Later, its one place: no Settings row, no dot on the cog (#1717, #1724, tech.md) |
 | Reset everything | Settings, last row (unchanged) |
 
 Held upright in the world the plate stands above the exit and in the lower half of the screen, the hero at the middle stays seen: a taller plate scrolls, the online row last (#1606).

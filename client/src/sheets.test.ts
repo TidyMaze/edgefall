@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import css from './ui.css?raw';
+import html from '../index.html?raw';
 
 // #1136, PR 2: the goal sheet and the settings menu keep the dark theme's look, refined: its plates and ink,
 // the amber accent, 6 px radii, 48 px rows on a touch screen, a pressed item filled, no backdrop blur.
@@ -30,11 +31,13 @@ describe('the goal sheet and the settings menu, #1136', () => {
   });
 });
 
-// #1693: the update row is the first row of Settings, its dot on the cog; the bay sheet is a sheet above the dock like the others, a bay's boss list inside the Shift crew's.
+// #1693: the bay sheet is a sheet above the dock like the others, a bay's boss list inside the Shift crew's.
 describe('the homes moved in #1693', () => {
-  it('draws the update dot on the cog and no longer on Modes', () => {
-    expect(css).toMatch(/body:has\(#update:not\(\[hidden\]\)\) #settings \{[^}]*background-image: radial-gradient/);
-    expect(css).not.toMatch(/#update:not\(\[hidden\]\)\) #modes/);
+  // #1724: the new version is the top banner only (#update-banner, #1717): no Settings row, no dot on the cog or on Modes.
+  it('shows a new version in the top banner only, not as a Settings row or a dot', () => {
+    expect(html).not.toContain('id="update"');
+    expect(html).toContain('id="update-banner"');
+    expect(css).not.toMatch(/#update(?![-\w])/);
   });
 
   it('tightens the dock when Replay shows so six buttons fit 320 px', () => {

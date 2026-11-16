@@ -805,7 +805,7 @@ describe('The service worker', () => {
     expect(sw.register).toHaveBeenCalledWith('/sw.js');
     expect(update).not.toHaveBeenCalled();
     change();
-    expect(byId('update').hidden).toBe(true);
+    expect(byId('update-banner').hidden).toBe(true);
   });
 
   /** A later visit: the registration answers once the test holds the intervals. */
@@ -824,9 +824,9 @@ describe('The service worker', () => {
     const update = vi.fn(async () => {});
     const { change } = await laterVisit(update);
     expect(update).toHaveBeenCalledOnce();
-    typingIn.focus(); // a field in use is at stake: the button shows and the reload waits
+    typingIn.focus(); // a field in use is at stake: the banner shows and the reload waits
     change();
-    expect(byId('update').hidden).toBe(false);
+    expect(byId('update-banner').hidden).toBe(false);
     expect(reload).not.toHaveBeenCalled();
     ticks.get(1000)!();
     expect(reload).not.toHaveBeenCalled();
@@ -852,17 +852,17 @@ describe('The service worker', () => {
     }));
     const game = await boot('?bot=off');
     await game.settle();
-    expect(byId('update').hidden).toBe(false);
+    expect(byId('update-banner').hidden).toBe(false);
     expect(reload).not.toHaveBeenCalled();
   });
 
-  it('keeps the button alone when the storage fails', async () => {
+  it('keeps the banner alone when the storage fails', async () => {
     const { change } = await laterVisit(async () => {});
     vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => {
       throw new Error('denied');
     });
     change();
-    expect(byId('update').hidden).toBe(false);
+    expect(byId('update-banner').hidden).toBe(false);
     expect(reload).not.toHaveBeenCalled();
   });
 

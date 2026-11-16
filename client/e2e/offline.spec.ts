@@ -121,10 +121,11 @@ test('a new build reloads the idle page once, never twice (#1437)', async ({ pag
   await page.locator('canvas').waitFor();
   expect(await marker()).toBeUndefined();
 
-  // One reload per build: the second takeover of the same build keeps the page, the button stays.
+  // One reload per build: the second takeover of the same build keeps the page, the banner shows.
   await page.evaluate(() => ((window as any).__marker = 'old'));
   await takeover();
-  await expect(page.locator('#update')).toHaveJSProperty('hidden', false); // the first row of Settings, its dot on the cog (#1693)
+  await expect(page.locator('#update-banner')).toBeVisible(); // the new version's one place, the top banner (#1717, #1724)
+  await expect(page.locator('#settings-menu button', { hasText: 'New version' })).toHaveCount(0);
   // The handler decides at once, in the event (main.ts reloadWhenFree, location.reload is synchronous): a reload would have begun; 300 ms lets it unload (#1710).
   await page.waitForTimeout(300);
   expect(await marker()).toBe('old');

@@ -32,7 +32,7 @@ Dock = the bottom bar (one row, 44 px buttons). Sheet = a panel above the dock (
 | Open world | The exit `#exit` alone, Hub, bottom right (#1517; the dock was hidden here, with a separate Hub button on touch). Joystick (`#joystick`, touch) sits bottom-left in the same band, 16 px from the edges | Open world panel (New world, Seed, Keep or Discard) as a sheet above the joystick band | Open world text and seed (`#openworld-hud`). Keyboard: arrows roll, Esc leaves. Free camera stays in Settings |
 | Replay review | The dock shows the replay controls, one row of five 44 px icon buttons: First (⏮), Previous (◀), Next (▶), Last (⏭), Live. Replaces the normal dock while reviewing | None | Replay slider and label (`#replay-slider`, `#replay-label`) on the top band under the HUD, full width, 44 px high |
 | Auto-play | Sixth dock button when allowed (`#auto-play`, hidden otherwise). Six buttons fit 360 px: 6×44 + 5×8 = 304 px | None | None |
-| Update banner (`#update`) | Not in the dock. Shows as a dot on the cog, and as the first row of Settings (#1693) | First row of Settings | None |
+| Update banner (`#update-banner`) | Not in the dock. The banner at the top of the screen, its one place: no Settings row, no dot (#1724) | Top banner | None |
 | Transcript and log (`#log`) | Not in the dock | Log archive stays in Settings | Transcript line stays under the HUD as today |
 
 Notes:
@@ -53,7 +53,7 @@ The default since #1696; #1697 removed the Modes menu, Quick game, the dock's Wo
 | Open world | the exit alone, as today; the plate keeps Nearest tower |
 | Online lobby, battle royale | the exit, Hold (royale), Lobby |
 
-Settings is the only menu and stays at the cog; the update dot moves to the cog. Targets stay 44 px. Not measured: these docks on a device.
+Settings is the only menu and stays at the cog; a new version is the top banner only (#1724). Targets stay 44 px. Not measured: these docks on a device.
 
 ## 2. Geometry
 
@@ -92,7 +92,7 @@ Keyboard: the dock is a toolbar (`role="toolbar"`), DOM order = Tab order. Arrow
 
 The `#online` column (ui.css:125) stops being a column of buttons in portrait:
 - Moves to the dock: New game (`#new-game`), Reset view (`#reset-view`), Hint (`#hint`), Replay (`#replay`), Auto-play (`#auto-play`), Undo (`#undo`), Retry and Rematch, Goal (as a dock button, see section 1).
-- Moves to a sheet: the bay sheets (`#bay-sheet`, #1693; the mode menu `#mode-menu` is gone, #1697), the daily card (`#daily-card`), the invite row (`#invite-row`), the lobby controls, the update banner (`#update`).
+- Moves to a sheet: the bay sheets (`#bay-sheet`, #1693; the mode menu `#mode-menu` is gone, #1697), the daily card (`#daily-card`), the invite row (`#invite-row`), the lobby controls, and the update banner went to the top of the screen (`#update-banner`, #1717, #1724).
 - Stays at the top: the cog (`#settings-box`), the HUD (`#hud-dock`), the boss bar (`#boss-bar`), the Open world text (`#openworld-hud`), the transcript (`#log`).
 - Leaves the bottom-right: the clipboard (`#copy-diagnostics`) and the replay bar (`#replay-bar`), as above.
 

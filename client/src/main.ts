@@ -458,8 +458,7 @@ const diag = new Diagnostics(() => performance.now(), console);
 // (offline.ts keeps the previous cache), and New version offers the reload that runs the new build whole. Listened
 // to before the first await: the new build can take over while this page is still loading.
 const serviceWorker = import.meta.env.PROD && 'serviceWorker' in navigator ? navigator.serviceWorker : null;
-const updateButton = document.getElementById('update') as HTMLButtonElement;
-// The new version's banner (#1717): Reload notes where the player is (resume.ts) and reloads; Later hides the banner, the Settings row stays.
+// The new version's banner (#1717), its one place (#1724): Reload notes where the player is (resume.ts) and reloads; Later hides the banner.
 const updateBanner = document.getElementById('update-banner')!;
 const sessionStore = tabStore();
 let placeNow = (): Place => NO_PLACE; // set at the end of the start, with the game's state; the Open world saves itself every frame (#968)
@@ -471,16 +470,14 @@ const showUpdateBanner = (): void => {
   document.getElementById('update-text')!.textContent = bannerText(leavesGame(placeNow()));
   updateBanner.hidden = false;
 };
-updateButton.addEventListener('click', reloadForUpdate);
 document.getElementById('update-reload')!.addEventListener('click', reloadForUpdate);
 document.getElementById('update-later')!.addEventListener('click', () => (updateBanner.hidden = true));
 if (serviceWorker) {
   const updating = serviceWorker.controller !== null; // a first install takes control, it is no update
   serviceWorker.addEventListener('controllerchange', () => {
     if (!updating) return;
-    updateButton.hidden = false;
     showUpdateBanner();
-    // The page reloads by itself as soon as nothing is at stake, once per build (#1437); the button and the banner stay meanwhile.
+    // The page reloads by itself as soon as nothing is at stake, once per build (#1437); the banner stays meanwhile.
     const reloadWhenFree = (): void => {
       if (stakeNow()) return;
       clearInterval(waiting);
@@ -1283,7 +1280,6 @@ archiveButton.hidden = ledgerButton.hidden = true; // their homes are the ship's
 archiveButton.addEventListener('click', openArchive);
 ledgerButton.addEventListener('click', openLedger);
 groupSettings(menu); // the items under their headings (#1566), Copy diagnostics from the page into Advanced
-menu.prepend(updateButton); // New version: reload is the first row of Settings, its dot on the cog (#1693)
 const archive = menu.appendChild(document.createElement('div'));
 archive.className = 'setting-archive';
 // Reset everything (#1684, reset.ts): the last row of Settings, a danger action that opens an in-game confirm page in place of the items.

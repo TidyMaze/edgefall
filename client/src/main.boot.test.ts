@@ -11,7 +11,7 @@ import { loadProgress, saveProgress } from './progress';
 import { boot, type Game, startBoss } from './test/harness';
 import { BOSS_IDS } from './tally';
 
-// The start of main.ts on the harness (src/test/harness.ts): the service worker's New version button, the renderer
+// The start of main.ts on the harness (src/test/harness.ts): the service worker's New version banner, the renderer
 // and its textures, the view and the fog, the theme, the UI scale, safe mode, the settings menu with its toggles and
 // volume sliders, the FPS readout and the mode menu.
 
@@ -77,22 +77,16 @@ describe('the service worker (#193)', () => {
     return { worker, update, listeners };
   }
 
-  it('offers New version when a new build takes over a page it controlled, and the button reloads', async () => {
+  it('checks for a new build at each load, and a new version is no Settings row (#1724)', async () => {
     vi.stubEnv('PROD', true);
     const { worker, update, listeners } = serviceWorker({});
     const game = await boot('?bot=off');
     await game.settle();
     expect(worker.register).toHaveBeenCalledWith('/sw.js');
     expect(update).toHaveBeenCalledOnce(); // the check for a new build at each load
-    const button = byId<HTMLButtonElement>('update');
-    expect(byId('settings-menu').firstElementChild).toBe(button); // the first row of Settings (#1693), its dot on the cog (ui.css)
-    expect(button.hidden).toBe(true);
     listeners.controllerchange!();
-    expect(button.hidden).toBe(false);
-    const reload = vi.fn();
-    vi.stubGlobal('location', { ...location, reload });
-    button.click();
-    expect(reload).toHaveBeenCalledOnce();
+    expect(document.getElementById('update')).toBeNull(); // the top banner is its one place (#1717)
+    expect(byId('update-banner').hidden).toBe(false);
   });
 
   it('shows the banner when a new build takes over: Later hides it, Reload notes the boss fight and reloads (#1717)', async () => {
@@ -106,7 +100,6 @@ describe('the service worker (#193)', () => {
     expect(byId('update-text').textContent).toBe('New version ready. Reloading keeps where you are.');
     byId('update-later').click();
     expect(byId('update-banner').hidden).toBe(true);
-    expect(byId('update').hidden).toBe(false); // the Settings row stays
     startBoss('echo');
     const reload = vi.fn();
     vi.stubGlobal('location', { ...location, reload });
@@ -134,7 +127,7 @@ describe('the service worker (#193)', () => {
     expect(worker.register).toHaveBeenCalledOnce();
     expect(update).not.toHaveBeenCalled();
     listeners.controllerchange!();
-    expect(byId('update').hidden).toBe(true);
+    expect(byId('update-banner').hidden).toBe(true);
   });
 
   it('lets the game go on when the registration is refused', async () => {
@@ -721,7 +714,6 @@ describe('the settings toggles', () => {
     await boot('?bot=off');
     const ids = [...byId('settings-menu').querySelectorAll('button')].map((b) => b.id);
     expect(ids).toEqual([
-      'update', // New version: reload, the first row (#1693)
       'setting-sound', // Sound (#1566)
       'setting-transcript',
       'setting-log-archive',
