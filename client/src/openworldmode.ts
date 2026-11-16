@@ -361,6 +361,7 @@ export class OpenWorldMode {
     view.useFlatTops(this.lowTier()); // the low tier draws a ground cell no neighbour lies below as its top alone (#1234)
     view.cullGround(document.body.dataset.software === 'on'); // a software renderer lays the ground in view only (#1483)
     view.useSurfaceDetail(!this.lowTier()); // the land's striation, on the high tier only (#1555)
+    view.useLandmarkLights(document.body.dataset.tier === 'high' && document.body.dataset.software !== 'on'); // the towers' lights (#1749)
     view.setLevels(this.levels.lights, this.levels.lamps); // the Settings sliders (#1727)
     view.setShadows(document.body.dataset.tier === 'high'); // the sun's soft shadow round the hero, on the High tier only (#1364, #1715)
     return { world, fight, ticked, view };

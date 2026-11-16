@@ -143,7 +143,7 @@ describe('the Open world mode', () => {
     expect(cost().pointLights).toBeGreaterThan(OPEN_WORLD_POINT_LIGHTS);
     byId('openworld').click();
     await settle();
-    expect(cost().pointLights).toBeLessThanOrEqual(NEON_OPEN_WORLD_POINT_LIGHTS); // the default neon look's two accents, lit since the open builds its programs with them (#1582)
+    expect(cost().pointLights).toBeLessThanOrEqual(NEON_OPEN_WORLD_POINT_LIGHTS + OPEN_WORLD_POINT_LIGHTS); // the default neon look's two accents, lit since the open builds its programs with them (#1582)
   });
 
   it('exposes no test hook on a page that is not a webdriver one', async () => {

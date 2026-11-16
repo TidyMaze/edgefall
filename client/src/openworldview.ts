@@ -27,6 +27,7 @@ import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeSt
 import { wrapPi } from './openworldtwist';
 import { fogScale, seenThrough } from './biomerules';
 import { ringTint } from './biomerings';
+import { OPEN_WORLD_POINT_LIGHTS } from './quality';
 
 /** The most chunks loaded on each side of the hero's chunk, at the widest zoom: the instanced meshes hold all of them (#976).
  * Raised or lowered by measure (the rebuild time, the frame time, the memory), never by dropping detail. Ten covers the
@@ -586,6 +587,14 @@ export const hexLift = (q: number, r: number): number => {
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   return (((h ^ (h >>> 16)) >>> 0) / 0x100000000) * LIFT_MAX;
 };
+/** The light a tower or a dungeon gate casts on the land and the props round it (#1749): a point light on each of the landmarks nearest
+ * the hero within `near` cells (at most `OPEN_WORLD_POINT_LIGHTS`, the high tier only), an open tower amber, a beaten one green, a gate
+ * ember, stronger at night. */
+export const LANDMARK_LIGHT = { near: 14, reach: 12, height: 1.6, day: 10, night: 70, gate: 0xff5a1f } as const;
+/** The landmarks within `near` cells of `hero`, at most `n`, nearest first. */
+export function nearestLandmarks(hero: Axial, marks: readonly { cell: Axial; colour: number }[], n: number, near: number): { cell: Axial; colour: number }[] {
+  return marks.filter((m) => hexDistance(hero, m.cell) <= near).sort((a, b) => hexDistance(hero, a.cell) - hexDistance(hero, b.cell)).slice(0, n);
+}
 /** The cells the world's landmarks shape (#1719, landshape.ts): set by the view's world as it opens, read by every height and top colour. */
 let shaped: ReadonlyMap<string, Shaping> = new Map();
 /** The biome of a cell of the world on show, for its relief signature (#1735): set by each new view; none before. */
@@ -749,6 +758,9 @@ export class OpenWorldView {
   /** Where the hero stands (x, z) for the ground's shader: the neon grid is clear round it, quiet further out (#1424). */
   /** The neon look's 2 accent lights (neonfx.ts), kept near the hero. */
   private readonly accents = this.neon ? accentLights('openworld') : [];
+  /** The lights of the towers and gates nearest the hero (#1749), on only where `useLandmarkLights` allows them. */
+  private readonly landmarkLights = Array.from({ length: OPEN_WORLD_POINT_LIGHTS }, () => Object.assign(new THREE.PointLight(0xffffff, 0, LANDMARK_LIGHT.reach, 1.6), { name: 'landmark-light', visible: false }));
+  private landmarkLit = false;
   private levels = { lights: 1, lamps: 1 }; // the Settings sliders (#1727)
   private skyBiome: Biome | null = null; // the biome whose air tints the sky (#1736): none until the hero stands in one
   private skyGlow: THREE.Object3D | null = null;
@@ -925,6 +937,7 @@ export class OpenWorldView {
       this.skyGlow = neonSkyGlow(18); // follows the camera like the stars, hidden until main.ts shows it
       this.scene.add(this.skyGlow);
     }
+    this.scene.add(...this.landmarkLights);
     if (this.neon) this.scene.add(...this.accents); // hidden until main.ts's `driveAccents` shows them: the high tier on a GPU
     const traces = this.neon ? neonTraces() : null;
     const prism = new THREE.CylinderGeometry(RADIUS, RADIUS, 1, 6);
@@ -1668,6 +1681,32 @@ export class OpenWorldView {
     this.applyLook();
   }
 
+  /** Lets the towers and gates light their land (#1749): the high tier on a GPU only. */
+  useLandmarkLights(on: boolean): void {
+    this.landmarkLit = on;
+    this.lightLandmarks();
+  }
+
+  /** Puts the landmark lights on the towers and gates nearest the hero (#1749), their power by the hour and the Lamps slider. */
+  private lightLandmarks(): void {
+    const marks = [
+      ...this.lairCells.map((cell, i) => ({ cell, colour: this.lairsBeaten.includes(i) ? LAIR_LOOK.beaten : LAIR_LOOK.open })),
+      ...this.placeList.filter((p) => p.kind === 'dungeon').map(({ cell }) => ({ cell, colour: LANDMARK_LIGHT.gate as number })),
+    ];
+    const near = this.landmarkLit ? nearestLandmarks(this.heroCell, marks, this.landmarkLights.length, LANDMARK_LIGHT.near) : [];
+    const power = (LANDMARK_LIGHT.day + (LANDMARK_LIGHT.night - LANDMARK_LIGHT.day) * this.sky.look.glow) * this.levels.lamps;
+    this.landmarkLights.forEach((light, i) => {
+      const mark = near[i];
+      light.visible = mark !== undefined;
+      if (!mark) return;
+      const p = axialTo3D(mark.cell[0], mark.cell[1]);
+      const tile = this.world.tile(mark.cell[0], mark.cell[1])!;
+      light.position.set(p.x, topOf(GROUND[tile.terrain], tile.height, mark.cell[0], mark.cell[1]) + LANDMARK_LIGHT.height, p.z);
+      light.color.setHex(mark.colour);
+      light.intensity = power;
+    });
+  }
+
   private applyLook(): void {
     const { look } = this.sky;
     const air = new THREE.Color(look.sky);
@@ -1695,6 +1734,7 @@ export class OpenWorldView {
     for (const mesh of [this.pads, this.townPads, this.gatePads, this.townHuts]) (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = TELEPORTER_LOOK.emissive + TELEPORTER_LOOK.nightGlow * look.glow;
     (this.stakes.material as THREE.MeshStandardMaterial).emissiveIntensity = LOG_LOOK.emissive + LOG_LOOK.nightGlow * look.glow;
     (this.cairnStones.material as THREE.MeshStandardMaterial).emissiveIntensity = CAIRN_LOOK.emissive + CAIRN_LOOK.nightGlow * look.glow;
+    this.lightLandmarks(); // their power follows the hour and the Lamps slider (#1749)
   }
 
   /** The sun's soft shadow round the hero, on the high tier (#1364). */
@@ -1735,6 +1775,7 @@ export class OpenWorldView {
     this.skyGlow?.position.set(this.camera.position.x, this.camera.position.y + 0.5, this.camera.position.z);
     this.heroXZ.value.set(at.x, at.z);
     this.accents.forEach((l, i) => l.position.set(at.x + (i ? 3 : -3), 2.5, at.z + (i ? -2 : 2)));
+    this.lightLandmarks();
     // The fog starts at the hero's depth and ends past the farthest corner of the footprint, which is the far horizon.
     const corners = footprint(this.camera);
     const view = new THREE.Vector3();

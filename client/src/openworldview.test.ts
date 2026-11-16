@@ -12,6 +12,7 @@ import { FightState } from './openworldfight';
 import { WORLD_LOOKS } from './daynight';
 import { GLIDE_MS, NUDGE_MS, ROLL_ZOOM, TROOP_DELAY } from './openworldglide';
 import { OPEN_WORLD_POINT_LIGHTS } from './quality';
+import { LAIR_LOOK, LANDMARK_LIGHT, nearestLandmarks } from './openworldview';
 import { NEON_GLOSS, setNeonWorldOn } from './neonlook';
 import { SUN, sunPosition } from './tablezero';
 import {
@@ -221,6 +222,29 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     const near = Array.from({ length: 40 }, (_, r) => propBiome(1, r, 'desert'));
     expect(new Set(near)).toEqual(new Set(['desert', 'forest'])); // both biomes' props by the border
     expect(new Set(Array.from({ length: 40 }, (_, r) => propBiome(20, r, 'desert')))).toEqual(new Set(['desert']));
+  });
+
+  it('lights the towers and gates near the hero once allowed, stronger at night, the Lamps slider and the near bound too (#1749)', () => {
+    expect(nearestLandmarks([0, 0], [{ cell: [9, 0], colour: 1 }, { cell: [2, 0], colour: 2 }, { cell: [30, 0], colour: 3 }], 5, 14)).toEqual([{ cell: [2, 0], colour: 2 }, { cell: [9, 0], colour: 1 }]);
+    const view = new OpenWorldView(new World(() => grass()));
+    view.setLairs([[3, 0], [40, 0], [-4, 1], [5, 5]], [2]);
+    view.setPlaces([{ kind: 'dungeon', cell: [0, 5] }, { kind: 'town', cell: [1, 1] }]);
+    view.resize(800, 600);
+    view.show([0, 0]);
+    view.follow(0, true);
+    const lights = view.scene.children.filter((o): o is THREE.PointLight => o.name === 'landmark-light');
+    expect(lights).toHaveLength(OPEN_WORLD_POINT_LIGHTS);
+    expect(lights.some((l) => l.visible)).toBe(false); // off until the tier allows them
+    view.useLandmarkLights(true);
+    expect(lights.every((l) => l.visible)).toBe(true);
+    expect(lights.map((l) => l.color.getHex()).sort()).toEqual([LAIR_LOOK.open, LAIR_LOOK.beaten, LANDMARK_LIGHT.gate].sort()); // the town is no landmark
+    const day = lights[0]!.intensity;
+    view.setTime(9 * 60_000, false); // night
+    expect(lights[0]!.intensity).toBeGreaterThan(day);
+    view.setLevels(1, 0);
+    expect(lights[0]!.intensity).toBe(0);
+    view.useLandmarkLights(false);
+    expect(lights.some((l) => l.visible)).toBe(false);
   });
 
   it('hides a marble of the desert past the mirage (#1739)', () => {

@@ -47,9 +47,9 @@ const TRANSCRIPT_KEY = 'ab-alone.transcript';
 const BOARD_ZOOM_KEY = 'ab-alone.board-zoom';
 const STEERING_KEY = 'ab-alone.steering';
 
-// The point lights the Open world may draw, on every tier (#849, #1234): its scene is lit by a hemisphere and a sun only. The
+// The point lights the Open world may draw (#849, #1234): a hemisphere and a sun, and the lights of the towers and gates nearest the hero on the high tier (#1749). The
 // ship's scene (76 point lights) is not drawn there, and the render-cost readout counts the scene that is.
-export const OPEN_WORLD_POINT_LIGHTS = 0;
+export const OPEN_WORLD_POINT_LIGHTS = 3; // the towers' and gates' lights, high tier only (#1749, owner 2026-11-17)
 
 // The same rule on a phone as on a desktop (#882): only a weak device or reduced motion drops to the low tier.
 // A renderer that draws in software takes the low tier too, until the player picks the other in the settings (#1483).
