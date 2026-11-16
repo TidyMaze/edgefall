@@ -2,7 +2,7 @@ import { float, uniform } from 'three/tsl';
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three/webgpu';
 import { NEON_LINE, neonEdgeGeometry, neonEdgeMaterial } from './neonlook';
-import { NEON_GRID, EDGE_GAIN, EDGE_WIDTH, HEX_APOTHEM, HEX_RADIUS, edgeDistance, edgeFade, edgeMaterial, GAP_FILL, gapFill, SURFACE_DETAIL, surfaceDetail, BIOME_DETAIL, PHONE_WIDTH, surfaceAmplitude, surfaceUniforms } from './openworldedge';
+import { NEON_GRID, EDGE_GAIN, EDGE_WIDTH, HEX_APOTHEM, HEX_RADIUS, edgeDistance, edgeFade, edgeMaterial, GAP_FILL, gapFill, SURFACE_DETAIL, surfaceDetail, BIOME_DETAIL, PHONE_WIDTH, surfaceAmplitude, surfaceUniforms, DETAIL_FADE } from './openworldedge';
 import { BIOMES } from './openworld';
 
 describe('the hex edge of an Open world ground (#1138)', () => {
@@ -94,7 +94,7 @@ describe('the hex edge of an Open world ground (#1138)', () => {
     for (let x = -20; x <= 20; x += 0.37) for (let z = -20; z <= 20; z += 0.41) samples.push(surfaceDetail(x, z));
     const { amplitude } = SURFACE_DETAIL;
     expect(amplitude).toBeGreaterThan(0);
-    expect(amplitude).toBeLessThan(0.15); // a surface, not a pattern: the cells keep their own colour
+    expect(amplitude).toBeLessThanOrEqual(0.05); // a surface, not a pattern: at 0.12 the bands drew diagonal stripes over the map at a wide zoom (#1714)
     expect(Math.min(...samples)).toBeGreaterThanOrEqual(1 - amplitude - 1e-9);
     expect(Math.max(...samples)).toBeLessThanOrEqual(1 + amplitude + 1e-9);
     expect(new Set(samples.map((v) => v.toFixed(3))).size).toBeGreaterThan(50); // it varies across the ground
@@ -127,7 +127,13 @@ describe('the hex edge of an Open world ground (#1138)', () => {
     expect(surfaceAmplitude(true, PHONE_WIDTH)).toBe(SURFACE_DETAIL.phone);
     expect(surfaceAmplitude(true, PHONE_WIDTH + 1)).toBe(SURFACE_DETAIL.amplitude);
     expect(SURFACE_DETAIL.phone).toBeGreaterThan(SURFACE_DETAIL.amplitude);
-    expect(SURFACE_DETAIL.phone).toBeLessThanOrEqual(0.3); // still a surface: the cell keeps its own colour
+    expect(SURFACE_DETAIL.phone).toBeLessThanOrEqual(0.12); // still a surface: at 0.3 the bands read as stripes (#1714)
+    // a wide zoom fades it out: past DETAIL_FADE.to the bands are a few pixels wide and read as stripes over the map (#1714)
+    expect(surfaceAmplitude(true, 1280, DETAIL_FADE.from)).toBe(SURFACE_DETAIL.amplitude);
+    expect(surfaceAmplitude(true, 1280, (DETAIL_FADE.from + DETAIL_FADE.to) / 2)).toBeCloseTo(SURFACE_DETAIL.amplitude / 2);
+    expect(surfaceAmplitude(true, 390, DETAIL_FADE.to)).toBe(0);
+    expect(surfaceAmplitude(true, 1280, 6)).toBe(0);
+    expect(surfaceAmplitude(false, 1280, 1)).toBe(0);
     expect(surfaceAmplitude(false, 1280)).toBe(0);
     expect(surfaceAmplitude(false, 390)).toBe(0);
     const u = surfaceUniforms();

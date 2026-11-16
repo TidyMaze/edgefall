@@ -15,7 +15,7 @@ export const EDGE_GAIN = { land: -0.22, water: 0.5 };
 
 /** The surface detail of the land (#1555): a striation of two waves over the top of each cell, a share of its colour lighter or darker,
  * in world space so the bands run across the cells. Procedural: no texture, no draw call, and the hue of the cell is kept. */
-export const SURFACE_DETAIL = { amplitude: 0.12, phone: 0.3, glow: 0.15, frequency: 2.1, warp: 1.3, warpFrequency: 0.37 } as const;
+export const SURFACE_DETAIL = { amplitude: 0.05, phone: 0.12, glow: 0.15, frequency: 2.1, warp: 1.3, warpFrequency: 0.37 } as const;
 /** The widest screen (CSS px) that takes the phone's amplitude: at 390 the bands of 0.12 read faint (#1555). */
 export const PHONE_WIDTH = 600;
 /** The striation of each biome (#1555): its frequency (bands per world unit, times 2 pi) and how much the bands bend. The meadow keeps
@@ -39,8 +39,15 @@ export const surfaceDetail = (x: number, z: number, biome: Biome = 'meadow'): nu
   return 1 + amplitude * Math.sin((x * STRIPE[0] + z * STRIPE[1]) * frequency + Math.sin(z * warpFrequency) * warp);
 };
 
-/** The amplitude of the striation: none on the low tier (`on` false), the phone's on a screen `width` px wide or narrower. */
-export const surfaceAmplitude = (on: boolean, width: number): number => (!on ? 0 : width <= PHONE_WIDTH ? SURFACE_DETAIL.phone : SURFACE_DETAIL.amplitude);
+/** The zooms the striation fades over (#1714): full up to `from`, none from `to`, where its bands are a few pixels wide and read as stripes. */
+export const DETAIL_FADE = { from: 2, to: 4 } as const;
+
+/** The amplitude of the striation: none on the low tier (`on` false), the phone's on a screen `width` px wide or narrower, faded out by a wide `zoom`. */
+export const surfaceAmplitude = (on: boolean, width: number, zoom = 1): number => {
+  if (!on) return 0;
+  const fade = Math.min(1, Math.max(0, (DETAIL_FADE.to - zoom) / (DETAIL_FADE.to - DETAIL_FADE.from)));
+  return (width <= PHONE_WIDTH ? SURFACE_DETAIL.phone : SURFACE_DETAIL.amplitude) * fade;
+};
 
 /** The uniforms of the striation, shared by the land materials: set by the view (the tier, the screen, the hero's biome), no recompile. */
 export interface SurfaceUniforms {

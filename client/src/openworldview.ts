@@ -974,7 +974,7 @@ export class OpenWorldView {
   resize(width: number, height: number): void {
     this.camera.aspect = width / height;
     this.screen = { width, height };
-    this.surface.amplitude.value = surfaceAmplitude(this.surfaceOn, width);
+    this.surface.amplitude.value = surfaceAmplitude(this.surfaceOn, width, this.drawnLevel);
     this.endLife();
     this.fitted = maxZoomFor(this.camera.aspect);
     this.level = Math.min(this.level, this.limit);
@@ -1615,6 +1615,7 @@ export class OpenWorldView {
     this.drawnLevel = this.fitZoom(at);
     const k = this.drawnLevel;
     this.stripe.value = stripeStrength(k);
+    this.surface.amplitude.value = surfaceAmplitude(this.surfaceOn, this.screen.width, k); // the land's bands fade out at a wide zoom (#1714)
     this.widen.value = gapFill(k);
     lookAtHero(this.camera, at, k, this.yawNow);
     const scale = Math.max(1, k);
@@ -2119,7 +2120,7 @@ export class OpenWorldView {
   /** Shows the land's striation, or hides it on the low tier (#1555): a uniform, so no shader is built again. */
   useSurfaceDetail(on: boolean): void {
     this.surfaceOn = on;
-    this.surface.amplitude.value = surfaceAmplitude(on, this.screen.width);
+    this.surface.amplitude.value = surfaceAmplitude(on, this.screen.width, this.drawnLevel);
   }
 
   /** Draws the ground as flat tops where a column shows no side (`useFlatTops`), at the next frame. */
