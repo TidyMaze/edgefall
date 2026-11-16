@@ -31,7 +31,7 @@ export function accentLights(scene: keyof typeof SPEC): THREE.PointLight[] {
 }
 
 /** Whether the accent lights are drawn: the high tier of a renderer with a GPU. The low tier and software draw none. */
-export const accentOn = (tier: Tier, software: boolean): boolean => tier === 'high' && !software;
+export const accentOn = (tier: Tier, software: boolean): boolean => tier !== 'low' && !software;
 
 /** The factor on the power at `now` (ms): 1 under reduced motion. */
 export const accentPulse = (now: number, reduced: boolean): number => (reduced ? 1 : 1 + ACCENT_PULSE * Math.sin((2 * Math.PI * now) / PERIOD_MS));

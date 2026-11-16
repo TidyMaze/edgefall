@@ -13,9 +13,10 @@ describe('settingsList', () => {
     expect(row!.label).toBe('Difficulty: 50%');
   });
 
-  it('lists Clear board, Reduced motion, Flat HUD, Sound, Transcript, Difficulty, Theme, Palette, shell and glass skin, Export and Import game', () => {
+  it('lists Clear board, Quality, Reduced motion, Flat HUD, Sound, Transcript, Difficulty, Theme, Palette, shell and glass skin, Export and Import game', () => {
     expect(settingsList(false, 'system', 'scarab', 'smoked', 100, true, false, false, 'default', true, 'normal')).toEqual([
       { id: 'clear-board', label: 'Clear board', icon: 'fog', on: false },
+      { id: 'quality', label: 'Quality: High', icon: 'render' }, // a fresh profile on a strong device (#1715)
       { id: 'reduced-motion', label: 'Reduced motion', icon: 'motion', on: false },
       { id: 'flat-hud', label: 'Flat HUD', icon: 'flat', on: false },
       { id: 'sound', label: 'Sound', icon: 'sound' },
@@ -32,8 +33,9 @@ describe('settingsList', () => {
       { id: 'difficulty', label: 'Difficulty: 100%', icon: 'scale' },
       { id: 'import-game', label: 'Import game', icon: 'import' },
     ]);
-    expect(settingsList(true, 'light', 'scarab', 'frost', 200, false, true, true, 'protan', false, 'hard', 'clay', true, false)).toEqual([
+    expect(settingsList(true, 'light', 'scarab', 'frost', 200, false, true, true, 'protan', false, 'hard', 'clay', true, false, 'normal')).toEqual([
       { id: 'clear-board', label: 'Clear board', icon: 'fog', on: true },
+      { id: 'quality', label: 'Quality: Normal', icon: 'render' },
       { id: 'reduced-motion', label: 'Reduced motion', icon: 'motion', on: true },
       { id: 'flat-hud', label: 'Flat HUD', icon: 'flat', on: true },
       { id: 'sound', label: 'Sound', icon: 'sound' },
@@ -52,8 +54,8 @@ describe('settingsList', () => {
     ]);
   });
 
-  it('keeps the menu at sixteen items, including difficulty setting, render mode, the free camera, steering and the guide', () => {
-    expect(settingsList(false, 'system', 'scarab', 'smoked', 100, true, false, false, 'default', true, 'normal')).toHaveLength(16);
+  it('keeps the menu at seventeen items, including difficulty setting, render mode, the free camera, steering and the guide', () => {
+    expect(settingsList(false, 'system', 'scarab', 'smoked', 100, true, false, false, 'default', true, 'normal')).toHaveLength(17);
   });
 
   it('names the four volume sliders, one per bus (#438)', () => {

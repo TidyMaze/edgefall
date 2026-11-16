@@ -12,7 +12,14 @@ import type { Bus, Mix } from './sound';
 import { skinById } from './skins';
 import { UI_SCALES, type UiScale } from './uiscale';
 
-export type Tier = 'low' | 'high';
+/** The quality tiers (#1715): Normal draws all of High but the sun's shadows and the marbles' reflections, its two costliest passes. */
+export type Tier = 'low' | 'normal' | 'high';
+export const TIERS: readonly Tier[] = ['low', 'normal', 'high'];
+export const TIER_NAMES: Record<Tier, string> = { low: 'Low', normal: 'Normal', high: 'High' };
+/** The tier after `tier` in the Settings' Quality row: Low, Normal, High, then Low again. */
+export const nextTier = (tier: Tier): Tier => TIERS[(TIERS.indexOf(tier) + 1) % TIERS.length]!;
+/** The sun's soft shadow (#1364): the High tier only. */
+export const hasShadows = (tier: Tier): boolean => tier === 'high';
 export interface Hints {
   cores?: number;
   memory?: number;
@@ -56,7 +63,7 @@ export function tierFromHints({ cores, memory, reducedMotion, software }: Hints)
 // frame's inner hexagon from the camera, and smoothly extends across the hauler bay (#665).
 // It thickens into atmospheric haze, never over a cell, at every zoom and turn of the camera. `radius` is the frame's.
 export const BAY_FOG_SPAN = 34;
-const FOG_TIER_SCALE = { low: 1.25, high: 1.0 };
+const FOG_TIER_SCALE = { low: 1.25, normal: 1.0, high: 1.0 };
 
 // `density` is the deck's (light.ts, #400): it divides the span over the bay, from the same start, so a denser fog is
 // thick sooner and still never over a cell.
@@ -205,7 +212,7 @@ export const looksSoftware = (frameMs: readonly number[]): boolean =>
 // A tier is stored only when asked for (?quality): the detected one is not, so a later rule applies at once (#882).
 export function readTier(store: Store, hints: Hints): Tier {
   const stored = read(store, TIER_KEY);
-  return stored === 'low' || stored === 'high' ? stored : tierFromHints(hints);
+  return TIERS.includes(stored as Tier) ? (stored as Tier) : tierFromHints(hints);
 }
 export const writeTier = (store: Store, tier: Tier): void => write(store, TIER_KEY, tier);
 
@@ -249,8 +256,8 @@ export function hasReflections(tier: Tier, automated: boolean): boolean {
 // The costly passes of the main board room, dropped on the low tier (#849): the bloom's blur passes, and the normal maps
 // (a texture to fetch and a lookup in every lit pixel). The room's clearcoat is not listed: no material of the room sets one
 // (marbles.ts GLASS holds the numbers, nothing reads them), so there is none to drop. High is unchanged.
-export const hasBloom = (tier: Tier): boolean => tier === 'high';
-export const hasNormalMaps = (tier: Tier): boolean => tier === 'high';
+export const hasBloom = (tier: Tier): boolean => tier !== 'low';
+export const hasNormalMaps = (tier: Tier): boolean => tier !== 'low';
 
 // Geometry detail per tier (#424): low tier reduces vertex count on the 61 discs and 28 marbles for mobile fill/vertex savings.
 export interface MeshDetail {
@@ -345,7 +352,7 @@ const OFFER_KEY = 'ab-alone.low-offer';
 /** The count of slow windows in a row after one more window of frames: a fast window starts over. */
 export const slowRun = (run: number, frameMs: readonly number[]): number => (isSlow(frameMs) ? run + 1 : 0);
 export const offersLowTier = (tier: Tier, run: number, answer: LowOffer | null, shown: boolean): boolean =>
-  tier === 'high' && run >= SLOW_RUNS && answer === null && !shown;
+  tier !== 'low' && run >= SLOW_RUNS && answer === null && !shown;
 export const readLowOffer = (store: Store): LowOffer | null => {
   const stored = read(store, OFFER_KEY);
   return stored === 'accepted' || stored === 'dismissed' ? stored : null;

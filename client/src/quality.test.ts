@@ -47,6 +47,10 @@ import {
   readPalette,
   readTheme,
   readTier,
+  nextTier,
+  TIERS,
+  TIER_NAMES,
+  hasShadows,
   readUiScale,
   tierFromHints,
   hasParticles,
@@ -103,6 +107,23 @@ describe('tierFromHints', () => {
   });
   it('ignores hints the browser does not give', () => {
     expect(tierFromHints({ reducedMotion: false })).toBe('high');
+  });
+});
+
+describe('the three quality tiers (#1715)', () => {
+  it('steps Low, Normal, High, then Low, and a stored Normal is read back', () => {
+    expect([nextTier('low'), nextTier('normal'), nextTier('high')]).toEqual(['normal', 'high', 'low']);
+    expect(TIERS.map((t) => TIER_NAMES[t])).toEqual(['Low', 'Normal', 'High']);
+    expect(readTier({ getItem: () => 'normal', setItem: () => {} }, { reducedMotion: false })).toBe('normal');
+    expect(readTier({ getItem: () => 'ultra', setItem: () => {} }, { reducedMotion: false })).toBe('high'); // an unknown value: the detected tier
+  });
+  it('draws all of High on Normal but the sun\'s shadows and the reflections', () => {
+    expect([hasShadows('low'), hasShadows('normal'), hasShadows('high')]).toEqual([false, false, true]);
+    expect([hasReflections('normal', false), hasReflections('high', false)]).toEqual([false, true]);
+    expect([hasBloom('normal'), hasNormalMaps('normal'), hasBloom('low')]).toEqual([true, true, false]);
+    expect(meshDetail('normal')).toEqual(meshDetail('high'));
+    expect(offersLowTier('normal', SLOW_RUNS, null, false)).toBe(true); // a slow Normal is offered Low too
+    expect(fogSettings('normal', false, resetView(), 4, 1)).toEqual(fogSettings('high', false, resetView(), 4, 1));
   });
 });
 

@@ -11,6 +11,7 @@ import type { Level } from './lightpanel';
 import { DIFFICULTY_LABELS, type Difficulty } from './difficulty';
 import { glassSkinById } from './glassskins';
 import { PALETTE_NAMES, type Palette } from './palettes';
+import { TIER_NAMES, type Tier } from './quality';
 import { RENDER_MODE_NAMES, type RenderMode } from './rendermode';
 import { skinById } from './skins';
 import { nextUiScale, type UiScale } from './uiscale';
@@ -66,8 +67,10 @@ export const settingsList = (
   renderMode: RenderMode = 'normal',
   freeCam = false,
   steering = true,
+  tier: Tier = 'high',
 ): Setting[] => [
   { id: 'clear-board', label: 'Clear board', icon: 'fog', on: clear },
+  { id: 'quality', label: `Quality: ${TIER_NAMES[tier]}`, icon: 'render' }, // Low, Normal, High (#1715)
   { id: 'reduced-motion', label: 'Reduced motion', icon: 'motion', on: reduced },
   { id: 'flat-hud', label: 'Flat HUD', icon: 'flat', on: flat },
   { id: 'sound', label: 'Sound', icon: 'sound' },

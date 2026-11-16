@@ -736,7 +736,7 @@ id and its listener, moved under its heading (`client/src/settingsgroups.ts`); n
 | Group | Items |
 |---|---|
 | Sound | Sound (opens the volume page), Transcript, Logs, Ledger |
-| Display | Theme (with its UI scale and Safe mode), Shell skin, Glass skin, Clear board, the Bloom, Lamps and Lights sliders, Reset lights |
+| Display | Theme (with its UI scale and Safe mode), Shell skin, Glass skin, Clear board, Quality (Low, Normal, High, #1715; tech.md 5.1), the Bloom, Lamps and Lights sliders, Reset lights |
 | Accessibility | Reduced motion, Flat HUD, Palette (the colour-blind palettes) |
 | Controls | Difficulty with its note, Steering, Guide |
 | Advanced | FPS, Render, Free camera, Export game, Import game, Copy diagnostics |

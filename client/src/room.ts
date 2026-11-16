@@ -498,7 +498,7 @@ export function spaceshipArchitecture(tier: Tier): readonly StructuralPart[] {
   ];
 
   // High tier gets fine architectural details (hazard lintels and overhead conduit manifolds)
-  if (tier === 'high') {
+  if (tier !== 'low') {
     parts.push(
       // Hazard warning lintel strip directly above airlock frame
       {

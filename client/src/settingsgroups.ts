@@ -13,7 +13,7 @@ export interface SettingGroup {
 export const SETTING_GROUPS: readonly SettingGroup[] = [
   // Logs and the Ledger are for the player: Logs replays the audio logs, whose text is the Transcript, and the Ledger is the written record beside them.
   { id: 'settings-sound', name: 'Sound', items: ['#setting-sound', '#setting-transcript', '#setting-log-archive', '#setting-ledger'] },
-  { id: 'settings-display', name: 'Display', items: ['#setting-theme', '#setting-shell-skin', '#setting-glass-skin', '#setting-clear-board', '.setting-lights', '#level-reset'] },
+  { id: 'settings-display', name: 'Display', items: ['#setting-theme', '#setting-shell-skin', '#setting-glass-skin', '#setting-clear-board', '#setting-quality', '.setting-lights', '#level-reset'] },
   { id: 'settings-accessibility', name: 'Accessibility', items: ['#setting-reduced-motion', '#setting-flat-hud', '#setting-palette'] },
   { id: 'settings-controls', name: 'Controls', items: ['#setting-difficulty', '#difficulty-note', '#setting-steering', '#setting-guide'] },
   {

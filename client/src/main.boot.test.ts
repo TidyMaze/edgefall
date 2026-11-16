@@ -699,6 +699,7 @@ describe('the settings toggles', () => {
       'setting-shell-skin',
       'setting-glass-skin',
       'setting-clear-board',
+      'setting-quality', // Low, Normal, High (#1715)
       'level-reset', // after the light sliders, which are no buttons (#899)
       'setting-reduced-motion', // Accessibility
       'setting-flat-hud',
@@ -722,6 +723,18 @@ describe('the settings toggles', () => {
     expect([sound.textContent, sound.getAttribute('aria-label'), sound.title]).toEqual(['Sound', 'Sound', 'Sound']);
     expect(sound.hasAttribute('aria-pressed')).toBe(false); // an action, not a toggle
     expect(row('export-game').textContent).toBe('Export game');
+  });
+
+  it('steps the quality Low, Normal, High from its row, keeps it and applies it at once (#1715)', async () => {
+    localStorage.setItem('ab-alone.tier', 'high');
+    await boot('?bot=off');
+    expect(row('quality').textContent).toBe('Quality: High');
+    row('quality').click();
+    expect([row('quality').textContent, document.body.dataset.tier, localStorage.getItem('ab-alone.tier')]).toEqual(['Quality: Low', 'low', 'low']);
+    row('quality').click();
+    expect([row('quality').textContent, document.body.dataset.tier]).toEqual(['Quality: Normal', 'normal']);
+    row('quality').click();
+    expect(document.body.dataset.tier).toBe('high');
   });
 
   it('follows the system reduced motion until the player presses Reduced motion', async () => {

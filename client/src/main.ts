@@ -281,6 +281,8 @@ import {
   readPalette,
   readTheme,
   readTier,
+  hasShadows,
+  nextTier,
   type Tier,
   readTranscript,
   readSteering,
@@ -592,7 +594,7 @@ let tier = readTier(store, {
   reducedMotion: reducedMotion(),
 });
 const queryQuality = new URLSearchParams(location.search).get('quality');
-if (queryQuality === 'high' || queryQuality === 'low') {
+if (queryQuality === 'high' || queryQuality === 'normal' || queryQuality === 'low') {
   tier = queryQuality;
   writeTier(store, tier);
 }
@@ -1068,11 +1070,11 @@ function applyLook(): void {
   document.body.dataset.tier = tier;
   document.body.dataset.clear = clear ? 'on' : 'off';
   drawProps();
-  sceneRenderer.setShadows(sceneRenderer.terraceOn && tier === 'high'); // a tier change moves the sun's shadow (#1364)
+  sceneRenderer.setShadows(sceneRenderer.terraceOn && hasShadows(tier)); // a tier change moves the sun's shadow (#1364)
   updateParticles();
   if (reducedMotion()) document.documentElement.dataset.motion = 'reduced'; // ui.css cuts every animation
   else delete document.documentElement.dataset.motion;
-  pulsing = tier === 'high' && !safe && !reducedMotion(); // the shell's heat pulse (#509)
+  pulsing = tier !== 'low' && !safe && !reducedMotion(); // the shell's heat pulse (#509)
   document.body.dataset.pulse = pulsing ? 'on' : 'off';
 }
 // The settings menu: one button per item, its icon then its label, opened by the cog only. Escape, a press outside
@@ -1109,6 +1111,10 @@ const toggles: Record<string, () => void> = {
     applyUiScale();
     applySafe();
     layoutConsole();
+  },
+  quality: () => {
+    tier = nextTier(tier); // Low, Normal, High (#1715): applied by applyLook after the press, kept for the next visits
+    writeTier(store, tier);
   },
   'shell-skin': () => {
     skin = nextSkin(skin);
@@ -1160,7 +1166,7 @@ const sliderAt = (bus: Bus): HTMLInputElement => document.getElementById(`volume
 const difficultyNote = Object.assign(document.createElement('p'), { id: 'difficulty-note' }); // what each level changes (#1538), placed beside the control below
 const paintMenu = (): void => {
   difficultyNote.textContent = DIFFICULTY_NOTES[difficulty];
-  for (const { id, label, icon: name, on } of settingsList(clear, theme, skin, glass, uiScale, safe, reducedMotion(), flatHud, palette, transcriptOn, difficulty, renderMode, freeCam.active, steering)) {
+  for (const { id, label, icon: name, on } of settingsList(clear, theme, skin, glass, uiScale, safe, reducedMotion(), flatHud, palette, transcriptOn, difficulty, renderMode, freeCam.active, steering, tier)) {
     const row = document.getElementById(`setting-${id}`)!;
     row.innerHTML = `${icon(name)}<span>${label}</span>`;
     const full = id === 'difficulty' ? `Difficulty: ${difficulty} (${DIFFICULTY_PERCENT[difficulty]}%). ${DIFFICULTY_NOTES[difficulty]}` : label;
@@ -1169,7 +1175,7 @@ const paintMenu = (): void => {
     if (on !== undefined) row.setAttribute('aria-pressed', String(on));
   }
 };
-for (const { id } of settingsList(clear, theme, skin, glass, uiScale, safe, reducedMotion(), flatHud, palette, transcriptOn, difficulty, renderMode, freeCam.active, steering)) {
+for (const { id } of settingsList(clear, theme, skin, glass, uiScale, safe, reducedMotion(), flatHud, palette, transcriptOn, difficulty, renderMode, freeCam.active, steering, tier)) {
   const row = menu.appendChild(document.createElement('button'));
   row.id = `setting-${id}`;
   row.type = 'button';
@@ -2557,7 +2563,7 @@ const breachGlow = new THREE.MeshBasicMaterial({ transparent: true, opacity: neo
 // Spaceship interior architecture (bulkhead arches, rear wall, airlock, pedestal, conduits) (#478)
 let wallTexture: THREE.Texture | null = null;
 let hazardTexture: THREE.Texture | null = null;
-if (deckAlbedo && tier === 'high' && typeof document !== 'undefined') {
+if (deckAlbedo && tier !== 'low' && typeof document !== 'undefined') {
   try {
     const wallCanvas = createCanvasTexture(512, 512, drawWallPanel);
     wallTexture = new THREE.Texture(wallCanvas);
@@ -4566,7 +4572,7 @@ function syncTableZero(): void {
     applyView();
   }
   if (on === sceneRenderer.terraceOn) return;
-  sceneRenderer.setTerrace(on, tier === 'high'); // the sun's shadow on the high tier (#1364); the room never comes back once the terrace is on (#1374)
+  sceneRenderer.setTerrace(on, hasShadows(tier)); // the sun's shadow on the high tier (#1364); the room never comes back once the terrace is on (#1374)
   if (neonLook) sceneRenderer.setNeon(); // #1424
   if (neonLook && !sceneRenderer.scene.getObjectByName('sky-glow')) sceneRenderer.scene.add(neonSkyGlow());
   for (const cells of [...boardDrawn, ...arenaDrawn]) cells.visible = terraceFailed; // the dishes of the glTF are drawn; the discs stay for picking only
@@ -8256,7 +8262,7 @@ function setWorldFrame(scene: THREE.Scene, now: number): void {
   driveSkyGlow(scene, accentOn(tier, software));
   driveAccents(scene.children.filter((o): o is THREE.PointLight => o.name === 'neon accent'), accentOn(tier, software), now, reducedMotion());
   if (!sceneRenderer.terraceOn) sceneRenderer.setWorldTone(neonLook); // a page that opened in the world has no terrace to set them (#1520)
-  sceneRenderer.setShadows(tier === 'high'); // the Open world's sun casts its soft shadow on the high tier only (#1364)
+  sceneRenderer.setShadows(hasShadows(tier)); // the Open world's sun casts its soft shadow on the high tier only (#1364)
 }
 // The world's first frame waits for its programs, built with the frame's own settings (#1582). One compile per child of the scene
 // at once was tried: its first render built them again, a 1 s frame at 4x CPU.
