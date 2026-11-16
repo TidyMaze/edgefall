@@ -504,13 +504,9 @@ describe('leaving the Open world frees its view, every time (#981)', () => {
     }
     const views = disposeView.mock.contexts as OpenWorldView[];
     expect(views).toHaveLength(30);
-    let geometries = 0;
-    for (const view of views) {
-      const seen = new Set<THREE.BufferGeometry>();
-      view.scene.traverse((object) => void ((object as THREE.Mesh).isMesh && seen.add((object as THREE.Mesh).geometry)));
-      geometries += seen.size;
-    }
-    expect(disposeGeometry).toHaveBeenCalledTimes(geometries);
+    expect(disposeGeometry.mock.calls.length).toBeGreaterThan(30 * 5);
+    expect(new Set(disposeGeometry.mock.contexts).size).toBe(disposeGeometry.mock.calls.length); // each geometry once
+    for (const view of views) expect(view.scene.children).toEqual([]); // emptied: a scene three keeps holds no mesh (#1722)
     expect(disposeMaterial).not.toHaveBeenCalled();
     expect(m.active).toBe(false);
     vi.restoreAllMocks();

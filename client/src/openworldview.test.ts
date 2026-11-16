@@ -1385,6 +1385,22 @@ describe('the Open world view frees its GPU objects (#981)', () => {
     freed.forEach((seen) => expect(seen).toHaveBeenCalledOnce());
   });
 
+  it('tells the renderer each of its meshes is gone, so it drops their draw records and the instance buffers they hold (#1722)', () => {
+    const view = new OpenWorldView(new World(bytes));
+    view.show([0, 0]);
+    const meshes: THREE.Mesh[] = [];
+    view.scene.traverse((object) => (object as THREE.Mesh).isMesh && meshes.push(object as THREE.Mesh));
+    expect(meshes.some((m) => (m as THREE.InstancedMesh).isInstancedMesh)).toBe(true);
+    const gone = meshes.map((mesh) => {
+      const seen = vi.fn();
+      mesh.addEventListener('dispose', seen); // what three's RenderObject listens to (a geometry's dispose keeps it)
+      return seen;
+    });
+    view.dispose();
+    gone.forEach((seen) => expect(seen).toHaveBeenCalledOnce());
+    expect(view.scene.children).toEqual([]); // the scene three's render list keeps holds nothing
+  });
+
   it('disposes every geometry of its scene once, the models it was given included, and keeps its materials: the renderer keeps their compiled programs for the next entry (#1710)', () => {
     const view = new OpenWorldView(new World(bytes));
     view.useModels({ low: { tree: new THREE.BoxGeometry() }, high: { tree: new THREE.BoxGeometry() } });
@@ -1394,12 +1410,12 @@ describe('the Open world view frees its GPU objects (#981)', () => {
     view.drain(); // a frame has drawn since the models came: what they replaced is freed (#1017)
     const disposeGeometry = vi.spyOn(THREE.BufferGeometry.prototype, 'dispose');
     const disposeMaterial = vi.spyOn(THREE.Material.prototype, 'dispose');
+    const detailed = mesh(view, 'prop-tree-hi'); // the detailed meshes are freed with the rest (#989)
     view.dispose();
     expect(disposeGeometry.mock.calls.length).toBe(geometries.size);
     expect(new Set(disposeGeometry.mock.contexts)).toEqual(geometries);
     expect(materials.size).toBeGreaterThan(0);
     expect(disposeMaterial).not.toHaveBeenCalled();
-    const detailed = mesh(view, 'prop-tree-hi'); // the detailed meshes are freed with the rest (#989)
     expect(disposeGeometry.mock.contexts).toContain(detailed.geometry);
     vi.restoreAllMocks();
   });

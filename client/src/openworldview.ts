@@ -1839,6 +1839,16 @@ export class OpenWorldView {
       if ((object as THREE.Mesh).isMesh) geometries.add((object as THREE.Mesh).geometry);
     });
     geometries.forEach((geometry) => geometry.dispose());
+    // the renderer drops a mesh's draw record (and the instance buffers and bindings it holds) on the mesh's own dispose, not its geometry's:
+    // without it every world left stayed in memory, about 17 MB an entry (#1722)
+    this.scene.traverse((object) => {
+      const mesh = object as THREE.InstancedMesh;
+      if (mesh.isInstancedMesh) mesh.dispose();
+      else if (mesh.isMesh) mesh.dispatchEvent({ type: 'dispose' });
+    });
+    // three's render list of this scene keeps the scene (a chain map keyed by scene, camera and lighting) past the world's leave: emptied, the
+    // scene it keeps holds no mesh and no buffer (#1722)
+    this.scene.clear();
   }
 
   /** Stands the landmark of each boss lair on its cell (#1170): `cells` in lair order, `beaten` the numbers of the lairs beaten. The
