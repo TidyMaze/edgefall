@@ -1742,9 +1742,12 @@ body:not(:has(#replay-bar:not([hidden]))) #dock:not(:has(> button:not([hidden]))
 #openworld-biome.fade { animation: biome-banner 3s ease-in forwards; }
 @keyframes biome-banner { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
 :root[data-motion='reduced'] #openworld-biome.fade { animation: none; }
+@media (max-width: 600px) { #openworld-biome { left: 16px; transform: none; max-width: calc(100vw - 222px); white-space: normal; } } /* clear of the minimap on a phone */
 /* The key of the biomes on the map (#1750): a small list in the lower left corner of the map, a swatch of each biome's ground. */
 #openworld-map-legend { position: absolute; left: 12px; bottom: 12px; margin: 0; padding: 6px 10px; list-style: none; display: grid; grid-template-columns: repeat(2, auto); gap: 2px 12px; border-radius: 6px; background: rgba(10, 14, 20, 0.82); color: #e8edf5; font: 400 0.75rem/1.4 var(--ui); pointer-events: none; }
 #openworld-map-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; vertical-align: -1px; }
+/* The world's clock (#1743) shares the medals' row of the plate, so the plate keeps its height on a phone (#1730). */
+#openworld-clock:not(:empty)::before { content: ' · '; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */

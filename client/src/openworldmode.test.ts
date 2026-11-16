@@ -581,6 +581,13 @@ describe('the tundra\'s ice (#1739)', () => {
     grass.release('ArrowRight');
     grass.frame(() => {}, performance.now() + 2000);
     expect(body().openworldAt).toBe('1,0');
+    const route = () => Int32Array.of(1, 0, 2, 0, 3, 0); // the way the engine gives (#1137)
+    const held = new OpenWorldMode(flat(2), () => new Int32Array(), async () => ({ low: {}, high: {} }), () => true, worldSaves(memoryStore(), 1), undefined, undefined, undefined, undefined, undefined, route); // a walk keeps to its cells, no slide between its steps
+    held.enter(1, 800, 600);
+    held.fixture({ hero: [0, 0], troop: [], enemies: [] });
+    (held as unknown as { walkTo: (to: [number, number]) => void }).walkTo([3, 0]); // a walk to a far cell, as the Dungeon button's (#1291)
+    for (let t = 1; t <= 40; t++) held.frame(() => {}, performance.now() + t * 100);
+    expect(body().openworldAt).toBe('3,0');
   });
 });
 

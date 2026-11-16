@@ -1071,7 +1071,9 @@ export class OpenWorldMode {
    * and so does its last cell. */
   private stepRoute(at: number): void {
     const to = this.route.shift()!;
+    this.onRoute = true; // a walk to a far cell keeps to its path: no slide on the ice (#1739)
     const moved = this.roll(to, at, this.cruising ? 'walk' : 'start');
+    this.onRoute = false;
     if (!moved) this.route = [];
     if (this.route.length > 0) return;
     if (this.active) this.mark(document.body.dataset.openworld!);
@@ -1134,13 +1136,14 @@ export class OpenWorldMode {
    * glide has landed, when that cell is free; the slide itself does not slide again. */
   private slideOnIce(from: Axial, pushed: boolean, landed: number): void {
     const at = this.hero!.at;
-    if (this.sliding || pushed || this.hero!.smashed || this.world!.tile(at[0], at[1])?.biome !== 'tundra') return;
+    if (this.sliding || this.onRoute || pushed || this.hero!.smashed || this.world!.tile(at[0], at[1])?.biome !== 'tundra') return;
     const beyond: Axial = [2 * at[0] - from[0], 2 * at[1] - from[1]];
     const free = enter(this.world!, this.fight, at, beyond) === 'rolls' && !this.lairs.some((cell) => same(cell, beyond)) && !this.places.some(({ cell }) => same(cell, beyond));
     if (free) this.slide = { to: beyond, at: landed };
   }
   private slide: { to: Axial; at: number } | null = null;
   private sliding = false;
+  private onRoute = false;
 
   /** Tally files the first town, gate, tower or remembered biome the hero reaches (#1315) in the HUD's line, once per kind. */
   private fileReached(): void {
