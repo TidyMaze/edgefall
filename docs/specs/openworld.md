@@ -522,6 +522,11 @@ The Open world goes through day, dusk and night, and a lair is fought on a hexag
   and the mark of the fight. E2E (`openworld-daynight.spec.ts`): a world at each phase set with the hook, a lair entered at each phase on
   its board.
 
+**One look that turns with the hour (#1747).** The day takes the terrace look's best: the blue sky and air with no stars, the warm high
+sun, a plain and even ground. Dusk turns the sky violet. The night takes the neon look's best: the near-black sky with its stars, the
+circuit traces and the darker far ground, the light pools and the glowing rims. The 1v1 boards keep their fixed look (the fight reads the
+same at any hour), the 2D Hub is unaffected. `?look=terrace` stays only as the one-visit way back of #1424, not a second mode.
+
 ## 12. Lore logs (#1589)
 
 The Open world holds twelve logs of the story (`docs/specs/world.md` section 12), optional, never on the way to the ending.
