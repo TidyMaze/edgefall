@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
-import { bannerText, fightToResume, keepForReload, leavesGame, noteFor, NOWHERE, placeOf, tabStore, takeResume, worldToResume, type Place, type Raw } from './resume';
+import { bannerText, fightToResume, keepForReload, leavesGame, noteFor, NOWHERE, placeOf, tabStore, takeResume, worldToResume, type Place, type Raw, type ResumeNote } from './resume';
 
 const memory = (): Storage => {
   const data = new Map<string, string>();
@@ -65,9 +65,9 @@ describe('where the page is, and what the start after the reload does with it (#
 
   it('starts the noted fight again replayed to its last move, and only a known boss whose moves replay', () => {
     const replay = vi.fn((id: string, seed: number, mirror: boolean, moves: number[][]) => (moves.length < 3 ? { id, seed, mirror } : null));
-    const note = { kind: 'fight', id: 'echo', seed: 3, mirror: false, moves: [[1]] } as const;
+    const note: ResumeNote = { kind: 'fight', id: 'echo', seed: 3, mirror: false, moves: [[1]] };
     expect(fightToResume(note, ['echo'], replay)).toEqual({ id: 'echo', seed: 3, mirror: false, moves: [[1]], engine: { id: 'echo', seed: 3, mirror: false } });
-    expect(fightToResume({ ...note, moves: [[1], [2], [3]] }, ['echo'], replay)).toBeNull(); // the moves do not replay
+    expect(fightToResume({ ...note, moves: [[1], [2], [3]] } as ResumeNote, ['echo'], replay)).toBeNull(); // the moves do not replay
     expect(fightToResume(note, ['hull'], replay)).toBeNull(); // a boss this build does not know
     expect(fightToResume({ kind: 'world', seed: 1 }, ['echo'], replay)).toBeNull();
     expect(fightToResume(null, ['echo'], replay)).toBeNull();
