@@ -254,7 +254,7 @@ doors, the Open world's lairs and the MCP do not go through the list and stay op
   boss, daily and online games do not show it. It leaves the game in progress for the start
   position, the bot on or off as it was, and deletes the saved game (tech.md section 8). With no
   move played it starts over at once. Once a move is played, the first press turns it into
-  "Confirm new game" with the hazard colour for 4 seconds, and only a second press in that time
+  "Confirm new game" with the hazard colour for 6 seconds (#1678), and only a second press in that time
   starts over; no dialog. Strings kept verbatim for the e2e tests: "New game", "Confirm new game"
   (#230).
 - **Daily challenge.** An item of the mode menu under Boss fight and its boss list, labelled "Daily challenge 2026-10-24: The Choir"

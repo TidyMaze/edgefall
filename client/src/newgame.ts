@@ -2,8 +2,8 @@
 // to lose: a press starts over at once. Once a move is played, the first press asks for a confirmation: the
 // button reads "Confirm new game" for CONFIRM_MS, and only a second press in that time starts the new game.
 
-/** How long the button waits for the confirming press, in ms. */
-export const CONFIRM_MS = 4000;
+/** How long the button waits for the confirming press, in ms: 6 s, a slow or assistive press has the time (user test, #1678). */
+export const CONFIRM_MS = 6000;
 
 /** Until when (ms, on the clock of the presses) a press confirms the new game; null while none is asked for. */
 export type Confirm = number | null;
