@@ -1,3 +1,4 @@
+import { test as shared } from './shared-world';
 import { expect, test, type Page } from '@playwright/test';
 import { lowTierOnCi, enterBay } from './modes';
 import { shot } from './shot';
@@ -22,8 +23,7 @@ for (const { name, viewport, touch } of sizes) {
     test.use({ viewport, isMobile: touch, hasTouch: touch });
     const file = name.replaceAll(' ', '-');
 
-    test('the Workshop upgrades a Heavy for shards and ore, and buys a relic for shards and parts', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7');
+    shared('the Workshop upgrades a Heavy for shards and ore, and buys a relic for shards and parts', async ({ world: page }) => { // the shared page of this size (shared-world.ts, #1710)
       const body = page.locator('body');
       await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const listed = (await body.getAttribute('data-openworld-places'))!.split(' ');
@@ -44,10 +44,12 @@ for (const { name, viewport, touch } of sizes) {
       await shot(page, { path: `test-results/upgrade-${file}.png` });
       await page.locator('#workshop button[data-relic="1"][data-act="buy"]').scrollIntoViewIfNeeded();
       await shot(page, { path: `test-results/relics-${file}.png` });
+      await page.keyboard.press('Escape');
+      await page.locator('#exit').click(); // back in the world: the shared page is left as the next test finds it
+      await expect(body).toHaveAttribute('data-openworld-at', `${q - 1},${r}`);
     });
 
-    test('a lair fight walked into places the special marbles and sets the relics the army brings, and Back keeps them all', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7');
+    shared('a lair fight walked into places the special marbles and sets the relics the army brings, and Back keeps them all', async ({ world: page }) => { // the shared page of this size (shared-world.ts, #1710)
       const body = page.locator('body');
       await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const lairs = (await body.getAttribute('data-openworld-lairs'))!.split(' ').map((c) => c.split(',').map(Number) as [number, number]);

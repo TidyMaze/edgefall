@@ -1,3 +1,4 @@
+import { test as shared } from './shared-world';
 import { expect, test, type Page } from '@playwright/test';
 import { lowTierOnCi } from './modes';
 import { shot } from './shot';
@@ -31,8 +32,7 @@ for (const { name, viewport, touch } of sizes) {
     test.use({ viewport, isMobile: touch, hasTouch: touch });
     const file = name.replaceAll(' ', '-');
 
-    test('the Hub of a town has a Workshop that buys a Heavy and a Bomb and chooses them for the next fight, by the keyboard too', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=7');
+    shared('the Hub of a town has a Workshop that buys a Heavy and a Bomb and chooses them for the next fight, by the keyboard too', async ({ world: page }) => { // the shared page of this size (shared-world.ts, #1710)
       const body = page.locator('body');
       await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const listed = (await body.getAttribute('data-openworld-places'))!.split(' ');
