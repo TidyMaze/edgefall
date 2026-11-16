@@ -119,7 +119,7 @@ test('once a hot-seat game is over, a reload starts a new game', async ({ page }
 });
 
 test('a game against the bot survives a reload, with the bot still playing White', async ({ page }) => {
-  await page.goto('./?nodes=200');
+  await page.goto('./?nodes=30'); // a small search: any reply shows the bot plays; 200 nodes made two replies 13.7 s on CI (#1710)
   await ready(page);
   const hud = page.locator('#hud');
   await move(page, [0, 2], [0, 1]);
