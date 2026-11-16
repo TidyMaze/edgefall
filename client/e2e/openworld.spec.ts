@@ -156,7 +156,7 @@ shared('the wheel zooms the Open world out far and back, and the hero still roll
   // still 3D: the ground, the props, the troop and the enemies are all drawn
   const drawn = await page.evaluate(() => JSON.parse(document.body.dataset.openworldDrawn!) as Record<string, number>);
   expect(drawn['terrain-grass']).toBeGreaterThan(0);
-  expect(drawn['prop-tree']).toBeGreaterThan(0);
+  expect(Object.entries(drawn).filter(([k]) => /^prop-tree(_|$)/.test(k)).reduce((n, [, v]) => n + v, 0)).toBeGreaterThan(0); // the plain tree or a biome's own (#1733)
   expect(drawn.troop).toBe(15); // the troop starts at 15 marbles (flock)
   expect(drawn.enemies).toBeGreaterThan(0);
   // from the far zoom the hero rolls, then the wheel zooms back: one zoom out, not two, whose far chunks cost seconds a frame on a loaded
@@ -219,12 +219,13 @@ test('the props near the hero are drawn detailed, the ones beyond low-poly, #989
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe('7'); // entered: the world is drawn
   const drawn = () => page.evaluate(() => JSON.parse(document.body.dataset.openworldDrawn!) as Record<string, number>);
   const DETAILED = ['prop-mountain-hi', 'prop-tree-hi', 'prop-boulder-hi', 'prop-wall-hi'];
-  const LOW = ['prop-mountain', 'prop-tree', 'prop-boulder', 'prop-wall'];
+  const LOW = ['prop-mountain', 'prop-tree', 'prop-boulder', 'prop-wall', 'prop-tree_meadow', 'prop-tree_forest', 'prop-tree_tundra', 'prop-tree_archipelago', 'prop-boulder_desert', 'prop-boulder_badlands', 'prop-boulder_tundra']; // a biome's own props have no detailed model (#1733)
   const sum = (counts: Record<string, number>, keys: string[]) => keys.reduce((total, k) => total + (counts[k] ?? 0), 0);
+  // by the peaks 22 cells out (openworld-terrain.md section 5): the spawn's trees are the meadow's own, which have no detailed model (#1733)
+  await page.evaluate(() => (window as unknown as { __openworldFixture: (f: object) => void }).__openworldFixture({ hero: [-8, 20], troop: [], enemies: [] }));
   await expect.poll(async () => sum(await drawn(), DETAILED)).toBeGreaterThan(0); // the detailed models arrive, then near the hero
-  const counts = await drawn();
-  expect(sum(counts, LOW)).toBeGreaterThan(0); // and the low-poly ones beyond
-  expect(counts['prop-tree-hi']).toBeLessThanOrEqual(217);
+  await expect.poll(async () => sum(await drawn(), LOW)).toBeGreaterThan(0); // and the low-poly ones beyond, once the biome props are laid too (#1733)
+  expect((await drawn())['prop-tree-hi']).toBeLessThanOrEqual(217);
 });
 
 // #1000: the entry is open to everyone, and enters a world with a random seed (the Airlock bay starts it, #1697).
