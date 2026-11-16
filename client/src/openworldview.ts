@@ -20,6 +20,7 @@ import { contactOf, heldClock } from './openworldhit';
 import { SUN, SUN_SHADOW, aimSunShadow, sunDirection } from './tablezero';
 import { Sky, WORLD_LOOKS } from './daynight';
 import { ICON } from './openworldlairicon';
+import { relief, shadeTop, shapeLand, shapingAt, type Landmarks, type Shaping } from './landshape';
 import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightWorldDay, neonHeroRim, neonMarbleRim, neonStars, neonWorldOn } from './neonlook';
 import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './neonworld';
 import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength } from './openworldstripe';
@@ -529,7 +530,7 @@ const WALKWAY = WALL * 0.625;
 
 /** The height of one level of the relief: a cell of level `h` stands `0.2 + STEP * h` high, a peak (level 7) `0.2 + 7 * STEP`.
  * Kept by looking at the screenshots of #988 (openworld-terrain.md section 5). */
-export const STEP = 0.5;
+export const STEP = 0.6; // 0.5 until #1718: the owner found the world a little flat
 /** The most a land cell is lifted above its level (#1418), in world units: a small, fixed unevenness, far under a step of the relief
  * (`STEP`), so the ground reads as uneven and never as stairs. */
 export const LIFT_MAX = 0.08;
@@ -545,9 +546,17 @@ export const hexLift = (q: number, r: number): number => {
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
   return (((h ^ (h >>> 16)) >>> 0) / 0x100000000) * LIFT_MAX;
 };
-/** The height of the top of the ground of the cell `(q, r)`: water lies low and flat, the land is lifted by `hexLift` (#1418). */
+/** The cells the world's landmarks shape (#1719, landshape.ts): set by the view's world as it opens, read by every height and top colour. */
+let shaped: ReadonlyMap<string, Shaping> = new Map();
+/** The landmarks of the world the view draws: the mound of each tower, the hollow of each gate, the pool of each light (#1719). */
+export const shapeWorld = (marks: Landmarks): void => void (shaped = shapeLand(marks));
+/** The height of the top of the ground of the cell `(q, r)`: water lies low and flat, the land is lifted by `hexLift` (#1418), rises
+ * inside its level (`relief`, #1718) and by the landmark that shapes it (#1719). The low tier's flat look draws none of the three. */
 export const topOf = (terrain: Terrain, height: number, q: number, r: number): number =>
-  terrain === 'water' ? 0.08 : 0.2 + STEP * height + hexLift(q, r);
+  terrain === 'water' ? 0.08 : 0.2 + STEP * height + hexLift(q, r) + (lifting ? relief(q, r) + (shapingAt(shaped, q, r)?.lift ?? 0) : 0);
+/** The colour of the top of a ground cell, leaned toward the landmark that shapes it (#1719); water keeps its own. */
+export const shadedGround = (tile: Tile, ground: Ground, q: number, r: number): number =>
+  ground === 'water' ? groundColour(tile, ground) : shadeTop(groundColour(tile, ground), shapingAt(shaped, q, r));
 /** The rate of the camera's follow of the hero (#1333), in 1/s (`Spring`): about a cell behind it at the cruise pace, on it 0.2 s after
  * it stops. The height follows the hero's column top with it (#988). */
 const FOLLOW = 25;
@@ -2064,7 +2073,7 @@ export class OpenWorldView {
           const top = topOf(ground, tile.height, q, r);
           if (terrain && this.shows(q, r)) {
             const column = this.groundMesh(tile, q, r);
-            put(column, p.x, top / 2, p.z, top, groundColour(tile, ground));
+            put(column, p.x, top / 2, p.z, top, shadedGround(tile, ground, q, r));
             if (ground === 'water') column.setColorAt(counts.get(column)! - 1, waterColor(this.world, q, r));
           }
           cell = cellKey(q, r);

@@ -4,6 +4,9 @@ import * as THREE from 'three/webgpu';
 import { axialTo3D } from './board';
 import { BOB_AMP, DRAFT } from './openworldboat';
 import { hexLift, topOf } from './openworldview';
+import { relief } from './landshape';
+/** The drawn lift of a cell over its level: its own and the rise inside the level (#1418, #1718). */
+const lifted = (q: number, r: number): number => hexLift(q, r) + relief(q, r);
 import { edgeSpot, peerColour, PeersLayer } from './worldpeersview';
 
 describe('edgeSpot', () => {
@@ -141,7 +144,7 @@ describe('PeersLayer', () => {
     };
     const apart = heightOf([1, 0], [0, 0]);
     const shared = heightOf([0, 0], [0, 0]);
-    expect(shared).toBeCloseTo(apart + 0.75 + hexLift(0, 0) - hexLift(1, 0), 5);
+    expect(shared).toBeCloseTo(apart + 0.75 + lifted(0, 0) - lifted(1, 0), 5);
   });
 
   it('draws the troop of a hero as marbles in its colour, one mesh, and skips the cells on no loaded ground', () => {
@@ -189,7 +192,7 @@ describe('PeersLayer', () => {
       (scene.getObjectByName('peers') as THREE.InstancedMesh).getMatrixAt(i, m);
       return new THREE.Vector3().setFromMatrixPosition(m).y;
     };
-    expect(y(1)).toBeCloseTo(y(2) + 0.75 + hexLift(2, 0) - hexLift(3, 0), 5); // (2, 0) is one of ours: lifted; (3, 0) is not
+    expect(y(1)).toBeCloseTo(y(2) + 0.75 + lifted(2, 0) - lifted(3, 0), 5); // (2, 0) is one of ours: lifted; (3, 0) is not
   });
 
   it('says one tile in the singular, reuses its elements, and drops the ones it no longer needs', () => {

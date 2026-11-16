@@ -140,7 +140,7 @@ water on seeds 1 to 4.
 
 Client only, after #983 (it needs the eight heights).
 
-- `topOf(level) = 0.2 + STEP * level`, water at 0.08. **`STEP = 0.5`** (a peak at 3.7), kept on screenshots of
+- `topOf(level) = 0.2 + STEP * level`, water at 0.08. **`STEP = 0.5`** (0.6 since #1718, section 5.1) (a peak at 3.7), kept on screenshots of
   seed 7 at STEP 0.3, 0.4 and 0.5, closest and widest: 0.3 reads flat (the cliff faces are thin), 0.4 shows short
   faces, 0.5 shows the rock plateaus and the peak cluster standing clear of the grass with tall side faces, and no
   cell hidden behind a peak at close zoom. Props, marbles and the troop stand on `topOf`; the mountains (1.2 to 2.0
@@ -160,6 +160,22 @@ Client only, after #983 (it needs the eight heights).
 - **Cost**: the build is unchanged: a rebuild at the widest zoom takes a median 38.6 ms on main and 38.8 ms with this
   task (35 rebuilds each, in node, a synthetic world of every terrain and height).
 - Cost: no per-frame work added; a rebuild does not get slower.
+
+### 5.1 More relief, and the land shaped by its landmarks (#1718, #1719)
+
+Drawn only: the levels, the walk and the rules stay the engine's. `topOf = 0.2 + STEP * level + hexLift + relief + shape`, water still at
+0.08; every height (the hero, the troop, the props, the pick planes, the other heroes) reads it.
+- **STEP 0.6** (0.5 before): the owner found the world a little flat.
+- **Rise inside a level** (`relief`, `client/src/landshape.ts`): value noise on a lattice 5 cells wide, eased between its points, 0 to 0.5
+  high, so the cells of one level read as slopes and hills; under a step, so a level's highest top stays under the next level's lowest.
+- **Style: a tabletop diorama terraformed by its landmarks** (`shapeLand`), each cell shaped by its nearest landmark (a tie goes to the
+  tower, then the gate, then the light), falling off with the rings:
+  - a tower stands on a **mound**: 3 rings, 1.1 high under it, the tops leaning 45 % toward rock grey;
+  - a dungeon gate sits in a **hollow**: 2 rings, 1.0 deep at its mouth, the tops leaning 60 % toward a scorched near-black;
+  - a town and a teleporter **pool their light**: 2 rings, no height, the tops leaning 32 % toward the light's own colour (the town's
+    cyan, the teleporter's violet).
+- The shapes are set as the world opens, before the ground is laid (`shapeWorld`); the low tier's flat look draws neither the rise nor
+  the shapes. Kept on screenshots of seed 1305 at a tower, a gate, the spawn town and in the open, close and wide (owner OK, 2026-11-16).
 
 ## 6. Shared rules
 

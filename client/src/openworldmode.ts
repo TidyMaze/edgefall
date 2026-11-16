@@ -27,7 +27,8 @@ import { pairs, teleport, teleporterNear } from './openworldteleport';
 import type { PeerHost } from './worldnet';
 import type { Source } from './stations';
 import { PlaceTransition, placeTitle, type PlaceKind } from './placetransition';
-import { MAX_REACH, OpenWorldView, type Played, type PropModels } from './openworldview';
+import { MAX_REACH, OpenWorldView, shapeWorld, TELEPORTER_LOOK, type Played, type PropModels } from './openworldview';
+import { ICON } from './openworldlairicon';
 import { twistOf } from './openworldtwist';
 import { placesReached, type PlaceLineKind } from './placelines';
 
@@ -305,6 +306,12 @@ export class OpenWorldMode {
     this.size = [width, height];
     view.resize(width, height);
     view.turnTo(saved ? restYaw(saved.yaw) : DEFAULT_YAW); // the camera opens at the angle the world was left at, or the default (#1026, #1254)
+    // The land the landmarks shape (#1719), before the ground is laid: a mound under each tower, a hollow round each gate, a pool of light round each town and teleporter.
+    shapeWorld({
+      lairs: this.lairs,
+      gates: this.places.filter((p) => p.kind === 'dungeon').map((p) => p.cell),
+      lights: [...this.places.filter((p) => p.kind === 'town').map((p) => ({ cell: p.cell, colour: ICON.town })), ...this.teleporters.map((cell) => ({ cell, colour: TELEPORTER_LOOK.colour }))],
+    });
     view.show(this.hero.at, this.hero.troop);
     this.drawLairs();
     view.setTeleporters(this.teleporters);

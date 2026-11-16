@@ -1,4 +1,5 @@
 import './test/openworldwasm';
+import { relief } from './landshape';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three/webgpu';
 import { axialTo3D, type Axial } from './board';
@@ -888,7 +889,7 @@ describe('the zoom of the Open world camera (#976)', () => {
     expect(view.focusHeight).toBeCloseTo(view.scene.getObjectByName('hero')!.position.y);
     view.show([1, 0]); // a step onto a cell 3 levels up: the top is 3 * STEP higher
     const top = view.scene.getObjectByName('hero')!.position.y;
-    expect(top - view.focusHeight).toBeCloseTo(3 * STEP + hexLift(1, 0) - hexLift(0, 0));
+    expect(top - view.focusHeight).toBeCloseTo(3 * STEP + hexLift(1, 0) + relief(1, 0) - hexLift(0, 0) - relief(0, 0)); // the rise inside a level too (#1718)
     const start = view.focusHeight;
     expect(view.follow(1 / 60, false)).toBe(true);
     expect(view.focusHeight).toBeGreaterThan(start);
@@ -2262,6 +2263,7 @@ describe('the loaded chunks keep their centre while the hero paces along a chunk
     while (probe.centreChunk[0] === 0) probe.show([++edge, 0]);
     const view = new OpenWorldView(new World(grass));
     view.resize(1600, 900);
+    view.show([0, 0]); // from the probe's start: the camera's height (it follows the tops, #1718) is the probe's, so is the square
     view.show([edge - 1, 0], [[edge - 2, 0]]); // the last cell the square covers
     expect(view.centreChunk).toEqual([0, 0]);
     const played: Played = {
