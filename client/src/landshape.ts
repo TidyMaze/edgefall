@@ -16,6 +16,9 @@ export const BEACH = 0.3;
 export const MOUND = { reach: 3, lift: 1.1, colour: 0x6f7480, share: 0.45 } as const;
 export const HOLLOW = { reach: 2, lift: -1, colour: 0x120f0c, share: 0.6 } as const;
 export const POOL = { reach: 2, share: 0.32 } as const;
+/** The light a tower (amber) and a dungeon gate (ember) cast on the cells of their mound or hollow and on the props there (#1749): their
+ * colour leaned in by up to `share`, fading with the rings. */
+export const GLOW = { tower: 0xffb020, gate: 0xff5a1f, share: 0.38 } as const;
 
 export interface Landmarks {
   lairs: readonly Axial[];
@@ -28,6 +31,8 @@ export interface Shaping {
   lift: number;
   colour: THREE.ColorRepresentation;
   share: number;
+  /** The landmark's light on the cell (#1749): its colour and share, on the top and on the props. */
+  glow?: { colour: number; share: number };
 }
 
 const key = (q: number, r: number): string => `${q},${r}`;
@@ -91,8 +96,8 @@ export function shapeLand(marks: Landmarks): Map<string, Shaping> {
       }
     }
   };
-  for (const cell of marks.lairs) spread(cell, MOUND.reach, (f) => ({ lift: MOUND.lift * f * f, colour: MOUND.colour, share: MOUND.share * f }));
-  for (const cell of marks.gates) spread(cell, HOLLOW.reach, (f) => ({ lift: HOLLOW.lift * f * f, colour: HOLLOW.colour, share: HOLLOW.share * f }));
+  for (const cell of marks.lairs) spread(cell, MOUND.reach, (f) => ({ lift: MOUND.lift * f * f, colour: MOUND.colour, share: MOUND.share * f, glow: { colour: GLOW.tower, share: GLOW.share * f } }));
+  for (const cell of marks.gates) spread(cell, HOLLOW.reach, (f) => ({ lift: HOLLOW.lift * f * f, colour: HOLLOW.colour, share: HOLLOW.share * f, glow: { colour: GLOW.gate, share: GLOW.share * f } }));
   for (const { cell, colour } of marks.lights) spread(cell, POOL.reach, (f) => ({ lift: 0, colour, share: POOL.share * f }));
   return new Map([...shaped].map(([k, { shaping }]) => [k, shaping]));
 }
@@ -103,5 +108,10 @@ export const shapingAt = (shaped: ReadonlyMap<string, Shaping>, q: number, r: nu
 /** `colour` leaned toward the cell's shaping colour by its share. */
 export function shadeTop(colour: number, shaping: Shaping | undefined): number {
   if (!shaping || shaping.share <= 0) return colour;
-  return new THREE.Color(colour).lerp(new THREE.Color(shaping.colour), shaping.share).getHex();
+  return glowTint(new THREE.Color(colour).lerp(new THREE.Color(shaping.colour), shaping.share).getHex(), shaping);
+}
+
+/** `colour` leaned toward the light of the landmark that shapes the cell, if it casts one (#1749): a prop there takes it. */
+export function glowTint(colour: number, shaping: Shaping | undefined): number {
+  return shaping?.glow ? new THREE.Color(colour).lerp(new THREE.Color(shaping.glow.colour), shaping.glow.share).getHex() : colour;
 }

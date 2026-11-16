@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BEACH, BIOME_RELIEF, HOLLOW, MOUND, POOL, RELIEF, relief, shadeTop, shapeLand, shapingAt, terrace } from './landshape';
+import { BEACH, BIOME_RELIEF, GLOW, glowTint, HOLLOW, MOUND, POOL, RELIEF, relief, shadeTop, shapeLand, shapingAt, terrace } from './landshape';
+import * as THREE from 'three';
 import { STEP } from './openworldview';
 
 // #1732: twice the levels: the rise inside a level is two terraces, flat, 0 or half a step up; the coast's sand stands half a step lower, by the water.
@@ -97,6 +98,18 @@ describe('the land the landmarks shape (#1719)', () => {
     expect(shapingAt(shaped, -2, 0)).toMatchObject({ lift: 0, colour: 0x19e6ff }); // ring 2 of the tower, ring 1 of the light: the light is nearer
     expect(shapingAt(shaped, -1, 0)!.lift).toBeGreaterThan(0); // ring 1 of the tower, ring 2 of the light
     expect(shapingAt(shaped, 0, 0)!.lift).toBeCloseTo(MOUND.lift);
+  });
+
+  it('lights the cells and props round a tower amber and round a gate ember, fading with the rings; a light pool casts none (#1749)', () => {
+    const shaped = shapeLand({ lairs: [[0, 0]], gates: [[20, 0]], lights: [{ cell: [-20, 0], colour: 0x19e6ff }] });
+    expect(shapingAt(shaped, 0, 0)!.glow).toEqual({ colour: GLOW.tower, share: GLOW.share });
+    expect(shapingAt(shaped, 2, 0)!.glow!.share).toBeLessThan(GLOW.share);
+    expect(shapingAt(shaped, 20, 0)!.glow!.colour).toBe(GLOW.gate);
+    expect(glowTint(0x808080, shapingAt(shaped, -20, 0))).toBe(0x808080);
+    expect(glowTint(0x808080, undefined)).toBe(0x808080);
+    const lit = new THREE.Color(glowTint(0x808080, shapingAt(shaped, 0, 0)));
+    expect(lit.r).toBeGreaterThan(lit.b); // amber
+    expect(shadeTop(0x808080, shapingAt(shaped, 0, 0))).not.toBe(shadeTop(0x808080, { ...shapingAt(shaped, 0, 0)!, glow: undefined }));
   });
 
   it('leans a top colour toward its shaping, and leaves an unshaped one as it is', () => {

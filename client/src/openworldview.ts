@@ -20,7 +20,7 @@ import { contactOf, heldClock } from './openworldhit';
 import { SUN, SUN_SHADOW, aimSunShadow, sunDirection } from './tablezero';
 import { Sky, WORLD_LOOKS } from './daynight';
 import { ICON } from './openworldlairicon';
-import { BEACH, shadeTop, shapeLand, shapingAt, terrace, type Landmarks, type Shaping } from './landshape';
+import { BEACH, glowTint, shadeTop, shapeLand, shapingAt, terrace, type Landmarks, type Shaping } from './landshape';
 import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightWorldDay, neonHeroRim, neonMarbleRim, neonStars, neonWorldOn } from './neonlook';
 import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './neonworld';
 import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength, wearSkin } from './openworldstripe';
@@ -2344,7 +2344,7 @@ export class OpenWorldView {
   private stand(tile: Tile, q: number, r: number, p: { x: number; z: number }, top: number, lay: Lay, near: boolean): void {
     const v = variety(q, r);
     const prop = this.propOf(tile);
-    const tint = prop === 'tree' || prop === 'boulder' ? BIOME_LOOK[tile.biome].prop : WHITE; // a biome's own prop has its own colours (#1733)
+    const tint = glowTint(prop === 'tree' || prop === 'boulder' ? BIOME_LOOK[tile.biome].prop : WHITE, shapingAt(shaped, q, r)); // a biome's own prop has its own colours (#1733), lit by a tower or a gate near (#1749)
     if (tile.terrain === 'peak') lay('mountain', near, p.x, top + (1.2 + v * 0.8) / 2, p.z, 1.2 + v * 0.8, WHITE);
     else if (tile.terrain === 'tree') lay(prop!, near, p.x, top + (1.6 + v * 0.8) / 2, p.z, 1.6 + v * 0.8, tint); // twice the pine's height (#1557 art round 3)
     else if (tile.terrain === 'boulder') lay(prop!, near, p.x, top + 0.2, p.z, 0.8, tint);
