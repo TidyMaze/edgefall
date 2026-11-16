@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { lowTierOnCi, enterBay } from './modes';
 import { shot } from './shot';
+import { test as shared } from './shared-world';
 
 lowTierOnCi();
 
@@ -23,8 +24,8 @@ for (const { name, viewport, touch } of sizes) {
     test.use({ viewport, isMobile: touch, hasTouch: touch });
 
     for (const [kind, shown] of [['town', 'data-hub'], ['dungeon', 'data-run']] as const) {
-      test(`rolling onto a ${kind} enters it, and Back to the Open world returns to the entrance cell, #1593`, async ({ page }) => {
-        await page.goto('./?bot=off&openworld=7');
+      // On the page the spec's tests share at this size (shared-world.ts): the boot is paid once, not per test (#1710).
+      shared(`rolling onto a ${kind} enters it, and Back to the Open world returns to the entrance cell, #1593`, async ({ world: page }) => {
         const body = page.locator('body');
         await expect(body).toHaveAttribute('data-openworld-at', '0,0');
         const [q, r] = await placeOf(page, kind);
