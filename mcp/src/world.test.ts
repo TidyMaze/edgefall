@@ -3,7 +3,7 @@ import { Discovered, SIGHT } from '../../client/src/openworlddiscovered';
 import { Hero, World } from '../../client/src/openworld';
 import { FightState } from '../../client/src/openworldfight';
 import { RECRUIT_MAX, recruitCell } from '../../client/src/openworldrecruit';
-import { NO_ARMY, NO_RESOURCES } from '../../client/src/openworldresources';
+import { breakYield, NO_ARMY, NO_RESOURCES } from '../../client/src/openworldresources';
 import { decodeWorld, RECORD, worldSaves } from '../../client/src/openworldsave';
 import { memoryStore } from '../../client/src/savegame';
 import { endingLine } from '../../client/src/tally';
@@ -725,18 +725,16 @@ describe('the resources', () => {
     expect(value(open.save()).army).toEqual(NO_ARMY);
   });
 
-  test('a boulder broken gives ore and a tree wood, doubled by the biome, as in the client', () => {
-    for (const [code, key, grows] of [[5, 'ore', ['desert', 'badlands']], [6, 'wood', ['forest']]] as const) {
+  test('a boulder or a tree broken gives what its biome is known for, as in the client (#1737)', () => {
+    for (const [code, terrain] of [[5, 'boulder'], [6, 'tree']] as const) {
       const { open, spot } = standBeside([code]);
       const [dq, dr] = STEPS[spot.dir]!;
       const biome = biomeAt(1, spot.at[0] + dq!, spot.at[1] + dr!);
-      const had = value(open.state({})).resources[key]; // the walk to the spot may have broken others
-      const total = (): number => Object.values(value(open.state({})).resources).reduce((a, b) => a + b, 0);
-      const all = total();
+      const had = { ...value(open.state({})).resources }; // the walk to the spot may have broken others
       expect(value(open.step({ direction: spot.dir as 'E' })).smashed).not.toBeNull();
-      const state = value(open.state({}));
-      expect(state.resources[key] - had, `${key} in the ${biome}`).toBe((grows as readonly string[]).includes(biome) ? 2 : 1);
-      expect(total() - all, 'nothing else').toBe(state.resources[key] - had);
+      const now = value(open.state({})).resources;
+      const gained = Object.fromEntries(Object.entries(now).map(([k, v]) => [k, v - had[k as keyof typeof had]]));
+      expect(gained, `${terrain} in the ${biome}`).toEqual(breakYield(terrain, biome as Parameters<typeof breakYield>[1]));
     }
   });
 
