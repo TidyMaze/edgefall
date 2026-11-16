@@ -6,7 +6,7 @@ import { accentLights, neonSkyGlow } from './neonfx';
 import * as THREE from 'three/webgpu';
 import { abs, attribute, color as tslColor, dot, float, materialEmissive, normalView, positionViewDirection, pow, uniform, vertexColor } from 'three/tsl';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { axialTo3D, type Axial } from './board';
+import { axialTo3D, DIRECTIONS, type Axial } from './board';
 import { type Biome, CHUNK, cellAtPoint, chunkOf, neighbours, same, TROOP, type Terrain, type Tile, type World } from './openworld';
 import { bob, boatGeometry, boatMaterial, DRAFT, steer, type Wake } from './openworldboat';
 import { CameraLife, framingShift, Spring } from './openworldcamera';
@@ -601,7 +601,30 @@ export const topOf = (terrain: Terrain, height: number, q: number, r: number): n
       : 0.2 + STEP * height + hexLift(q, r) + (lifting ? terrace(q, r, biomeAt(q, r)) + (shapingAt(shaped, q, r)?.lift ?? 0) : 0);
 /** The colour of the top of a ground cell, leaned toward the landmark that shapes it (#1719); water keeps its own. */
 export const shadedGround = (tile: Tile, ground: Ground, q: number, r: number): number =>
-  ground === 'water' ? groundColour(tile, ground) : shadeTop(groundColour(tile, ground), shapingAt(shaped, q, r));
+  ground === 'water' ? groundColour(tile, ground) : shadeTop(mixedGround(ground, q, r, tile.biome), shapingAt(shaped, q, r));
+/** How far a biome's border blends into the next (#1740): the colours and the props of both mix over this many cells either side. */
+export const BLEND_REACH = 4;
+/** The cells a cell's blend samples: itself, and the six of the rings 2 and `BLEND_REACH` straight out, 13 in all. */
+const BLEND_SAMPLES: readonly Axial[] = [[0, 0], ...[2, BLEND_REACH].flatMap((d) => DIRECTIONS.map(([dq, dr]): Axial => [dq * d, dr * d]))];
+/** The ground colour of `(q, r)`, its own biome's (`own`) averaged with the biomes round it within `BLEND_REACH` (#1740): a gradient
+ * over the border instead of a line; inside a biome the cell keeps its own colour. */
+export function mixedGround(ground: Exclude<Ground, 'water'>, q: number, r: number, own: Biome): number {
+  let [red, green, blue] = [0, 0, 0];
+  for (const [dq, dr] of BLEND_SAMPLES) {
+    const c = biomeGround(ground, biomeAt(q + dq, r + dr) ?? own);
+    red += c >> 16;
+    green += (c >> 8) & 0xff;
+    blue += c & 0xff;
+  }
+  const n = BLEND_SAMPLES.length;
+  return (Math.round(red / n) << 16) | (Math.round(green / n) << 8) | Math.round(blue / n);
+}
+/** The biome whose prop stands on `(q, r)` (#1740): the biome of one of its blend samples, drawn by a hash of the cell, so near a
+ * border both biomes' trees and boulders mix, the more of the nearer one; inside a biome its own. */
+export function propBiome(q: number, r: number, own: Biome): Biome {
+  const [dq, dr] = BLEND_SAMPLES[(((Math.imul(q, 0x2c1b3c6d) ^ Math.imul(r, 0x297a2d39)) >>> 0) >>> 3) % BLEND_SAMPLES.length]!;
+  return biomeAt(q + dq, r + dr) ?? own;
+}
 /** The rate of the camera's follow of the hero (#1333), in 1/s (`Spring`): about a cell behind it at the cruise pace, on it 0.2 s after
  * it stops. The height follows the hero's column top with it (#988). */
 const FOLLOW = 25;
@@ -1138,7 +1161,7 @@ export class OpenWorldView {
    * of a cell on a chunk not laid is not in a mesh to take out. */
   hasProp([q, r]: Axial, terrain: Terrain): boolean {
     const tile = this.world.tile(q, r);
-    const prop = tile && this.propOf({ ...tile, terrain });
+    const prop = tile && this.propOf({ ...tile, terrain }, q, r);
     if (!prop || !this.laidHero) return false;
     return this.slots.get(this.route(prop, hexDistance([q, r], this.laidHero) <= HI_RADIUS))!.at.has(cellKey(q, r));
   }
@@ -1147,7 +1170,7 @@ export class OpenWorldView {
    * and its shards fly (a fade under `reduced` motion); the shards are particles, so a break allocates nothing. None past `ROLL_ZOOM`. */
   smash([q, r]: Axial, terrain: Terrain, now: number, reduced: boolean): void {
     const tile = this.world.tile(q, r)!;
-    const prop = this.propOf({ ...tile, terrain })!; // the cell is open already: the prop it had
+    const prop = this.propOf({ ...tile, terrain }, q, r)!; // the cell is open already: the prop it had
     this.removeProp(this.route(prop, hexDistance([q, r], this.laidHero!) <= HI_RADIUS), cellKey(q, r)); // the hero has been shown: the props are laid
     if (this.drawnLevel > ROLL_ZOOM) return;
     const p = axialTo3D(q, r);
@@ -2335,16 +2358,17 @@ export class OpenWorldView {
   }
 
   /** The prop of a tile's obstacle: its biome's own tree or boulder once that model is in (#1733), else the plain one. */
-  private propOf(tile: Tile): Prop | undefined {
-    const own = tile.terrain === 'tree' ? BIOME_PROPS[tile.biome].tree : tile.terrain === 'boulder' ? BIOME_PROPS[tile.biome].boulder : undefined;
+  private propOf(tile: Tile, q: number, r: number): Prop | undefined {
+    const biome = propBiome(q, r, tile.biome); // the border's band mixes both biomes' props (#1740)
+    const own = tile.terrain === 'tree' ? BIOME_PROPS[biome].tree : tile.terrain === 'boulder' ? BIOME_PROPS[biome].boulder : undefined;
     return own && this.variantReady.has(own) ? own : PROP_OF[tile.terrain];
   }
 
   /** The prop a tile carries on its ground, `top` high, tinted by its biome when it is a tree or a boulder. */
   private stand(tile: Tile, q: number, r: number, p: { x: number; z: number }, top: number, lay: Lay, near: boolean): void {
     const v = variety(q, r);
-    const prop = this.propOf(tile);
-    const tint = glowTint(prop === 'tree' || prop === 'boulder' ? BIOME_LOOK[tile.biome].prop : WHITE, shapingAt(shaped, q, r)); // a biome's own prop has its own colours (#1733), lit by a tower or a gate near (#1749)
+    const prop = this.propOf(tile, q, r);
+    const tint = glowTint(prop === 'tree' || prop === 'boulder' ? BIOME_LOOK[propBiome(q, r, tile.biome)].prop : WHITE, shapingAt(shaped, q, r)); // a biome's own prop has its own colours (#1733), lit by a tower or a gate near (#1749)
     if (tile.terrain === 'peak') lay('mountain', near, p.x, top + (1.2 + v * 0.8) / 2, p.z, 1.2 + v * 0.8, WHITE);
     else if (tile.terrain === 'tree') lay(prop!, near, p.x, top + (1.6 + v * 0.8) / 2, p.z, 1.6 + v * 0.8, tint); // twice the pine's height (#1557 art round 3)
     else if (tile.terrain === 'boulder') lay(prop!, near, p.x, top + 0.2, p.z, 0.8, tint);

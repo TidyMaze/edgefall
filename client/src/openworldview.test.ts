@@ -17,6 +17,8 @@ import {
   BIOME_LOOK,
   CAPACITY,
   groundColour,
+  mixedGround,
+  propBiome,
   shadedGround,
   shapeWorld,
   footprint,
@@ -201,6 +203,22 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     expect(shadedGround(tile, 'grass', 1, 0)).not.toBe(groundColour(tile, 'grass'));
     expect(shadedGround({ ...tile, terrain: 'water' }, 'water', 1, 0)).toBe(groundColour({ ...tile, terrain: 'water' }, 'water'));
     shapeWorld({ lairs: [], gates: [], lights: [] });
+  });
+
+  it('blends the ground colours and the props of two biomes over BLEND_REACH cells either side of their border (#1740)', () => {
+    const split = (cx: number): Uint8Array => {
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([1, 2, cx < 0 ? BIOMES.indexOf('forest') : BIOMES.indexOf('desert')], i * 3);
+      return out;
+    };
+    new OpenWorldView(new World((cx) => split(cx))); // the view reads the biomes of this world
+    expect(mixedGround('grass', 20, 0, 'desert')).toBe(biomeGround('grass', 'desert')); // deep inside: its own colour
+    expect(mixedGround('grass', -20, 0, 'forest')).toBe(biomeGround('grass', 'forest'));
+    const border = mixedGround('grass', 0, 0, 'desert');
+    expect([border === biomeGround('grass', 'desert'), border === biomeGround('grass', 'forest')]).toEqual([false, false]); // between the two
+    const near = Array.from({ length: 40 }, (_, r) => propBiome(1, r, 'desert'));
+    expect(new Set(near)).toEqual(new Set(['desert', 'forest'])); // both biomes' props by the border
+    expect(new Set(Array.from({ length: 40 }, (_, r) => propBiome(20, r, 'desert')))).toEqual(new Set(['desert']));
   });
 
   it('hides a marble of the desert past the mirage (#1739)', () => {
@@ -1650,8 +1668,10 @@ describe('the biomes look (openworld-terrain.md section 4, #984)', () => {
     expect(mesh(view, 'prop-boulder_desert').count).toBe(0); // no model for it: the desert keeps the plain boulder
     const forest = mesh(view, 'prop-tree_forest');
     expect(new THREE.Color().fromArray(forest.instanceColor!.array, 0).getHex()).toBe(0xffffff); // the model's own colours, untinted
-    // A forest tree in view: the cell (CHUNK, 0) is in column cx = 1, the forest, its first cell a tree (code 6).
-    const cell: [number, number] = [CHUNK, 0];
+    // A forest tree in view whose prop is the forest's own: in column cx = 1, the forest, the first tree past the border's blend (#1740).
+    const cell = Array.from({ length: CHUNK * CHUNK }, (_, i): [number, number] => [CHUNK + (i % CHUNK), Math.floor(i / CHUNK)]).find(
+      (c) => world.tile(...c)?.terrain === 'tree' && propBiome(c[0], c[1], 'forest') === 'forest',
+    )!;
     expect(world.tile(...cell)).toMatchObject({ terrain: 'tree', biome: 'forest' });
     expect(view.hasProp(cell, 'tree')).toBe(true);
     const n = forest.count;
