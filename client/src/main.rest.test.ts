@@ -122,12 +122,12 @@ describe('main.ts, the tuned lights', () => {
       return add.apply(this, objects);
     });
     await boot('?bot=off');
-    // The tuned power, times the sliders' default levels (quality.ts): lamps 25 %, lights 215 %.
+    // The tuned power, times the sliders' default levels (quality.ts): lamps 25 %, lights 250 %.
     expect(scene!.getObjectByName('key')).toBeUndefined(); // no spotlight: the room's own lights light the scene (#877)
     expect(((scene!.getObjectByName('corner-neon-nw') as THREE.Mesh).material as THREE.MeshStandardMaterial).emissiveIntensity).toBeCloseTo(
       LIGHT_TUNING['corner-neon']! * 0.25,
     );
-    expect((scene!.getObjectByName('kioskGreenLight') as THREE.Light).intensity).toBeCloseTo(LIGHT_TUNING.kioskGreenLight! * 2.15);
+    expect((scene!.getObjectByName('kioskGreenLight') as THREE.Light).intensity).toBeCloseTo(LIGHT_TUNING.kioskGreenLight! * 2.5);
   });
 });
 
@@ -183,7 +183,7 @@ describe('main.ts, the ring lamp (#879)', () => {
     expect([named('ring-lamp').length, named('ring-lamp face').length, named('ring-lamp cable').length]).toEqual([1, 1, 3]);
     const lights = named('ring-lamp light') as THREE.PointLight[];
     expect(lights).toHaveLength(count);
-    expect(lights[0]!.intensity).toBeCloseTo(LIGHT_TUNING['ring-lamp light']! * 2.15); // at the lights' default level
+    expect(lights[0]!.intensity).toBeCloseTo(LIGHT_TUNING['ring-lamp light']! * 2.5); // at the lights' default level
   });
 });
 

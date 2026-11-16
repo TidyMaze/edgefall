@@ -40,7 +40,7 @@ const neonArrowMaterial = new THREE.MeshBasicMaterial({ name: 'neon_target_arrow
 export const targetArrowMaterial = (neon: boolean, kit: THREE.Material): THREE.Material => (neon ? neonArrowMaterial : kit);
 
 /** The mock's light: a cold sun low on the left, a violet-tinted hemisphere, ACES at 1.15. */
-export const NEON_LIGHT = { sun: 0xe8f0ff, sunIntensity: 3.2, elevation: 24, azimuth: 50, sky: 0x9a6bff, skyMix: 0xe8eeff, skyAmount: 1, ground: 0x2a3347, hemisphere: 2.9, exposure: 1 } as const;
+export const NEON_LIGHT = { sun: 0xe8f0ff, sunIntensity: 3.8, elevation: 24, azimuth: 50, sky: 0x9a6bff, skyMix: 0xe8eeff, skyAmount: 1, ground: 0x2a3347, hemisphere: 3.4, exposure: 1 } as const; // sun 3.2 and sky 2.9 until #1746: more light on the board
 
 /** The key of each deck under the neon look (#1551, art.md Decks): `key` is the violet rim's colour, `accent` the posts' glow. Palette tokens only (art.md, artpalette.test.ts). */
 export const DECK_KEY: Record<Deck, { key: number; accent: number }> = {

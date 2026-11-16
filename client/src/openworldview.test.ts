@@ -266,6 +266,7 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
 
   it('scales its sun, its sky light and its neon lamps by the Lights and Lamps sliders, across the day (#1727)', () => {
     setNeonWorldOn(true); // the neon look has the lamps
+    onTestFinished(() => setNeonWorldOn(false));
     const view = new OpenWorldView(new World(grass), new FightState());
     const lights = () => {
       const found: THREE.Light[] = [];
@@ -274,6 +275,7 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     };
     const kind = (k: string) => lights().find((l) => (l as unknown as Record<string, boolean>)[k])!;
     const lamps = () => lights().filter((l) => l.name === 'neon accent');
+    view.setLevels(1, 1); // as the mode does at once (#1727): the look applied, its boost too (#1746)
     const [sun, sky, lamp] = [kind('isDirectionalLight').intensity, kind('isHemisphereLight').intensity, lamps()[0]!.intensity];
     expect(lamps()).toHaveLength(2);
     view.setLevels(0.5, 2);
@@ -283,14 +285,10 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     view.setLevels(0.5, 2); // twice the same levels, the same lights
     expect(lamps()[0]!.userData.power).toBe(lamp * 2);
     view.setTime(18 * 3_600_000, false); // another time of day keeps the factor
-    const dusk = new OpenWorldView(new World(grass), new FightState());
-    dusk.setTime(18 * 3_600_000, false);
-    let duskSun = 0;
-    dusk.scene.traverse((o) => void ((o as THREE.DirectionalLight).isDirectionalLight && (duskSun = (o as THREE.Light).intensity)));
-    expect(kind('isDirectionalLight').intensity).toBeCloseTo(duskSun * 0.5);
+    const half = kind('isDirectionalLight').intensity;
     view.setLevels(1, 1);
+    expect(kind('isDirectionalLight').intensity).toBeCloseTo(half * 2);
     expect(lamps()[0]!.userData.power).toBe(lamp);
-    setNeonWorldOn(false);
   });
 
   it('is lit by the sun of the arena, which follows the hero and casts its soft shadow on the high tier only (#1364)', () => {

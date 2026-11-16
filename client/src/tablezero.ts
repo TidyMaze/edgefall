@@ -25,7 +25,7 @@ export const PALETTE = {
 } as const;
 
 /** AgX, the Blender render's own view transform, at the exposure that lands the dish near #b6ab82 and the gap on #2d3539. */
-export const TERRACE_EXPOSURE = 1.5;
+export const TERRACE_EXPOSURE = 1.725; // 1.5 until #1746: more light on the board
 
 export { SUN }; // its data lives in sun.ts, free of three.js (#1498)
 

@@ -1027,8 +1027,8 @@ describe('the light sliders', () => {
     const sliders = (): string[] => ['bloom', 'lamps', 'lights'].map((l) => (byId(`level-${l}`) as HTMLInputElement).value);
     expect(sliders()).toEqual(['15', '5', '85']);
     byId('level-reset').click();
-    expect(sliders()).toEqual(['20', '25', '215']);
-    expect(['bloom', 'lamps', 'lights'].map((l) => localStorage.getItem(`ab-alone.light.${l}`))).toEqual(['20', '25', '215']);
+    expect(sliders()).toEqual(['20', '25', '250']);
+    expect(['bloom', 'lamps', 'lights'].map((l) => localStorage.getItem(`ab-alone.light.${l}`))).toEqual(['20', '25', '250']);
   });
 });
 

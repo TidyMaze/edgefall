@@ -420,20 +420,20 @@ describe('clear-board storage', () => {
 });
 
 describe('the three light sliders: bloom, lamps, lights', () => {
-  it('defaults to the levels the owner tuned (bloom 20, lamps 25, lights 215 %), and reads back a saved slider under its own key', () => {
+  it('defaults to the levels the owner tuned (bloom 20, lamps 25, lights 250 %), and reads back a saved slider under its own key', () => {
     const s = memoryStorage();
-    expect(readLevels(s)).toEqual({ bloom: 20, lamps: 25, lights: 215 });
+    expect(readLevels(s)).toEqual({ bloom: 20, lamps: 25, lights: 250 });
     writeLevel(s, 'lamps', 250);
     writeLevel(s, 'bloom', 0);
     expect(s.data.get('ab-alone.light.lamps')).toBe('250');
-    expect(readLevels(s)).toEqual({ bloom: 0, lamps: 250, lights: 215 });
+    expect(readLevels(s)).toEqual({ bloom: 0, lamps: 250, lights: 250 });
   });
   it('gives each slider as a factor of its default: 1 at the default, 0 at 0, a scene tuned at the defaults left as it is (#1727)', () => {
-    const levels = { bloom: 40, lamps: 0, lights: 215 };
+    const levels = { bloom: 40, lamps: 0, lights: 250 };
     expect([levelFactor(levels, 'bloom'), levelFactor(levels, 'lamps'), levelFactor(levels, 'lights')]).toEqual([2, 0, 1]);
   });
   it('ignores a garbage stored value, and a stored value over 300 %: the default', () => {
-    for (const bad of ['bright', '', '-5', '301', '50.5']) expect(readLevels(memoryStorage({ 'ab-alone.light.lights': bad })).lights).toBe(215);
+    for (const bad of ['bright', '', '-5', '301', '50.5']) expect(readLevels(memoryStorage({ 'ab-alone.light.lights': bad })).lights).toBe(250);
   });
   it('falls back to the default when storage throws or is missing, and does not throw when writing to it', () => {
     expect(readLevels(throwing).bloom).toBe(20);

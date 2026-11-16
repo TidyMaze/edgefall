@@ -241,6 +241,12 @@ export const WATER = { shore: 0x5392a5, deep: 0x2a516e };
 /** The air of each biome (#1736): the sky and the fog lean `SKY_MIX` toward it while the hero is in it, at every hour. */
 export const BIOME_SKY: Readonly<Record<Biome, number>> = { meadow: 0xbfe3a0, forest: 0x5f9a6a, tundra: 0xe2f0ff, desert: 0xf0c890, badlands: 0xd0704f, archipelago: 0x7fd0f0 };
 export const SKY_MIX = 0.14;
+/** More light and contrast in the world (#1746): the sun ×1.5 by day and the sky light ×1.3, so the lit faces stand out; both rise with the
+ * night's glow (0 by day, 1 at night) to ×1.8 and ×2.2, so the night's ground reads instead of only the light pools. */
+export const LIGHT_BOOST = { sun: 1.5, sunNight: 0.3, sky: 1.3, skyNight: 0.9 } as const;
+/** The sun's and the sky light's strength of a look, boosted (#1746). */
+export const boostedSun = (look: { sunIntensity: number; glow: number }): number => look.sunIntensity * (LIGHT_BOOST.sun + LIGHT_BOOST.sunNight * look.glow);
+export const boostedSky = (look: { hemiIntensity: number; glow: number }): number => look.hemiIntensity * (LIGHT_BOOST.sky + LIGHT_BOOST.skyNight * look.glow);
 export const NEON_SKY_MIX = 0.1;
 /** The looks of the biomes (openworld-terrain.md section 4): the ground of the low grass (heights 3 and 4), and the tint of the
  * trees and the boulders, multiplied into their colour per instance. The meadow keeps the grass of `LOOK`; the rest is neutral
@@ -1643,12 +1649,12 @@ export class OpenWorldView {
     (this.scene.background as THREE.Color).copy(air);
     this.fog.color.copy(air);
     this.sun.color.setHex(look.sun);
-    this.sun.intensity = look.sunIntensity * this.levels.lights;
+    this.sun.intensity = boostedSun(look) * this.levels.lights; // brighter, the sun more than the sky: more contrast (#1746)
     sunDirection(this.sunDirection, look.elevation, look.azimuth);
     this.sun.position.copy(this.sun.target.position).add(this.sunAway.copy(this.sunDirection).multiplyScalar(30 * this.shadowScale));
     this.hemisphere.color.setHex(look.hemiSky);
     this.hemisphere.groundColor.setHex(look.hemiGround);
-    this.hemisphere.intensity = look.hemiIntensity * this.levels.lights;
+    this.hemisphere.intensity = boostedSky(look) * this.levels.lights; // the night's ground readable (#1746)
     for (const material of this.waterTint) (material as THREE.MeshStandardMaterial).color.setHex(look.water);
     if (this.stars) {
       // the neon sky with the clock (#1536): the stars come out at night, the horizon glows at dusk

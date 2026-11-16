@@ -19,13 +19,13 @@ const spyScene = (): { scene: () => THREE.Scene } => {
 };
 
 describe('main.ts, the saved scene overrides (#875)', () => {
-  it('applies them after the tuning, under the sliders\' levels (lights 215 %), on every deck', async () => {
+  it('applies them after the tuning, under the sliders\' levels (lights 250 %), on every deck', async () => {
     const { scene } = spyScene();
     const game = await boot('?bot=off');
     const key = (): number => (scene().getObjectByName('kioskGreenLight') as THREE.Light).intensity;
-    expect(key()).toBeCloseTo(70 * 2.15);
+    expect(key()).toBeCloseTo(70 * 2.5);
     game.hook('__setTier', 'low'); // the lights made again
-    expect(key()).toBeCloseTo(70 * 2.15);
+    expect(key()).toBeCloseTo(70 * 2.5);
   });
 
   it('saves the panel through the dev server: the tuning behind the sliders, only what is off lighttuning.ts', async () => {
@@ -37,7 +37,7 @@ describe('main.ts, the saved scene overrides (#875)', () => {
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect([url, init.method]).toEqual(['/__sceneoverrides', 'POST']);
     const { power } = JSON.parse(init.body as string);
-    expect(power.kioskGreenLight).toBe(70); // 150.5 at 215 %, back to the file's 70
+    expect(power.kioskGreenLight).toBe(70); // 175 at 250 %, back to the file's 70
     expect(power.viewportRimLight).toBeUndefined(); // the tuned power
   });
 

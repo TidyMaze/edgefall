@@ -125,7 +125,7 @@ export const readMix = (store: Store, automated = false): Mix => {
 export const writeVolume = (store: Store, bus: Bus, percent: number): void => write(store, volumeKey(bus), String(percent));
 // The three light sliders (lightpanel.ts scalePower), 0 to 300 % of the tuned power each; until the player moves one,
 // the levels the owner tuned in the game (2026-10-29).
-export const DEFAULT_LEVELS: Readonly<Record<Level, number>> = { bloom: 20, lamps: 25, lights: 215 };
+export const DEFAULT_LEVELS: Readonly<Record<Level, number>> = { bloom: 20, lamps: 25, lights: 250 }; // the lights 215 until #1746: more light on the board
 const levelKey = (level: Level): string => `ab-alone.light.${level}`;
 export const readLevels = (store: Store): Record<Level, number> => {
   const level = (l: Level): number => {
