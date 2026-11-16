@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { IDBFactory } from 'fake-indexeddb';
+import { CONFIRM_MS } from './newgame';
 import { describe, expect, it, vi } from 'vitest';
 import type { Axial, Move } from './board';
 import './test/openworldwasm';
@@ -268,7 +269,7 @@ describe('main.ts, browser Back (#1564)', () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }); // after the setup, which waits on real timers
       try {
         byId('exit').click();
-        vi.advanceTimersByTime(4001);
+        vi.advanceTimersByTime(CONFIRM_MS + 1); // New game's window (#1678: 6 s)
         expect(byId('exit').classList.contains('confirm')).toBe(false);
         byId('exit').click();
         expect(byId('exit').dataset.label).toBe('Sure?'); // asked again, nothing left
