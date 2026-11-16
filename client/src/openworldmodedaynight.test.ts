@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three/webgpu';
 import { CHUNK } from './openworld';
 import { BLEND_MS, CYCLE_MS, WORLD_LOOKS, clockLine, PHASE_MS } from './daynight';
-import { OpenWorldMode } from './openworldmode';
+import { BANNER_MS, OpenWorldMode } from './openworldmode';
 import { worldSaves } from './openworldsave';
 import { memoryStore } from './savegame';
 import { stopLeftIntervalsAfterEach } from './test/intervals';
@@ -27,6 +27,32 @@ const air = (m: OpenWorldMode, sky: number): number => new THREE.Color(sky).lerp
 
 afterEach(() => {
   for (const key of Object.keys(body())) delete body()[key];
+});
+
+describe('the biome entered (#1742)', () => {
+  it('names the biome on the banner at the first sight of a world and at each border, then hides it after BANNER_MS', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const banner = document.body.appendChild(Object.assign(document.createElement('p'), { id: 'openworld-biome', hidden: true }));
+    const two = (_s: number, cx: number, cy: number): Uint8Array => {
+      if (Math.abs(cx) > 2 || Math.abs(cy) > 2) return new Uint8Array();
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([1, 2, cx < 0 ? 1 : 4], i * 3); // the forest west of q = 0, the badlands east
+      return out;
+    };
+    const m = new OpenWorldMode(two, () => new Int32Array(), async () => ({ low: {}, high: {} }), () => true, worldSaves(memoryStore(), 1));
+    m.enter(1, 800, 600);
+    m.frame(() => {}, 16);
+    expect([banner.hidden, banner.textContent!.split(' · ')[0]]).toEqual([false, 'Badlands']);
+    vi.advanceTimersByTime(BANNER_MS);
+    expect(banner.hidden).toBe(true);
+    m.fixture({ hero: [-3, 0], troop: [], enemies: [] });
+    m.frame(() => {}, 32);
+    expect([banner.hidden, banner.textContent!.split(' · ')[0]]).toEqual([false, 'Forest']);
+    m.frame(() => {}, 48);
+    expect(banner.textContent!.startsWith('Forest')).toBe(true); // the same biome: no new banner
+    banner.remove();
+    vi.useRealTimers();
+  });
 });
 
 describe('the world\'s clock on the plate (#1743)', () => {

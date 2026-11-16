@@ -31,6 +31,7 @@ import { MAX_REACH, OpenWorldView, shapeWorld, TELEPORTER_LOOK, type Played, typ
 import { ICON } from './openworldlairicon';
 import { twistOf } from './openworldtwist';
 import { placesReached, type PlaceLineKind } from './placelines';
+import { biomeLine } from './openworldbiomes';
 
 /** The walk of the hero to a far cell, the bridge's `world_path` (docs/specs/openworld.md section 4): the seed, the cell the hero
  * stands on, the cell asked for, the cells it cannot enter (enemies, lairs) and the broken cells (#1154), as `q, r` pairs; its answer
@@ -99,6 +100,9 @@ const HELP_KEYS = new Set(['h', 'H']);
 /** The ground a marble can stand on: the troop arrives on it round a teleporter (#1412). */
 
 export { twistOf };
+
+/** How long the banner of a biome entered stays (#1742). */
+export const BANNER_MS = 3000;
 
 export class OpenWorldMode {
   active = false;
@@ -491,6 +495,10 @@ export class OpenWorldMode {
     delete document.body.dataset.openworldTeleporters;
     delete document.body.dataset.openworldLogs;
     delete document.body.dataset.openworldLogsFound;
+    this.named = null; // the next world names its biome again (#1742)
+    clearTimeout(this.bannerTimer);
+    const banner = document.getElementById('openworld-biome');
+    if (banner) banner.hidden = true;
     delete document.body.dataset.openworldPhase;
     this.showTeleport(false);
     this.closeLog();
@@ -967,6 +975,7 @@ export class OpenWorldMode {
     this.counted = now;
     if (this.view.setTime(this.tod, !reduced)) this.dirty = true; // the sky and the sun, drawn again as they change
     this.markPhase();
+    this.nameBiome(); // the biome entered (#1742)
     if (this.phases.changed(this.view, this.phase)) this.cue('time-of-day'); // dusk, night, day: the first sight of a world is silent
     this.stepWander(now);
     if (this.calmUntil > 0 && now >= this.calmUntil) {
@@ -1409,6 +1418,24 @@ export class OpenWorldMode {
   }
 
   /** The phase on the page (`openworldPhase`, #1496), written when it changes. */
+  /** The biome the banner last named (#1742). */
+  private named: Biome | null = null;
+  private bannerTimer = 0;
+  /** Names the biome the hero enters, with what is left there (`biomeLine`), for 3 s: at the first sight of a world, and at each border. */
+  private nameBiome(): void {
+    const biome = this.biome;
+    const banner = document.getElementById('openworld-biome');
+    if (!biome || biome === this.named || !banner) return;
+    this.named = biome;
+    banner.textContent = biomeLine(biome, this.lairs.length, this.beaten, this.logs.length, this.found);
+    banner.hidden = false;
+    banner.classList.remove('fade');
+    void banner.offsetWidth; // the fade starts again
+    banner.classList.add('fade');
+    clearTimeout(this.bannerTimer);
+    this.bannerTimer = window.setTimeout(() => (banner.hidden = true), BANNER_MS);
+  }
+
   private markPhase(): void {
     if (document.body.dataset.openworldPhase !== this.phase) document.body.dataset.openworldPhase = this.phase;
     const clock = document.getElementById('openworld-clock');
