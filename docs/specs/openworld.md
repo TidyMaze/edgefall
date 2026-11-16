@@ -858,9 +858,12 @@ Ranked or Royale.
 | Resource | Source | Bonus |
 |---|---|---|
 | Wood | Breaking a tree (section 2): +1 | x2 in the forest |
-| Ore | Breaking a boulder: +1 | x2 in the badlands and the desert |
-| Parts | A marble the troop's push ejects: +1 each. A wild fight won: +3 | x2 in the rings 4 and 5 |
-| Shards | A tower or a lair beaten from the world: +5. A lore log found: +1 | none |
+| Ore | Breaking a boulder: +1 | x2 in the badlands |
+| Parts | A marble the troop's push ejects: +1 each. A wild fight won: +3. Anything broken in the desert: +1 (#1737) | x2 in the rings 4 and 5 |
+| Shards | A tower or a lair beaten from the world: +5. A lore log found: +1. Anything broken in the tundra: +1 (#1737) | none |
+
+Each biome is known for one resource (#1737, `BIOME_RESOURCE`): the forest's wood, the badlands' ore, the tundra's shards (its ice), the desert's parts (its
+buried scrap); the meadow and the archipelago give the plain yield. So the Workshop's recipes send the hero across the biomes.
 
 - **TUNE.** Every number is in `TUNE` of `client/src/openworldresources.ts`, with the pure functions that give a yield (`breakYield`, `ejectYield`, `wildYield`,
   `lairYield`, `logYield`). The biome is the one of the broken cell (section 2). The client's mode and the MCP server use the same module.

@@ -13,7 +13,7 @@ stopLeftIntervalsAfterEach();
 // The resources of the Open world mode (#1655, Decision #1654, docs/specs/openworld.md section 19). Seed 1: the hero on (0, 2) steps ArrowLeft onto
 // (0, 1), a boulder of the meadow. `made` is the same world with that cell given another terrain and biome.
 const TERRAIN = { tree: 6, boulder: 5 } as const;
-const BIOME = { meadow: 0, forest: 1, desert: 3, badlands: 4 } as const;
+const BIOME = { meadow: 0, forest: 1, tundra: 2, desert: 3, badlands: 4 } as const;
 const made = (terrain: keyof typeof TERRAIN, biome: keyof typeof BIOME) => (seed: number, cx: number, cy: number): Uint8Array => {
   const out = world_chunk(seed, cx, cy).slice();
   if (cx === 0 && cy === 0) out.set([out[(1 * CHUNK + 0) * 3]!, TERRAIN[terrain], BIOME[biome]], (1 * CHUNK + 0) * 3);
@@ -56,7 +56,8 @@ describe('the hero gathers from what it breaks (#1655)', () => {
 
   it.each([
     ['boulder', 'meadow', 'Wood 0 · Ore 1 · Parts 0 · Shards 0', '0,1,0,0'],
-    ['boulder', 'desert', 'Wood 0 · Ore 2 · Parts 0 · Shards 0', '0,2,0,0'],
+    ['boulder', 'desert', 'Wood 0 · Ore 0 · Parts 1 · Shards 0', '0,0,1,0'], // the desert's buried scrap (#1737)
+    ['boulder', 'tundra', 'Wood 0 · Ore 0 · Parts 0 · Shards 1', '0,0,0,1'], // the tundra's ice (#1737)
     ['boulder', 'badlands', 'Wood 0 · Ore 2 · Parts 0 · Shards 0', '0,2,0,0'],
     ['tree', 'meadow', 'Wood 1 · Ore 0 · Parts 0 · Shards 0', '1,0,0,0'],
     ['tree', 'forest', 'Wood 2 · Ore 0 · Parts 0 · Shards 0', '2,0,0,0'],
@@ -103,13 +104,13 @@ describe('the hero gathers from what it breaks (#1655)', () => {
 describe('what is gathered is saved with the world, and is gathered once (#1655)', () => {
   it('a reload keeps the count, and the broken cell yields nothing a second time', async () => {
     const saves = worldSaves(memoryStore(), 1);
-    const first = beside(mode(made('boulder', 'desert'), saves));
+    const first = beside(mode(made('boulder', 'badlands'), saves));
     tap(first, 'ArrowLeft');
     first.frame(vi.fn());
     await settle();
     expect((await saves.load(1))!.resources).toEqual({ wood: 0, ore: 2, parts: 0, shards: 0 });
     first.leave();
-    const again = mode(made('boulder', 'desert'), saves);
+    const again = mode(made('boulder', 'badlands'), saves);
     await again.open(1, 800, 600);
     expect(line().textContent).toBe('Wood 0 · Ore 2 · Parts 0 · Shards 0');
     again.fixture({ hero: [0, 2], troop: [], enemies: [] });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addResources,
+  BIOME_RESOURCE,
   breakYield,
   decodeArmy,
   decodeResources,
@@ -22,9 +23,15 @@ describe('what a source gives (#1655)', () => {
     expect(breakYield('tree', 'forest')).toEqual({ ...NO_RESOURCES, wood: 2 * TUNE.tree });
     expect(breakYield('boulder', 'meadow')).toEqual({ ...NO_RESOURCES, ore: TUNE.boulder });
     expect(breakYield('boulder', 'badlands')).toEqual({ ...NO_RESOURCES, ore: 2 * TUNE.boulder });
-    expect(breakYield('boulder', 'desert')).toEqual({ ...NO_RESOURCES, ore: 2 * TUNE.boulder });
     expect(breakYield('boulder', 'forest')).toEqual({ ...NO_RESOURCES, ore: TUNE.boulder });
-    expect(breakYield('tree', 'desert')).toEqual({ ...NO_RESOURCES, wood: TUNE.tree });
+  });
+
+  it('gives each biome its own resource: shards from the tundra\'s ice, parts from the desert\'s buried scrap (#1737)', () => {
+    expect(breakYield('tree', 'tundra')).toEqual({ ...NO_RESOURCES, shards: TUNE.tree });
+    expect(breakYield('boulder', 'tundra')).toEqual({ ...NO_RESOURCES, shards: TUNE.boulder });
+    expect(breakYield('boulder', 'desert')).toEqual({ ...NO_RESOURCES, parts: TUNE.boulder });
+    expect(breakYield('tree', 'desert')).toEqual({ ...NO_RESOURCES, parts: TUNE.tree });
+    expect(BIOME_RESOURCE).toEqual({ forest: 'wood', badlands: 'ore', tundra: 'shards', desert: 'parts' });
   });
 
   it('every other terrain gives nothing', () => {

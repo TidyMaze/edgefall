@@ -40,11 +40,18 @@ export function ringOfCell([q, r]: Axial): number {
 
 const deep = (cell: Axial): number => (ringOfCell(cell) >= DEEP_RING ? TUNE.bonus : 1);
 
-/** What breaking an obstacle of `terrain` in `biome` gives: wood from a tree (twice in the forest), ore from a boulder (twice in the badlands and the desert). */
+/** The resource each biome is known for (#1737): the forest's wood and the badlands' ore come twice from their own obstacle, the tundra's ice
+ * gives shards and the desert's buried scrap parts, whatever breaks there; the meadow and the archipelago give the plain yield. */
+export const BIOME_RESOURCE: Readonly<Partial<Record<Biome, keyof Resources>>> = { forest: 'wood', badlands: 'ore', tundra: 'shards', desert: 'parts' };
+
+/** What breaking an obstacle of `terrain` in `biome` gives: wood from a tree, ore from a boulder, twice where the biome is known for it; the
+ * tundra's shards and the desert's parts in their place (#1737). */
 export function breakYield(terrain: Terrain, biome: Biome): Resources {
-  if (terrain === 'tree') return { ...NO_RESOURCES, wood: TUNE.tree * (biome === 'forest' ? TUNE.bonus : 1) };
-  if (terrain === 'boulder') return { ...NO_RESOURCES, ore: TUNE.boulder * (biome === 'badlands' || biome === 'desert' ? TUNE.bonus : 1) };
-  return NO_RESOURCES;
+  if (terrain !== 'tree' && terrain !== 'boulder') return NO_RESOURCES;
+  const plain = terrain === 'tree' ? 'wood' : 'ore';
+  const own = BIOME_RESOURCE[biome];
+  if (own === plain) return { ...NO_RESOURCES, [plain]: TUNE[terrain] * TUNE.bonus };
+  return { ...NO_RESOURCES, [own === 'shards' || own === 'parts' ? own : plain]: TUNE[terrain] };
 }
 
 /** What `count` enemies ejected by a push of the troop at `cell` give: parts, twice in the rings 4 and 5. */
