@@ -134,6 +134,9 @@ export const readLevels = (store: Store): Record<Level, number> => {
   };
   return { bloom: level('bloom'), lamps: level('lamps'), lights: level('lights') };
 };
+/** A slider's level as a factor of its default (#1727): 1 at the default, 0 at 0, so a scene tuned at the defaults (the Open world, the
+ * board's glow) is left as tuned until the player moves it. */
+export const levelFactor = (levels: Readonly<Record<Level, number>>, level: Level): number => levels[level] / DEFAULT_LEVELS[level];
 export const writeLevel = (store: Store, level: Level, percent: number): void => write(store, levelKey(level), String(percent));
 // Photosensitivity safe mode (#380): on unless the player turned it off.
 export const readSafeMode = (store: Store): boolean => read(store, SAFE_KEY) !== 'off';

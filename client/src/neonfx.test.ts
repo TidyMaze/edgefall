@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ACCENT_PULSE, NEON_OPEN_WORLD_POINT_LIGHTS, NEON_ROOM_POINT_LIGHTS, accentLights, accentOn, accentPulse, driveAccents, driveSkyGlow, neonSkyGlow, NEON_BLOOM, setNeonBloom } from './neonfx';
+import { ACCENT_PULSE, NEON_OPEN_WORLD_POINT_LIGHTS, NEON_ROOM_POINT_LIGHTS, accentLights, accentOn, accentPulse, driveAccents, driveSkyGlow, neonSkyGlow, NEON_BLOOM, NEON_BOARD_BLOOM, setNeonBloom } from './neonfx';
 
 describe('the neon accent lights (#1424)', () => {
   it('has 2 lights in the room and 2 in the Open world, on the high tier of a real GPU only', () => {
@@ -42,6 +42,15 @@ describe('the neon accent lights (#1424)', () => {
     setNeonBloom(b);
     expect([b.strength.value, b.radius.value, b.threshold.value]).toEqual([NEON_BLOOM.strength, NEON_BLOOM.radius, NEON_BLOOM.threshold]);
     setNeonBloom(null);
+  });
+  it('gives the 1v1 board a softer glow than the room, scaled by the Bloom slider, so the marbles do not glow (#1725, #1727)', () => {
+    expect(NEON_BOARD_BLOOM.strength).toBeLessThan(NEON_BLOOM.strength);
+    expect(NEON_BOARD_BLOOM.threshold).toBeGreaterThan(NEON_BLOOM.threshold); // a lit marble stays under it, the tubes go over
+    const b = { strength: { value: 0 }, radius: { value: 0 }, threshold: { value: 0 } };
+    setNeonBloom(b, NEON_BOARD_BLOOM, 2);
+    expect([b.strength.value, b.radius.value, b.threshold.value]).toEqual([NEON_BOARD_BLOOM.strength * 2, NEON_BOARD_BLOOM.radius, NEON_BOARD_BLOOM.threshold]);
+    setNeonBloom(b, NEON_BOARD_BLOOM, 0);
+    expect(b.strength.value).toBe(0);
   });
   it('has a sky glow, hidden at first, black at the top, shown and hidden by driveSkyGlow', () => {
     const glow = neonSkyGlow();

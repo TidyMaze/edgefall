@@ -42,6 +42,7 @@ import {
   readSafeMode,
   readMix,
   readLevels,
+  levelFactor,
   writeLevel,
   readSkin,
   readPalette,
@@ -426,6 +427,10 @@ describe('the three light sliders: bloom, lamps, lights', () => {
     writeLevel(s, 'bloom', 0);
     expect(s.data.get('ab-alone.light.lamps')).toBe('250');
     expect(readLevels(s)).toEqual({ bloom: 0, lamps: 250, lights: 215 });
+  });
+  it('gives each slider as a factor of its default: 1 at the default, 0 at 0, a scene tuned at the defaults left as it is (#1727)', () => {
+    const levels = { bloom: 40, lamps: 0, lights: 215 };
+    expect([levelFactor(levels, 'bloom'), levelFactor(levels, 'lamps'), levelFactor(levels, 'lights')]).toEqual([2, 0, 1]);
   });
   it('ignores a garbage stored value, and a stored value over 300 %: the default', () => {
     for (const bad of ['bright', '', '-5', '301', '50.5']) expect(readLevels(memoryStorage({ 'ab-alone.light.lights': bad })).lights).toBe(215);

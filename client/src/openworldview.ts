@@ -679,6 +679,7 @@ export class OpenWorldView {
   /** Where the hero stands (x, z) for the ground's shader: the neon grid is clear round it, quiet further out (#1424). */
   /** The neon look's 2 accent lights (neonfx.ts), kept near the hero. */
   private readonly accents = this.neon ? accentLights('openworld') : [];
+  private levels = { lights: 1, lamps: 1 }; // the Settings sliders (#1727)
   private skyGlow: THREE.Object3D | null = null;
   /** The look of the sky at the time of day (#1496), written by `setTime`; the shine of the things that matter at night, a uniform the marbles' and the lairs' materials read. */
   private readonly sky = new Sky(this.neon ? NEON_WORLD_LOOKS : WORLD_LOOKS); // the neon look has its own day, dusk and night (#1536)
@@ -1574,17 +1575,28 @@ export class OpenWorldView {
     return true;
   }
 
+  /** The Lights and Lamps sliders of Settings (#1727), as factors of their default levels (quality.ts `levelFactor`): Lights scales the
+   * sun and the sky light at every time of day, Lamps the neon lamps round the hero. 1 and 1 leave the world as tuned. */
+  setLevels(lights: number, lamps: number): void {
+    this.levels = { lights, lamps };
+    for (const lamp of this.accents) {
+      const tuned = (lamp.userData.tuned ??= (lamp.userData.power as number | undefined) ?? lamp.intensity) as number;
+      lamp.userData.power = tuned * lamps; // the base power the pulse drives (neonfx.ts driveAccents)
+    }
+    this.applyLook();
+  }
+
   private applyLook(): void {
     const { look } = this.sky;
     (this.scene.background as THREE.Color).setHex(look.sky);
     this.fog.color.setHex(look.sky);
     this.sun.color.setHex(look.sun);
-    this.sun.intensity = look.sunIntensity;
+    this.sun.intensity = look.sunIntensity * this.levels.lights;
     sunDirection(this.sunDirection, look.elevation, look.azimuth);
     this.sun.position.copy(this.sun.target.position).add(this.sunAway.copy(this.sunDirection).multiplyScalar(30 * this.shadowScale));
     this.hemisphere.color.setHex(look.hemiSky);
     this.hemisphere.groundColor.setHex(look.hemiGround);
-    this.hemisphere.intensity = look.hemiIntensity;
+    this.hemisphere.intensity = look.hemiIntensity * this.levels.lights;
     for (const material of this.waterTint) (material as THREE.MeshStandardMaterial).color.setHex(look.water);
     if (this.stars) {
       // the neon sky with the clock (#1536): the stars come out at night, the horizon glows at dusk

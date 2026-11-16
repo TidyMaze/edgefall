@@ -58,7 +58,7 @@ import { openInEditor } from './editorexport';
 import { applyTuning, LEVELS, lightPanel, scalePower, type Level } from './lightpanel';
 import { LIGHT_TUNING } from './lighttuning';
 import { tubeLights } from './neonlight';
-import { accentLights, accentOn, driveAccents, driveSkyGlow, neonSkyGlow, setNeonBloom } from './neonfx';
+import { accentLights, accentOn, driveAccents, driveSkyGlow, NEON_BOARD_BLOOM, neonSkyGlow, setNeonBloom } from './neonfx';
 import { ringLamp } from './ringlamp';
 import { CELL_LAYER, instanceCells, instanceMarbles } from './instancedcells';
 import sceneOverrides from './sceneoverrides.json';
@@ -278,6 +278,7 @@ import {
   readSkin,
   readMix,
   DEFAULT_LEVELS,
+  levelFactor,
   readLevels,
   readPalette,
   readTheme,
@@ -1249,6 +1250,7 @@ for (const level of LEVELS) {
     levels[level] = Number(levelAt(level).value);
     writeLevel(store, level, levels[level]);
     scaleLights();
+    scaleWorld();
   });
 }
 // A phone that kept low levels stays dark: one button puts the three back to their defaults (#899).
@@ -1264,6 +1266,7 @@ resetLights.addEventListener('click', () => {
     writeLevel(store, level, levels[level]);
   }
   scaleLights();
+  scaleWorld();
 });
 menu.append(difficultyNote); // what each level changes (#1538), under Difficulty in the Controls group
 // The log archive (#513): its button, Logs, is a row of the Sound group (#1566). It opens a page of one button per entry read, then per audio log collected (#517), in place of the
@@ -2621,6 +2624,8 @@ const bloomKnobs = ((b) =>
 // The settings' light sliders over the tuned power; the first knob is the bloom's strength.
 function scaleLights(): void {
   scalePower(sceneRenderer.scene, levels, bloomKnobs[0]?.uniform);
+  // the 1v1 board's own, softer glow, by the Bloom slider too (#1725, #1727)
+  if (neonLook) setNeonBloom(sceneRenderer.flatPipeline?.bloom, NEON_BOARD_BLOOM, levelFactor(levels, 'bloom'));
 }
 // The ?lights panel's Save button, in dev only: the dev server writes the panel's tuning to sceneoverrides.json (#875).
 const saveOverrides = import.meta.env.DEV
@@ -2637,7 +2642,7 @@ const saveOverrides = import.meta.env.DEV
 const refreshLights = (): void => {
   applyTuning(sceneRenderer.scene, LIGHT_TUNING, bloomKnobs);
   applyTuning(sceneRenderer.scene, sceneOverrides.power, bloomKnobs);
-  if (neonLook) [sceneRenderer.pipeline, sceneRenderer.flatPipeline].forEach((p) => setNeonBloom(p?.bloom)); // a real halo, high tier only (no pass on the low tier)
+  if (neonLook) setNeonBloom(sceneRenderer.pipeline?.bloom); // the room's real halo, high tier only (no pass on the low tier); the board's in scaleLights
   scaleLights();
   if (lightsPanel)
     lightPanel(
@@ -7530,6 +7535,11 @@ const openWorld = new OpenWorldHandle(async () =>
     wanderTick: () => wanderTick,
   }),
 );
+// The Lights and Lamps sliders in the Open world too (#1727): its sun, sky light and lamps, as factors of the defaults.
+function scaleWorld(): void {
+  openWorld.setLevels(levelFactor(levels, 'lights'), levelFactor(levels, 'lamps'));
+}
+scaleWorld();
 /** A lair starts the normal boss fight (#1170), on the board of the hour (#1496); the Echo's mirror is asked first (#1620). */
 function beginLair({ seed, lair, phase, brought, relics }: NonNullable<typeof bayEntry>['lair'] & object): void {
   const ids = boss_ids();

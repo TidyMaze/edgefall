@@ -61,7 +61,10 @@ export class OpenWorldHandle {
 
   /** Loads the code when it is not in, then opens the world. */
   async open(...args: Args<'open'>): Promise<void> {
-    this.loading ??= this.load().then((parts) => (this.parts = parts));
+    this.loading ??= this.load().then((parts) => {
+      parts.mode.setLevels(...this.levels); // the sliders moved before the world loaded (#1727)
+      return (this.parts = parts);
+    });
     return (await this.loading).mode.open(...args);
   }
 
@@ -80,6 +83,12 @@ export class OpenWorldHandle {
   refreshMode(): void {
     this.parts?.mode.refreshMode();
   }
+  /** The Lights and Lamps sliders (#1727): kept until the world loads, then forwarded. */
+  setLevels(lights: number, lamps: number): void {
+    this.levels = [lights, lamps];
+    this.parts?.mode.setLevels(lights, lamps);
+  }
+  private levels: [number, number] = [1, 1];
   reskin(): void {
     void this.parts?.mode.reskin(); // a skin changed in Settings (#1726)
   }

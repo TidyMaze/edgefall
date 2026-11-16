@@ -1521,6 +1521,23 @@ describe('the marbles wear the skins of the ship (#1176)', () => {
     expect(enemies!.map).toBe(skins.shell.map);
   });
 
+  it('keeps the Lights and Lamps sliders for the next world and gives them to the open one (#1727)', async () => {
+    const m = new OpenWorldMode((_seed, cx, cy) => bytes(cx, cy), () => new Int32Array(), async () => ({ low: {}, high: {} }), () => true, worldSaves(memoryStore(), 1));
+    const sunOf = () => {
+      let sun = 0;
+      m.frame((scene) => scene.traverse((o) => void ((o as THREE.DirectionalLight).isDirectionalLight && (sun = (o as THREE.Light).intensity))));
+      return sun;
+    };
+    await m.open(1, 800, 600);
+    const tuned = sunOf();
+    m.leave();
+    m.setLevels(0.5, 1); // no world open: kept
+    await m.open(1, 800, 600);
+    expect(sunOf()).toBeCloseTo(tuned * 0.5);
+    m.setLevels(2, 1); // drawn again with them
+    expect(sunOf()).toBeCloseTo(tuned * 2);
+  });
+
   it('reads the skins again when Settings changes one, and does nothing with no world open (#1726)', async () => {
     let skins = worn();
     const asked = vi.fn(async () => skins);

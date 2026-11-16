@@ -24,6 +24,7 @@ function fakeMode(): { mode: OpenWorldMode; calls: [string, unknown[]][] } {
     resize: method('resize'),
     refreshMode: method('refreshMode'),
     reskin: method('reskin', Promise.resolve()),
+    setLevels: method('setLevels'),
     press: method('press'),
     orbit: method('orbit'),
     cancelWalk: method('cancelWalk'),
@@ -85,9 +86,14 @@ describe('OpenWorldHandle, #1578', () => {
     const load = vi.fn(async () => parts(mode));
     const handle = new OpenWorldHandle(load);
     expect(load).not.toHaveBeenCalled();
+    handle.setLevels(0.5, 2); // the sliders, moved before the world loaded (#1727)
     await handle.open(7, 800, 600, false, 'tower');
     expect(load).toHaveBeenCalledOnce();
-    expect(calls).toEqual([['open', [7, 800, 600, false, 'tower']]]);
+    expect(calls).toEqual([['setLevels', [0.5, 2]], ['open', [7, 800, 600, false, 'tower']]]);
+    calls.length = 0;
+    handle.setLevels(1, 3);
+    expect(calls).toEqual([['setLevels', [1, 3]]]);
+    calls.length = 0;
     await handle.open(8, 1, 2);
     expect(load).toHaveBeenCalledOnce();
     expect(handle.loaded.mode).toBe(mode);

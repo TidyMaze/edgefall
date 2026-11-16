@@ -48,11 +48,16 @@ export function driveAccents(lights: readonly THREE.PointLight[], on: boolean, n
 
 /** The neon look's bloom on the high tier: a real halo on the lit edges and tubes (the terrace keeps its tuned, nearly off one). */
 export const NEON_BLOOM = { strength: 0.35, radius: 0.2, threshold: 0.6 } as const;
-export function setNeonBloom(bloom: { strength: { value: number }; radius: { value: number }; threshold: { value: number } } | null | undefined): void {
+/** The 1v1 board's glow (bot, human, boss: the terrace pipeline, #1725): softer, and over a threshold a lit marble stays under, so the
+ * marbles read clearly and the tubes and edges still glow. Scaled by the Bloom slider (#1727). */
+export const NEON_BOARD_BLOOM = { strength: 0.15, radius: 0.2, threshold: 0.9 } as const;
+type Bloom = { strength: { value: number }; radius: { value: number }; threshold: { value: number } };
+/** Sets a bloom pass to `spec`, its strength times `factor` (the Bloom slider's, quality.ts `levelFactor`). */
+export function setNeonBloom(bloom: Bloom | null | undefined, spec: { strength: number; radius: number; threshold: number } = NEON_BLOOM, factor = 1): void {
   if (!bloom) return; // the low tier has no bloom pass
-  bloom.strength.value = NEON_BLOOM.strength;
-  bloom.radius.value = NEON_BLOOM.radius;
-  bloom.threshold.value = NEON_BLOOM.threshold;
+  bloom.strength.value = spec.strength * factor;
+  bloom.radius.value = spec.radius;
+  bloom.threshold.value = spec.threshold;
 }
 
 /** A violet and cyan glow low on the horizon: an open cylinder round the scene, additive, black at the top. One draw call, hidden with the accents. */
