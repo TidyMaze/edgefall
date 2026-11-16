@@ -183,7 +183,10 @@ Drawn only: the levels, the walk and the rules stay the engine's. `topOf = 0.2 +
 - **Twice the levels, and a beach (#1732, owner 2026-11-16)**: the rise inside a level is cut into two flat terraces, none or half a step
   (`terrace`, 0.3) where the relief passes its middle, so each level of the engine reads as two: sixteen drawn heights instead of eight. The
   coast's sand stands half a step lower than its level (`BEACH` 0.3) and takes no terrace: a level-2 beach is drawn at 0.9 instead of 1.4 to 1.9,
-  nearer the water (0.08). `topOf = 0.2 + STEP * level + hexLift + terrace + shape`, sand `0.2 + STEP * level - BEACH + hexLift`. Kept on screenshots of seed 1305 at a tower, a gate, the spawn town and in the open, close and wide (owner OK, 2026-11-16).
+  nearer the water (0.08). `topOf = 0.2 + STEP * level + hexLift + terrace + shape`, sand `0.2 + STEP * level - BEACH + hexLift`.
+- **Each biome's relief (#1735)**: the terrace follows its biome (`BIOME_RELIEF`): wide rolling hills in the meadow (lattice 9), tight rises
+  in the forest (3), low ground cut by ridges in the tundra (a third up), dunes in bands across the desert, wide plateaus in the badlands
+  (two thirds up, lattice 10); the archipelago keeps the plain relief. The view hands `topOf` the biome of each cell. Kept on screenshots of seed 1305 at a tower, a gate, the spawn town and in the open, close and wide (owner OK, 2026-11-16).
 
 ## 6. Shared rules
 

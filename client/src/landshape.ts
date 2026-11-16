@@ -3,6 +3,7 @@
 // pools its colour on the cells round it. Pure functions of the cells and the landmark list: the same picture for every player.
 import * as THREE from 'three/webgpu';
 import type { Axial } from './board';
+import type { Biome } from './openworld';
 import { hexDistance } from './worldpeers';
 
 /** The rise inside a level (#1718): a smooth bump over the land, up to `height`, its hills about `span` cells apart, so the cells of one
@@ -44,13 +45,26 @@ const ease = (t: number): number => t * t * (3 - 2 * t);
  * its points, so neighbours differ by little and a hill spans a few cells. */
 /** The terrace of a cell inside its level (#1732): none or half a step up, where the relief passes its middle, so each level of the engine
  * reads as two flat terraces (sixteen in all instead of eight). */
-export function terrace(q: number, r: number): number {
-  return relief(q, r) >= RELIEF.height / 2 ? RELIEF.terrace : 0;
+export function terrace(q: number, r: number, biome?: Biome): number {
+  const look = biome ? BIOME_RELIEF[biome] : PLAIN;
+  if (look.dunes) return Math.sin((q + r * 0.5) * 1.6 + relief(q, r, 6) * 6) > 0 ? RELIEF.terrace : 0; // bands across q, bent by the relief
+  return relief(q, r, look.span) >= RELIEF.height * look.at ? RELIEF.terrace : 0;
 }
+/** Each biome's relief signature (#1735), on the same two terraces: the lattice's width (wider: wider hills) and the share of the relief
+ * under the upper terrace (higher: more low ground), or dunes in bands. */
+const PLAIN = { span: RELIEF.span, at: 0.5, dunes: false };
+export const BIOME_RELIEF: Readonly<Record<Biome, { span: number; at: number; dunes: boolean }>> = {
+  meadow: { span: 9, at: 0.5, dunes: false }, // wide rolling hills
+  forest: { span: 3, at: 0.5, dunes: false }, // tight rises under the trees
+  tundra: { span: 4, at: 0.66, dunes: false }, // low ground cut by ridges
+  desert: { span: 6, at: 0.5, dunes: true }, // dunes in bands
+  badlands: { span: 10, at: 0.36, dunes: false }, // wide plateaus, few low cuts
+  archipelago: PLAIN,
+};
 
-export function relief(q: number, r: number): number {
-  const x = q / RELIEF.span;
-  const y = r / RELIEF.span;
+export function relief(q: number, r: number, span: number = RELIEF.span): number {
+  const x = q / span;
+  const y = r / span;
   const i = Math.floor(x);
   const j = Math.floor(y);
   const u = ease(x - i);

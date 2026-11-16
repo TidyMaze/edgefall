@@ -1,8 +1,47 @@
 import { describe, expect, it } from 'vitest';
-import { BEACH, HOLLOW, MOUND, POOL, RELIEF, relief, shadeTop, shapeLand, shapingAt, terrace } from './landshape';
+import { BEACH, BIOME_RELIEF, HOLLOW, MOUND, POOL, RELIEF, relief, shadeTop, shapeLand, shapingAt, terrace } from './landshape';
 import { STEP } from './openworldview';
 
 // #1732: twice the levels: the rise inside a level is two terraces, flat, 0 or half a step up; the coast's sand stands half a step lower, by the water.
+// #1735: each biome has its own relief signature, on the same two terraces a level: rolling hills in the meadow, tight rises in the forest,
+// ridges over low ground in the tundra, dunes in bands in the desert, wide plateaus in the badlands.
+describe('the relief of each biome (#1735)', () => {
+  const runs = (biome: Parameters<typeof terrace>[2]): { up: number; run: number } => {
+    let up = 0, cells = 0, changes = 0;
+    for (let r = -60; r <= 60; r += 3) {
+      let last = -1;
+      for (let q = -60; q <= 60; q++) {
+        const t = terrace(q, r, biome);
+        up += t > 0 ? 1 : 0;
+        cells++;
+        if (last >= 0 && t !== last) changes++;
+        last = t;
+      }
+    }
+    return { up: up / cells, run: cells / Math.max(1, changes) };
+  };
+  it('keeps the two terraces in every biome', () => {
+    for (const biome of Object.keys(BIOME_RELIEF) as (keyof typeof BIOME_RELIEF)[]) {
+      const seen = new Set<number>();
+      for (let q = -40; q <= 40; q++) for (let r = -40; r <= 40; r += 4) seen.add(terrace(q, r, biome));
+      expect(seen, biome).toEqual(new Set([0, STEP / 2]));
+    }
+  });
+  it('rolls wide in the meadow and tight in the forest, rises in ridges over low tundra, bands the desert, lifts wide plateaus in the badlands', () => {
+    const [meadow, forest, tundra, desert, badlands] = (['meadow', 'forest', 'tundra', 'desert', 'badlands'] as const).map(runs);
+    expect(meadow!.run).toBeGreaterThan(forest!.run * 1.8); // wide hills against tight rises
+    expect(tundra!.up).toBeLessThan(0.35); // mostly low, a few ridges
+    expect(badlands!.up).toBeGreaterThan(0.55); // mostly up: plateaus
+    expect(badlands!.run).toBeGreaterThan(forest!.run * 1.8);
+    // the dunes: bands across the q axis, a crest every few cells
+    expect(desert!.run).toBeGreaterThan(1.2);
+    expect(desert!.run).toBeLessThan(4);
+  });
+  it('keeps the plain relief where no biome is given (the archipelago too)', () => {
+    for (let q = -10; q <= 10; q++) expect(terrace(q, 3)).toBe(terrace(q, 3, 'archipelago'));
+  });
+});
+
 describe('the terraces of a level (#1732)', () => {
   it('lifts a cell by none or by half a step, both on a fair share of the land, so each level of the engine reads as two', () => {
     const all: number[] = [];

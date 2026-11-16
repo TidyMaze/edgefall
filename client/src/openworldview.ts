@@ -576,6 +576,8 @@ export const hexLift = (q: number, r: number): number => {
 };
 /** The cells the world's landmarks shape (#1719, landshape.ts): set by the view's world as it opens, read by every height and top colour. */
 let shaped: ReadonlyMap<string, Shaping> = new Map();
+/** The biome of a cell of the world on show, for its relief signature (#1735): set by each new view; none before. */
+let biomeAt = (_q: number, _r: number): Biome | undefined => undefined;
 /** The landmarks of the world the view draws: the mound of each tower, the hollow of each gate, the pool of each light (#1719). */
 export const shapeWorld = (marks: Landmarks): void => void (shaped = shapeLand(marks));
 /** The height of the top of the ground of the cell `(q, r)`: water lies low and flat, the land is lifted by `hexLift` (#1418), rises
@@ -585,7 +587,7 @@ export const topOf = (terrain: Terrain, height: number, q: number, r: number): n
     ? 0.08
     : terrain === 'sand' // the coast: a beach half a step down, flat, by the water (#1732)
       ? 0.2 + STEP * height - BEACH + hexLift(q, r)
-      : 0.2 + STEP * height + hexLift(q, r) + (lifting ? terrace(q, r) + (shapingAt(shaped, q, r)?.lift ?? 0) : 0);
+      : 0.2 + STEP * height + hexLift(q, r) + (lifting ? terrace(q, r, biomeAt(q, r)) + (shapingAt(shaped, q, r)?.lift ?? 0) : 0);
 /** The colour of the top of a ground cell, leaned toward the landmark that shapes it (#1719); water keeps its own. */
 export const shadedGround = (tile: Tile, ground: Ground, q: number, r: number): number =>
   ground === 'water' ? groundColour(tile, ground) : shadeTop(groundColour(tile, ground), shapingAt(shaped, q, r));
@@ -870,6 +872,7 @@ export class OpenWorldView {
     skins?: MarbleSkins,
   ) {
     lifting = true; // a new view starts on the high tier (#1418)
+    biomeAt = (q, r) => world.tile(q, r)?.biome; // each biome's relief (#1735)
     this.scene.background = new THREE.Color(this.neon ? NEON.sky : WORLD_LOOKS.day.sky);
     this.scene.fog = this.fog;
     const hemisphere = (this.hemisphere = new THREE.HemisphereLight(WORLD_LOOKS.day.hemiSky, WORLD_LOOKS.day.hemiGround, WORLD_LOOKS.day.hemiIntensity));

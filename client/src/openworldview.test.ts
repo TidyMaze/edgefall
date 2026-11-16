@@ -159,6 +159,16 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     expect(view.pick(0.5, 0)).toEqual([2, 1]); // a point off the ring of the hero is no move (#988)
   });
 
+  it('raises each cell by the relief of its biome on show (#1735)', () => {
+    const desert = (cx: number, cy: number): Uint8Array => {
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([3, 2, BIOMES.indexOf('desert')], i * 3);
+      return Math.abs(cx) > 2 || Math.abs(cy) > 2 ? new Uint8Array() : out;
+    };
+    new OpenWorldView(new World(desert));
+    for (let q = 0; q < 12; q++) expect(topOf('grass', 3, q, 1) - 0.2 - 3 * STEP - hexLift(q, 1)).toBeCloseTo(terrace(q, 1, 'desert'));
+  });
+
   it('lifts a cell by its height, water lies low, and varies props by cell without chance', () => {
     expect(topOf('water', 0, 0, 0)).toBeLessThan(topOf('grass', 0, 0, 0));
     expect(topOf('grass', 3, 0, 0)).toBeGreaterThan(topOf('grass', 1, 0, 0));
