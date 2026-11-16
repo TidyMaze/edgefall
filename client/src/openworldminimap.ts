@@ -5,7 +5,7 @@
 import type { Axial } from './board';
 import { type Biome, neighbours, same, type Terrain, type Tile } from './openworld';
 import { dungeonIcon, iconSize, lairIcon, logIcon, portalIcon, townIcon } from './openworldlairicon';
-import { BIOME_LOOK, biomeGrass, LOOK, PROPS, WATER } from './openworldview';
+import { biomeGround, LOOK, PROPS, WATER } from './openworldview';
 import { neonWorldOn } from './neonlook';
 import { mapColour } from './neonworld';
 
@@ -69,7 +69,7 @@ const hex = (n: number): string => `#${n.toString(16).padStart(6, '0')}`;
  * the mountain that cannot be crossed (#1439). */
 export function terrainColour(terrain: Terrain, biome?: Biome): string {
   if (terrain === 'peak' || terrain === 'wall') return COLOURS.mountain;
-  const own = terrain === 'water' ? WATER.shore : terrain === 'tree' || terrain === 'boulder' ? PROPS[terrain].color : biome ? BIOME_LOOK[biome].ground : LOOK[terrain].color;
+  const own = terrain === 'water' ? WATER.shore : terrain === 'tree' || terrain === 'boulder' ? PROPS[terrain].color : biome ? biomeGround(terrain, biome) : LOOK[terrain].color;
   return hex(neonWorldOn() ? mapColour(own) : own); // the neon look's dark terrain is lifted for the map (#1424)
 }
 
@@ -114,6 +114,8 @@ export function groundOffset(x: number, y: number, yaw: number): Axial {
   return [dx - dr / 2, dr];
 }
 
+/** The grounds a biome colours (#1734). */
+const LAND: ReadonlySet<Terrain> = new Set(['sand', 'grass', 'rock', 'peak']);
 /** The cells of the hex disc of `radius` (RADIUS: the minimap's window) round `hero`, read with `tile`; the cells hidden (not
  * discovered, #1411) are left out. A cell off the world is kept when `tile` says `void` (#1453). A low grass cell keeps its biome, whose ground it is drawn in. */
 export function windowCells(tile: (q: number, r: number) => Tile | 'void' | undefined, hero: Axial, radius = RADIUS): MinimapCell[] {
@@ -123,7 +125,7 @@ export function windowCells(tile: (q: number, r: number) => Tile | 'void' | unde
       const [q, r] = [hero[0] + dq, hero[1] + dr];
       const found = tile(q, r);
       if (found === 'void') cells.push([q, r, 'void']);
-      else if (found) cells.push([q, r, found.terrain, found.terrain === 'grass' && biomeGrass(found) ? found.biome : undefined]);
+      else if (found) cells.push([q, r, found.terrain, LAND.has(found.terrain) ? found.biome : undefined]); // every land ground by its biome (#1734)
     }
   }
   return cells;

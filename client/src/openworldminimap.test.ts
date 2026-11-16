@@ -134,7 +134,7 @@ describe('windowCells', () => {
   it('reads the hex disc of RADIUS cells round the hero, skipping cells off the world', () => {
     const all = windowCells(() => tile('grass', 5), [10, -4]);
     expect(all).toHaveLength(3 * RADIUS * RADIUS + 3 * RADIUS + 1);
-    expect(all).toContainEqual([10, -4, 'grass', undefined]);
+    expect(all).toContainEqual([10, -4, 'grass', 'forest']); // every land cell keeps its biome (#1734)
     const cells = windowCells((q): Tile | undefined => (q < 0 ? undefined : tile('sand', 2)), [0, 0]);
     expect(cells.length).toBeLessThan(all.length);
     expect(cells.every(([q]) => q >= 0)).toBe(true);
@@ -150,9 +150,10 @@ describe('windowCells', () => {
     expect(windowCells(() => tile('grass'), [0, 0], 2)).toHaveLength(19);
   });
 
-  it('keeps the biome of a low grass cell only, the one the 3D view tints (#1442)', () => {
+  it('keeps the biome of every land cell, the one the 3D view tints at every height (#1442, #1734)', () => {
     expect(windowCells(() => tile('grass', 4), [0, 0], 0)).toEqual([[0, 0, 'grass', 'forest']]);
-    expect(windowCells(() => tile('grass', 5), [0, 0], 0)).toEqual([[0, 0, 'grass', undefined]]);
+    expect(windowCells(() => tile('grass', 5), [0, 0], 0)).toEqual([[0, 0, 'grass', 'forest']]);
+    expect(terrainColour('rock', 'forest')).not.toBe(terrainColour('rock'));
     expect(windowCells(() => tile('tree', 3), [0, 0], 0)).toEqual([[0, 0, 'tree', undefined]]);
   });
 });

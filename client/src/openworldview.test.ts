@@ -43,8 +43,7 @@ import {
   MARBLE,
   type Played,
   waterColor,
-  WANDER_GLIDE_MS,
-} from './openworldview';
+  WANDER_GLIDE_MS, BIOME_MIX, biomeGround } from './openworldview';
 
 // Every chunk of the square -3..3 is the same: the terrain code runs 0 to 7 along the cells, the height 0 to 3.
 function bytes(cx: number, cy: number): Uint8Array {
@@ -1567,12 +1566,17 @@ describe('the biomes look (openworld-terrain.md section 4, #984)', () => {
     return Array.from({ length: m.count }, (_, i) => new THREE.Color().fromArray(m.instanceColor!.array, i * 3).getHex());
   };
 
-  it('colours the low grass by its biome, and every other ground by LOOK', () => {
+  it('colours the grass of every height by its biome, and mixes the biome into its shore, uplands and peaks (#1734)', () => {
     expect(groundColour(at(3, 'grass', 'meadow'), 'grass')).toBe(LOOK.grass.color);
     expect(groundColour(at(4, 'grass', 'tundra'), 'grass')).toBe(BIOME_LOOK.tundra.ground);
     expect(groundColour(at(3, 'tree', 'desert'), 'grass')).toBe(BIOME_LOOK.desert.ground); // a tree stands on the grass of its biome
-    expect(groundColour(at(5, 'grass', 'desert'), 'grass')).toBe(LOOK.grass.color); // uplands keep their green
-    expect(groundColour(at(2, 'sand', 'tundra'), 'sand')).toBe(LOOK.sand.color); // the shore keeps its sand
+    expect(groundColour(at(5, 'grass', 'desert'), 'grass')).toBe(BIOME_LOOK.desert.ground); // the uplands too (#1734)
+    for (const ground of ['sand', 'rock', 'peak'] as const) {
+      const mixed = new THREE.Color(LOOK[ground].color).lerp(new THREE.Color(BIOME_LOOK.badlands.ground), BIOME_MIX[ground]).getHex();
+      expect(groundColour(at(6, ground, 'badlands'), ground), ground).toBe(mixed);
+      expect(biomeGround(ground, 'badlands')).toBe(mixed);
+      expect(groundColour(at(6, ground, 'tundra'), ground)).not.toBe(groundColour(at(6, ground, 'desert'), ground)); // each biome reads on its rock
+    }
     expect(groundColour(at(0, 'water', 'tundra'), 'water')).toBe(LOOK.water.color); // water keeps its colour (waterColor)
   });
 

@@ -6,7 +6,7 @@ import { NEON_BIOME, WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, applyNeonWorld, mapCo
 import { AMBIENT } from './openworldparticles';
 import { BIOMES, CHUNK, neighbours, World } from './openworld';
 import { terrainColour } from './openworldminimap';
-import { BIOME_LOOK, LAIR_LOOK, LOOK, MARBLE_LOOK, OpenWorldView, PROPS, TELEPORTER_LOOK, WATER, groundColour, waterColor } from './openworldview';
+import { BIOME_LOOK, LAIR_LOOK, LOOK, MARBLE_LOOK, OpenWorldView, PROPS, TELEPORTER_LOOK, WATER, groundColour, waterColor, BIOME_MIX } from './openworldview';
 
 const palette = { LOOK, WATER, BIOME_LOOK, PROPS, MARBLE_LOOK, LAIR_LOOK, TELEPORTER_LOOK, AMBIENT };
 const bytes = (): Uint8Array => {
@@ -55,10 +55,10 @@ describe('the neon palette of the Open world (#1424)', () => {
 
   it('paints every grass cell in its own biome, the low ground and the high alike, only with the look (#1656)', () => {
     const high = { height: 5, terrain: 'grass', biome: 'tundra' } as const;
-    expect(groundColour(high, 'grass')).toBe(LOOK.grass.color);
+    expect(groundColour(high, 'grass')).toBe(BIOME_LOOK.tundra.ground); // every height takes its biome's grass, either look (#1734)
     applyNeonWorld(true, palette);
     expect(groundColour(high, 'grass')).toBe(NEON_BIOME.tundra.ground);
-    expect(groundColour({ ...high, terrain: 'rock' }, 'rock')).toBe(WORLD.rock);
+    expect(groundColour({ ...high, terrain: 'rock' }, 'rock')).toBe(new THREE.Color(WORLD.rock).lerp(new THREE.Color(NEON_BIOME.tundra.ground), BIOME_MIX.rock).getHex()); // the look's rock, its biome mixed in
   });
 
   it('puts the shallows on every water cell next to land and the deep on the open water, only with the look (#1656)', () => {

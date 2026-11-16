@@ -241,13 +241,13 @@ export const BIOME_LOOK: Record<Biome, { ground: number; prop: number }> = {
   badlands: { ground: 0x643d35, prop: 0xe8aa90 },
   archipelago: { ground: 0x5c7d58, prop: 0xffffff }, // the islands' fresh green (#1442)
 };
-/** Whether a tile is on the low ground (heights 3 and 4), whose grass takes the colour of its biome. */
-export const lowGround = (tile: Tile): boolean => tile.height === 3 || tile.height === 4;
-/** The colour of a cell's ground, per instance: the low grass by its biome, every other ground by `LOOK` (the water's colour
- * comes from `waterColor`). */
-export const groundColour = (tile: Tile, ground: Ground): number => (ground === 'grass' && biomeGrass(tile) ? BIOME_LOOK[tile.biome].ground : LOOK[ground].color);
-/** Whether a grass cell takes its biome's ground: the low grass, and under the neon look every grass, so no other biome's green shows in one (#1656). */
-export const biomeGrass = (tile: Tile): boolean => lowGround(tile) || neonWorldOn();
+/** The share of a biome's ground mixed into its other grounds (#1734): its shore, uplands and peaks read as the biome too, in either look. */
+export const BIOME_MIX = { sand: 0.35, rock: 0.4, peak: 0.3 } as const;
+/** The colour of a land ground in `biome`: its grass is the biome's ground at every height, the rest `LOOK` with the biome mixed in (#1734). */
+export const biomeGround = (ground: Exclude<Ground, 'water'>, biome: Biome): number =>
+  ground === 'grass' ? BIOME_LOOK[biome].ground : new THREE.Color(LOOK[ground].color).lerp(new THREE.Color(BIOME_LOOK[biome].ground), BIOME_MIX[ground]).getHex();
+/** The colour of a cell's ground, per instance: the land by its biome (`biomeGround`), the water by `LOOK` (its colour comes from `waterColor`). */
+export const groundColour = (tile: Tile, ground: Ground): number => (ground === 'water' ? LOOK.water.color : biomeGround(ground, tile.biome));
 /** The red of a lone water cell and of a cell in the middle of a lake, as the instance colour holds them: the shore foam reads where on
  * that way a cell lies (#1101). */
 const shoreRed = (): number => new THREE.Color(WATER.shore).r; // read when a view is made: the neon look changes the lakes' colours

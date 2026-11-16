@@ -1952,7 +1952,7 @@ describe('the minimap of the Open world (#1410, docs/specs/openworld.md section 
     const ctx = withCanvas();
     lairer(Int32Array.of(8, 0, 40, 0)).enter(42, 800, 600);
     expect(ctx.clearRect).toHaveBeenCalledTimes(1);
-    for (const colour of [terrainColour('grass'), COLOURS.hero, COLOURS.troop, COLOURS.enemy, COLOURS.lair]) expect(ctx.fills, colour).toContain(colour);
+    for (const colour of [terrainColour('grass', 'badlands'), COLOURS.hero, COLOURS.troop, COLOURS.enemy, COLOURS.lair]) expect(ctx.fills, colour).toContain(colour);
   });
 
   it('paints the low grass of the world in the ground of its biome (#1442)', () => {
@@ -2038,7 +2038,7 @@ describe('the minimap of the Open world (#1410, docs/specs/openworld.md section 
   it('leaves out the cells off the world', () => {
     const ctx = withCanvas();
     new OpenWorldMode((_s, cx, cy) => (cx > 0 ? new Uint8Array() : bytes(cx, cy)), () => new Int32Array(), async () => ({ low: {}, high: {} }), () => true, worldSaves(memoryStore(), 1)).enter(42, 800, 600);
-    expect(ctx.fills).toContain(terrainColour('grass'));
+    expect(ctx.fills).toContain(terrainColour('grass', 'badlands'));
   });
 
   it('makes its canvas at the end of the body, once, and draws nothing when it has no 2D context', () => {
@@ -2066,7 +2066,7 @@ describe('the discovered cells and the map of the Open world (#1411, docs/specs/
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
     return fills;
   };
-  const grass = (fills: string[]): number => fills.filter((c) => c === terrainColour('grass')).length;
+  const grass = (fills: string[]): number => fills.filter((c) => c === terrainColour('grass', 'badlands')).length;
   const savedAt = (hero: Axial, discovered: WorldSave['discovered'] = []): WorldSave => ({
     version: 1, seed: 42, hero, troop: [], fight: { removed: [], added: [], beaten: 0 }, yaw: DEFAULT_YAW, broken: [], lairs: [], discovered, time: 0, logs: [], recruits: 0, resources: { wood: 0, ore: 0, parts: 0, shards: 0 }, army: { specials: [], brought: [], relics: [], relicsBrought: [] }, savedAt: 1,
   });

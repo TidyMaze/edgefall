@@ -105,9 +105,9 @@ mixed five climate biomes everywhere (#984), so every direction looked alike.
   peak. The sea comes in smoothly, by a smoothstep over the 3 cells of the blend inside its border and from 40 to 90 cells out
   of the spawn, so the land round the spawn (section 2's ring) is kept. Its middle 20 degrees, from 120 cells out, is 65 to 85 %
   water over seeds 1 to 4.
-- **What a biome changes**: the ground tint of the low ground (levels 3 and 4) in the 3D view, the minimap and the map, and the
-  density of the obstacles per open cell on the low ground. Elsewhere water, shore (level 2), uplands and peaks keep their
-  terrain in every biome; the archipelago alone also changes the relief, as above.
+- **What a biome changes**: the ground of every height in the 3D view and the minimap (#1734): its grass is the biome's ground, its sand,
+  rock and peaks the game's colour with the biome mixed in (`BIOME_MIX`: 35, 40 and 30 %), in either look; and the density of the
+  obstacles per open cell on the low ground. Water keeps its colour; the archipelago alone also changes the relief, as above.
 - **No new `Terrain`**: the tint is a colour, not a terrain. The ground and the props are tinted per instance,
   `LOOK[ground] x BIOME_TINT[biome]` (`setColorAt`), so no new mesh. The map paints a low grass cell in the same ground.
 - **Chunk bytes**: 3 per cell, `height, terrain, biome` (the biome code is the order of the `Biome` enum: `0` meadow to
