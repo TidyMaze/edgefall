@@ -55,19 +55,19 @@ for (const { name, viewport, touch } of sizes) {
       await expect(page.locator('#reader')).toContainText(EPILOGUE.pages[0]!.lines[0]!);
     });
 
-    test('the bridge console reads the clamp open from stage 7 and locked before it, #1546', async ({ page }) => {
-      for (const [moments, text] of [[[2, 3, 4, 5, 6], 'Docking clamp: locked.'], [[2, 3, 4, 5, 6, 7], 'Docking clamp: open.']] as const) {
-        await page.addInitScript(([saved]) => {
-          localStorage.setItem('ab-alone.story', JSON.stringify(saved));
-          localStorage.setItem('ab-alone.lore-read', 'bridge-clamp');
-        }, [{ moments, wins: 0 }]);
-        await page.goto('./?bot=off');
-        await page.locator('canvas').waitFor();
-        await page.locator('#settings').click();
-        await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
-        await page.locator('.setting-archive').getByRole('button', { name: CLAMP_OPEN.title }).click();
-        await expect(page.locator('#reader')).toContainText(text);
-      }
+    // The locked leg (before stage 7, with the note of Tally under it from stage 5) is a unit test (lorelogs.test.ts, "give the bridge console its
+    // open-clamp text from stage 7 and the locked one before"): one page load here reads the stage from the story (#1710).
+    test('the bridge console reads the clamp open from stage 7, #1546', async ({ page }) => {
+      await page.addInitScript(() => {
+        localStorage.setItem('ab-alone.story', JSON.stringify({ moments: [2, 3, 4, 5, 6, 7], wins: 0 }));
+        localStorage.setItem('ab-alone.lore-read', 'bridge-clamp');
+      });
+      await page.goto('./?bot=off');
+      await page.locator('canvas').waitFor();
+      await page.locator('#settings').click();
+      await page.locator('#setting-log-archive').dispatchEvent('click'); // hidden: the Logs' home is the ship's Logs bays (#1693), the archive page is the same
+      await page.locator('.setting-archive').getByRole('button', { name: CLAMP_OPEN.title }).click();
+      await expect(page.locator('#reader')).toContainText('Docking clamp: open.');
     });
 
     test('Skip closes the epilogue on the first page, it is saved and does not open again after a reload, #1546', async ({ page }) => {

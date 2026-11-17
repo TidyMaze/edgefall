@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import { test } from './shared-world';
 import { paused } from './frameclock';
 import { lowTierOnCi } from './modes';
 import { shot } from './shot';
@@ -12,15 +13,20 @@ type Hooks = { __openworldFixture: (f: object) => void; __openworldEnemies: () =
 const data = (page: Page, key: string) => page.evaluate((k) => document.body.dataset[k], key);
 const put = (page: Page, hero: [number, number]) => page.evaluate((h) => (window as unknown as Hooks).__openworldFixture({ hero: h, troop: [] }), hero);
 
+// The world of seed 3 on the worker's shared page (shared-world.ts), booted once and fresh for each test: no page load in the test (#1710).
+test.use({ worldUrl: './?bot=off&openworld=3' });
+
+// The tests that set the window size give the shared page its size back.
+test.afterEach(async ({ world, viewport }) => {
+  if (viewport) await world.setViewportSize(viewport);
+});
+
 async function opened(page: Page): Promise<[number, number]> {
-  await page.goto('./?openworld=3&nodes=200');
-  await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
-  await expect.poll(() => data(page, 'openworldAt')).toBe('0,0');
   const [q, r] = (await page.evaluate(() => (window as unknown as Hooks).__openworldEnemies()))[0]!;
   return [q! + 1, r!];
 }
 
-test('ask prompt shows on wild contact, no fight until Fight', async ({ page }) => {
+test('ask prompt shows on wild contact, no fight until Fight', async ({ world: page }) => {
   await page.setViewportSize({ width: 1000, height: 700 });
   const beside = await opened(page);
   await put(page, beside);
@@ -41,7 +47,7 @@ test('ask prompt shows on wild contact, no fight until Fight', async ({ page }) 
   await expect(ask).toBeHidden();
 });
 
-test('Enter fights, Esc backs away and does not ask again until contact is remade', async ({ page }) => {
+test('Enter fights, Esc backs away and does not ask again until contact is remade', async ({ world: page }) => {
   const beside = await opened(page);
   await put(page, beside);
   await expect(page.locator('#openworld-ask')).toBeVisible();
@@ -60,7 +66,7 @@ test('Enter fights, Esc backs away and does not ask again until contact is remad
   await expect(page.getByRole('button', { name: 'Flee' })).toBeVisible();
 });
 
-test('Back away after a step into contact returns to the cell the hero stepped from', async ({ page }) => {
+test('Back away after a step into contact returns to the cell the hero stepped from', async ({ world: page }) => {
   const [bq, br] = await opened(page);
   const start: [number, number] = [bq + 1, br - 1]; // two cells from the marble; ArrowDown steps (-1, +1), onto the cell beside it
   await put(page, start);
@@ -75,7 +81,7 @@ test('Back away after a step into contact returns to the cell the hero stepped f
 });
 
 for (const [width, height] of [[390, 844], [360, 640]] as const) {
-  test(`prompt at ${width}x${height} covers no HUD and buttons are >= 44 px`, async ({ page }) => {
+  test(`prompt at ${width}x${height} covers no HUD and buttons are >= 44 px`, async ({ world: page }) => {
     await page.setViewportSize({ width, height });
     const beside = await opened(page);
     await put(page, beside);

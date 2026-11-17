@@ -10,18 +10,20 @@ const toggle = (page: Page) => page.getByRole('button', { name: 'Auto-play' });
 
 test('the bot plays the player side of a bot game until Auto-play is turned off', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); // no slides: the bot's moves land at once (5.4 s with them, #1710)
+  await page.clock.install(); // the time flows as usual; the waits between two Auto-play moves are jumped, not slept (#1710)
   await page.goto('./?nodes=50');
   await expect(toggle(page)).toBeEnabled();
   await toggle(page).click();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(() => plies(page)).toBeGreaterThanOrEqual(3);
+  await expect.poll(async () => (await page.clock.fastForward(AUTO_DELAY_MS), plies(page))).toBeGreaterThanOrEqual(3);
   await shot(page, { path: 'test-results/autoplay-on.png' });
   await toggle(page).click();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('#hint')).toBeEnabled(); // the bot is done thinking: the board answers clicks again
   await expect.poll(() => page.evaluate(() => (window as any).__botBusy() as boolean)).toBe(false); // the bot's own reply, asked for before the click, lands after the last slide (ui.md 4.3)
   const stopped = await plies(page);
-  await page.waitForTimeout(AUTO_DELAY_MS + 300); // past the wait between two Auto-play moves: one more would have landed
+  await page.clock.fastForward(AUTO_DELAY_MS + 300); // past the wait between two Auto-play moves: one more would have landed
+  await expect.poll(() => page.evaluate(() => (window as any).__botBusy() as boolean)).toBe(false); // and its search, had one started, is done
   expect(await plies(page)).toBe(stopped);
 });
 

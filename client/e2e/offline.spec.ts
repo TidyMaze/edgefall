@@ -97,12 +97,9 @@ test('the dev server registers no service worker', async ({ page }) => {
   await page.goto(new URL('./?bot=off', process.env.E2E_DEV_URL).href);
   await page.locator('canvas').waitFor();
   await expect(page.locator('#play-online')).toBeEnabled(); // main.ts ran to its end
-  const registered = await page.evaluate(() =>
-    Promise.race([
-      navigator.serviceWorker.ready.then(() => 'registered'),
-      new Promise((resolve) => setTimeout(() => resolve('none'), 3_000)),
-    ]),
-  );
+  // No wait for a worker that never comes: main.ts registers one at its end (production only), and the browser answers the page's calls in
+  // order, so a registration asked for by then is in the list (the 3 s race for `ready` it replaces cost the test 3 s, #1710).
+  const registered = await page.evaluate(async () => ((await navigator.serviceWorker.getRegistrations()).length ? 'registered' : 'none'));
   expect(registered).toBe('none');
 });
 

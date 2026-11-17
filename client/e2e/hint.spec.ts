@@ -268,20 +268,17 @@ test('no Hint during a boss fight, a daily fight or an online game, for the room
   await expect(page.locator('#hud')).toContainText('Joining as White...');
   await expect(hint).toBeHidden();
 
+  // One page load for the three modes: each mode starts in the page, as the Hub's bays do (no reload between them, #1710).
   await page.goto('./?net=hook');
   await ready(page);
   await startMode(page, 'echo');
   await expect(page.locator('#boss-bar .name')).toContainText('The Echo');
   await expect(hint).toBeHidden();
 
-  await page.goto('./?net=hook');
-  await ready(page);
   await startMode(page, 'daily');
   await expect(page.locator('#hud')).toContainText('Daily challenge');
   await expect(hint).toBeHidden();
 
-  await page.goto('./?net=hook');
-  await ready(page);
   await startMode(page, 'online');
   await expect(page.locator('#hud')).toContainText('Waiting for an opponent');
   await expect(hint).toBeHidden();

@@ -18,6 +18,9 @@ test('the daily challenge keeps its boss and seed all day, counts attempts, and 
     await page.goto('./');
     await expect(daily).toBeEnabled();
   };
+  // The later days start in the page: a start reads the clock again (today(), main.ts) and the attempts are in localStorage, so the reloads these
+  // legs had are unit tests (daily.test.ts: "counts one more attempt at each start", "resets on a new UTC day", "is the same after a reload"; #1710).
+  const later = (time: string) => page.clock.setFixedTime(new Date(time));
   const click = (q: number, r: number) => page.evaluate(([cq, cr]) => (window as any).__roll(cq, cr), [q, r]); // the page's own click, no mouse round trip
   // The first forward one-marble move (NW or NE), then the boss reply.
   const advance = async () => {
@@ -51,16 +54,16 @@ test('the daily challenge keeps its boss and seed all day, counts attempts, and 
   expect(await history()).toEqual(played);
 
   // A second load the same day, a second before midnight: the same boss and seed, attempt 3.
-  await load('2027-03-30T23:59:59Z');
-  await expect(daily).toHaveText(title);
+  await later('2027-03-30T23:59:59Z');
   await startMode(page, 'daily');
+  await expect(daily).toHaveText(title);
   await expect(hud).toContainText('Daily challenge 2027-03-30 · attempt 3');
   expect(await fight()).toEqual({ ...first, daily: { day: '2027-03-30', attempt: 3 } });
 
   // 00:00 UTC: a new day and a new seed (the boss may be the same), the counter starts again.
-  await load('2027-03-31T00:00:00Z');
-  await expect(daily).toHaveText(/^Daily challenge 2027-03-31: The /);
+  await later('2027-03-31T00:00:00Z');
   await startMode(page, 'daily');
+  await expect(daily).toHaveText(/^Daily challenge 2027-03-31: The /);
   await expect(hud).toContainText('Daily challenge 2027-03-31 · attempt 1');
   const next = await fight();
   expect(next.seed).not.toBe(first.seed);

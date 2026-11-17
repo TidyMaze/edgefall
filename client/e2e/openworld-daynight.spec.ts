@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import { test } from './shared-world';
 import { lowTierOnCi, enterBay } from './modes';
 import { shot } from './shot';
 
@@ -11,9 +12,8 @@ const MIN = 60_000;
 const PHASES = [['day', 3 * MIN], ['dusk', 6.75 * MIN], ['night', 9 * MIN]] as const;
 const shots = process.env.DAYNIGHT_SHOTS ?? 'test-results';
 
+// The world of seed 7 on the worker's shared page (shared-world.ts), booted once and fresh for each test: no page load in the test (#1710).
 const enter = async (page: Page): Promise<void> => {
-  await page.goto('./?bot=off&openworld=7');
-  await page.locator('canvas:not(#openworld-minimap)').waitFor();
   await expect.poll(() => page.evaluate(() => document.body.dataset.openworld)).toBe('7');
 };
 const setTime = (page: Page, ms: number) => page.evaluate((t) => (window as unknown as { __openworldTime: (ms: number) => void }).__openworldTime(t), ms);
@@ -30,7 +30,7 @@ const intoLair = async (page: Page): Promise<void> => {
   await enterBay(page);
 };
 
-test('the world reads day, dusk and night as the time of day is set, and starts at the start of day, #1496', async ({ page }) => {
+test('the world reads day, dusk and night as the time of day is set, and starts at the start of day, #1496', async ({ world: page }) => {
   await enter(page);
   await expect(page.locator('body')).toHaveAttribute('data-openworld-phase', 'day');
   for (const [phase, ms] of PHASES) {
@@ -44,7 +44,7 @@ test('the world reads day, dusk and night as the time of day is set, and starts 
 });
 
 for (const [phase, ms] of PHASES) {
-  test(`a lair entered at ${phase} starts the fight on the ${phase} board, #1496`, async ({ page }) => {
+  test(`a lair entered at ${phase} starts the fight on the ${phase} board, #1496`, async ({ world: page }) => {
     await enter(page);
     await setTime(page, ms);
     await intoLair(page);

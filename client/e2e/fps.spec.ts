@@ -3,7 +3,7 @@ import { openAdvanced } from './settings';
 
 // The FPS readout (#426): off by default, switched on in the settings menu, kept across a reload, its last value in
 // Copy diagnostics.
-test('the FPS readout is off by default, shows a rate once switched on, and survives a reload', async ({ page, context, browserName }) => {
+test('the FPS readout is off by default, shows a rate once switched on and reaches Copy diagnostics', async ({ page, context, browserName }) => {
   test.skip(browserName !== 'chromium', 'only Chromium grants the clipboard-read and clipboard-write permissions the test needs');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto('./?bot=off');
@@ -20,11 +20,8 @@ test('the FPS readout is off by default, shows a rate once switched on, and surv
   await expect(readout).toBeVisible();
   await expect.poll(async () => parseInt((await readout.textContent()) ?? '0', 10), { timeout: 8000 }).toBeGreaterThan(0);
 
-  await page.reload();
-  await page.locator('canvas').waitFor();
-  await expect(readout).toBeVisible();
-  await page.getByRole('button', { name: 'Settings' }).click(); // the clipboard is the last row of the settings list (#1032)
-  await openAdvanced(page);
+  // The reload leg ("survives a reload") is a unit test: main.boot.test.ts "starts on when saved on", the page's own save is 'ab-alone.fps' (#1710).
+  // The menu is still open on its advanced rows: the clipboard is the last row of the settings list (#1032).
   await page.getByRole('button', { name: 'Copy diagnostics' }).click();
   const diagnostics = JSON.parse(await page.evaluate(() => navigator.clipboard.readText()));
   expect(diagnostics.environment.fps).toBeGreaterThan(0);
