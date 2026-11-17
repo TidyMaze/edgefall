@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
 import { startMode } from './modes';
 
 // A local game survives a reload: saved in IndexedDB after every move, replayed on load (#218,
@@ -154,52 +154,35 @@ test('a boss fight is not saved: a reload shows a new local game', async ({ page
   expect(await savedPlies(page)).toBe(0);
 });
 
-/** Writes `save` as the saved local game in the page's real IndexedDB, as an earlier page view would have. */
-const writeSave = (page: Page, save: unknown) =>
-  page.evaluate(
-    (value) =>
-      new Promise<void>((done, fail) => {
-        const req = indexedDB.open('ab-alone', 1);
-        req.onupgradeneeded = () => req.result.createObjectStore('game');
-        req.onerror = () => fail(req.error);
-        req.onsuccess = () => {
-          const db = req.result;
-          const tx = db.transaction('game', 'readwrite');
-          tx.objectStore('game').put(value, 'local');
-          tx.oncomplete = () => {
-            db.close();
-            done();
-          };
-        };
-      }),
-    save,
-  );
-
 const A = [1, 4, 0, 2, 0, 0, 0, 0]; // Black (0, 2) to its NW neighbour (0, 1)
 const save = (bot: boolean, moves: number[][], version = 1) => ({ version, mode: 'local', layout: 'standard', bot, moves });
 
-test('a game saved while the bot was thinking resumes with the bot reply', async ({ page }) => {
-  await page.goto('./?bot=on&nodes=200');
+/** A page whose database holds `value` as the saved local game before its first load (Playwright's IndexedDB storage state), opened on
+ * `url`: one page load where a goto, a write and a reload took two (#1710). */
+async function seeded(browser: Browser, baseURL: string | undefined, url: string, value: object): Promise<Page> {
+  const origin = new URL(baseURL!).origin;
+  const indexedDB = [{ name: 'ab-alone', version: 1, stores: [{ name: 'game', autoIncrement: false, records: [{ key: 'local', value }], indexes: [] }] }];
+  const context = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [{ origin, localStorage: [], indexedDB } as never] } });
+  const page = await context.newPage();
+  await page.goto(url);
   await ready(page);
-  await writeSave(page, save(true, [A]));
+  return page;
+}
 
-  await page.reload();
-  await ready(page);
+test('a game saved while the bot was thinking resumes with the bot reply', async ({ browser, baseURL }) => {
+  const page = await seeded(browser, baseURL, './?bot=on&nodes=200', save(true, [A]));
   await expect.poll(() => plies(page), { timeout: 30_000 }).toBe(2);
   await expect(page.locator('#hud')).toContainText('White to move');
   await expect.poll(() => savedPlies(page)).toBe(2);
 });
 
-test('a save that does not replay is dropped, never shown half-done', async ({ page }) => {
-  await page.goto('./?bot=off');
-  await ready(page);
+test('a save that does not replay is dropped, never shown half-done', async ({ browser, baseURL }) => {
   // The second move is Black's again, from a cell the first one left: the engine refuses it.
   for (const bad of [save(false, [A, A]), save(false, [A], 2)]) {
-    await writeSave(page, bad);
-    await page.reload();
-    await ready(page);
+    const page = await seeded(browser, baseURL, './?bot=off', bad);
     await expect(page.locator('#hud')).toContainText('Black to move');
     expect(await plies(page)).toBe(0);
     await expect.poll(() => savedPlies(page)).toBe(0);
+    await page.context().close();
   }
 });
