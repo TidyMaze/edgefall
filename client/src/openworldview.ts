@@ -266,8 +266,15 @@ export const BIOME_LOOK: Record<Biome, { ground: number; prop: number }> = {
 /** The share of a biome's ground mixed into its other grounds (#1734): its shore, uplands and peaks read as the biome too, in either look. */
 export const BIOME_MIX = { sand: 0.35, rock: 0.4, peak: 0.3 } as const;
 /** The colour of a land ground in `biome`: its grass is the biome's ground at every height, the rest `LOOK` with the biome mixed in (#1734). */
-export const biomeGround = (ground: Exclude<Ground, 'water'>, biome: Biome): number =>
-  ground === 'grass' ? BIOME_LOOK[biome].ground : new THREE.Color(LOOK[ground].color).lerp(new THREE.Color(BIOME_LOOK[biome].ground), BIOME_MIX[ground]).getHex();
+export const biomeGround = (ground: Exclude<Ground, 'water'>, biome: Biome): number => {
+  if (ground === 'grass') return BIOME_LOOK[biome].ground;
+  const key = `${LOOK[ground].color}|${BIOME_LOOK[biome].ground}|${BIOME_MIX[ground]}`; // the colours themselves: a look swapped later gets its own
+  let colour = mixes.get(key);
+  if (colour === undefined) mixes.set(key, (colour = new THREE.Color(LOOK[ground].color).lerp(new THREE.Color(BIOME_LOOK[biome].ground), BIOME_MIX[ground]).getHex()));
+  return colour;
+};
+/** The mixed ground colours already computed (#1756): a build of the ground asked for them once a cell, a few hundred thousand times. */
+const mixes = new Map<string, number>();
 /** The colour of a cell's ground, per instance: the land by its biome (`biomeGround`), the water by `LOOK` (its colour comes from `waterColor`). */
 export const groundColour = (tile: Tile, ground: Ground): number => (ground === 'water' ? LOOK.water.color : biomeGround(ground, tile.biome));
 /** The red of a lone water cell and of a cell in the middle of a lake, as the instance colour holds them: the shore foam reads where on
@@ -602,7 +609,7 @@ let shaped: ReadonlyMap<string, Shaping> = new Map();
 /** The biome of a cell of the world on show, for its relief signature (#1735): set by each new view; none before. */
 let biomeAt = (_q: number, _r: number): Biome | undefined => undefined;
 /** The landmarks of the world the view draws: the mound of each tower, the hollow of each gate, the pool of each light (#1719). */
-export const shapeWorld = (marks: Landmarks): void => void (shaped = shapeLand(marks));
+export const shapeWorld = (marks: Landmarks): void => void ((shaped = shapeLand(marks)), shades.clear());
 /** The height of the top of the ground of the cell `(q, r)`: water lies low and flat, the land is lifted by `hexLift` (#1418), rises
  * inside its level (`relief`, #1718) and by the landmark that shapes it (#1719). The low tier's flat look draws none of the three. */
 export const topOf = (terrain: Terrain, height: number, q: number, r: number): number =>
@@ -612,8 +619,18 @@ export const topOf = (terrain: Terrain, height: number, q: number, r: number): n
       ? 0.2 + STEP * height - BEACH + hexLift(q, r)
       : 0.2 + STEP * height + hexLift(q, r) + (lifting ? terrace(q, r, biomeAt(q, r)) + (shapingAt(shaped, q, r)?.lift ?? 0) : 0);
 /** The colour of the top of a ground cell, leaned toward the landmark that shapes it (#1719); water keeps its own. */
-export const shadedGround = (tile: Tile, ground: Ground, q: number, r: number): number =>
-  ground === 'water' ? groundColour(tile, ground) : shadeTop(mixedGround(ground, q, r, tile.biome), shapingAt(shaped, q, r));
+export const shadedGround = (tile: Tile, ground: Ground, q: number, r: number): number => {
+  if (ground === 'water') return groundColour(tile, ground);
+  const key = `${ground}:${q},${r}`;
+  let colour = shades.get(key);
+  if (shades.size > SHADES_MAX) shades.clear();
+  if (colour === undefined) shades.set(key, (colour = shadeTop(mixedGround(ground, q, r, tile.biome), shapingAt(shaped, q, r))));
+  return colour;
+};
+/** The top colour of each cell already laid (#1756): a pure function of the world on show, its landmarks and the look, so a walk that lays the
+ * ground again (every two chunks) reads it instead of blending 13 cells again. Emptied by a new world or new landmarks; capped in size. */
+const shades = new Map<string, number>();
+export const SHADES_MAX = 200_000; // a laid view holds about 12 500 cells
 /** How far a biome's border blends into the next (#1740): the colours and the props of both mix over this many cells either side. */
 export const BLEND_REACH = 4;
 /** The cells a cell's blend samples: itself, and the six of the rings 2 and `BLEND_REACH` straight out, 13 in all. */
@@ -925,6 +942,7 @@ export class OpenWorldView {
   ) {
     lifting = true; // a new view starts on the high tier (#1418)
     biomeAt = (q, r) => world.tile(q, r)?.biome; // each biome's relief (#1735)
+    shades.clear(); // another world: its own colours (#1756)
     this.scene.background = new THREE.Color(this.neon ? NEON.sky : WORLD_LOOKS.day.sky);
     this.scene.fog = this.fog;
     const hemisphere = (this.hemisphere = new THREE.HemisphereLight(WORLD_LOOKS.day.hemiSky, WORLD_LOOKS.day.hemiGround, WORLD_LOOKS.day.hemiIntensity));

@@ -22,6 +22,7 @@ import {
   mixedGround,
   propBiome,
   shadedGround,
+  SHADES_MAX,
   shapeWorld,
   footprint,
   GROUND,
@@ -197,6 +198,28 @@ describe('the Open world view (docs/specs/openworld.md section 2)', () => {
     expect(tundra).not.toBe(desert);
     expect((view.scene.fog as THREE.Fog).color.getHex()).toBe(tundra);
     expect(BIOME_SKY.desert).not.toBe(BIOME_SKY.tundra);
+  });
+
+  it('keeps a cell\'s top colour once computed, and computes it again for another world or other landmarks (#1756)', () => {
+    const one = (code: number) => () => {
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([1, 2, code], i * 3);
+      return out;
+    };
+    const tile = { terrain: 'grass', height: 1, biome: 'forest' } as Tile;
+    new OpenWorldView(new World(one(BIOMES.indexOf('forest'))));
+    shapeWorld({ lairs: [], gates: [], lights: [] });
+    const forest = shadedGround(tile, 'grass', 3, 3);
+    expect(shadedGround(tile, 'grass', 3, 3)).toBe(forest); // read again
+    new OpenWorldView(new World(one(BIOMES.indexOf('desert')))); // another world: the blend reads its biomes
+    expect(shadedGround(tile, 'grass', 3, 3)).not.toBe(forest);
+    const plain = shadedGround(tile, 'grass', 3, 3);
+    shapeWorld({ lairs: [[3, 3]], gates: [], lights: [] }); // a tower there now: its mound's colour
+    expect(shadedGround(tile, 'grass', 3, 3)).not.toBe(plain);
+    shapeWorld({ lairs: [], gates: [], lights: [] });
+    expect(biomeGround('rock', 'desert')).toBe(biomeGround('rock', 'desert'));
+    for (let q = 0; q <= SHADES_MAX; q++) shadedGround(tile, 'grass', q, 0); // past the cap: the cache starts again, the colours the same
+    expect(shadedGround(tile, 'grass', 3, 3)).toBe(plain);
   });
 
   it('pools a town\'s or a teleporter\'s light on the land round it, never on the water (#1745)', () => {
