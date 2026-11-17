@@ -29,3 +29,26 @@ export function bothSides(root: THREE.Object3D): void {
 export function softMarble(colour: number, glow: number, strength: number): THREE.MeshLambertMaterial {
   return new THREE.MeshLambertMaterial({ color: colour, emissive: new THREE.Color(glow).multiplyScalar(strength) });
 }
+
+/**
+ * Every Basic and Lambert mesh of `root` gets the same vertex layout: a normal and a four-float colour (white where it had none), with
+ * its colours on. A program is built per layout, so the unlit and the lit meshes share one program each (plus one for the instanced).
+ * The colour of a mesh without one does not change: white times its material colour.
+ */
+export function shareShapes(root: THREE.Object3D): void {
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    const material = mesh.material as THREE.Material | undefined;
+    if (!mesh.geometry || !material || !((material as THREE.MeshBasicMaterial).isMeshBasicMaterial || (material as THREE.MeshLambertMaterial).isMeshLambertMaterial)) return;
+    const g = mesh.geometry;
+    const count = g.getAttribute('position')!.count;
+    if (!g.getAttribute('normal')) g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
+    const colour = g.getAttribute('color');
+    if (!colour || colour.itemSize !== 4) {
+      const out = new Float32Array(count * 4).fill(1);
+      if (colour) for (let i = 0; i < count; i++) for (let c = 0; c < 3; c++) out[i * 4 + c] = colour.getComponent(i, c);
+      g.setAttribute('color', new THREE.BufferAttribute(out, 4));
+    }
+    (material as THREE.MeshBasicMaterial).vertexColors = true;
+  });
+}

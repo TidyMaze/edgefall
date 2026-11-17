@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three/webgpu';
-import { bothSides, setSoftLook, softLook, softMarble } from './softlook';
+import { bothSides, setSoftLook, shareShapes, softLook, softMarble } from './softlook';
 
 const createMockRenderer = (): THREE.WebGPURenderer =>
   ({ domElement: document.createElement('canvas'), backend: { isWebGPUBackend: false }, toneMapping: 0, toneMappingExposure: 1, shadowMap: { enabled: false, type: 0 }, init: async (): Promise<void> => {}, setPixelRatio: vi.fn(), setSize: vi.fn(), render: vi.fn(), setAnimationLoop: vi.fn() }) as unknown as THREE.WebGPURenderer;
@@ -31,6 +31,38 @@ describe('the lighter look of a software renderer (#1710)', () => {
     expect(marble).toBeInstanceOf(THREE.MeshLambertMaterial);
     expect(marble.color.getHex()).toBe(0x14161a);
     expect(marble.emissive.toArray()).toEqual(new THREE.Color(0x7fd6e8).multiplyScalar(0.25).toArray());
+  });
+});
+
+describe('the shared program shape of a software renderer (#1710)', () => {
+  const geo = (colour: number | null, normal: boolean): THREE.BufferGeometry => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+    if (normal) g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(9), 3));
+    if (colour) g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(3 * colour).fill(0.5), colour));
+    return g;
+  };
+  it('gives every lit and unlit mesh a normal and a four-float vertex colour, white where it had none, and turns its colours on', () => {
+    const root = new THREE.Group();
+    const bare = new THREE.Mesh(geo(null, false), new THREE.MeshBasicMaterial());
+    const three = new THREE.Mesh(geo(3, true), new THREE.MeshLambertMaterial());
+    const four = new THREE.Mesh(geo(4, true), new THREE.MeshBasicMaterial({ vertexColors: true }));
+    const twin = new THREE.Mesh(bare.geometry, new THREE.MeshBasicMaterial()); // a shared shape is turned once
+    const inst = new THREE.InstancedMesh(geo(null, false), new THREE.MeshBasicMaterial(), 2);
+    const std = new THREE.Mesh(geo(null, false), new THREE.MeshStandardMaterial());
+    const multi = new THREE.Mesh(geo(null, false), [new THREE.MeshBasicMaterial()]);
+    root.add(bare, three, four, twin, inst, std, multi, new THREE.Group());
+    shareShapes(root);
+    for (const m of [bare, three, four, twin, inst]) {
+      const a = m.geometry.attributes;
+      expect([a.normal!.itemSize, a.color!.itemSize, (m.material as THREE.MeshBasicMaterial).vertexColors]).toEqual([3, 4, true]);
+    }
+    expect(Array.from(bare.geometry.attributes.color!.array)).toEqual(new Array(12).fill(1));
+    expect(Array.from(three.geometry.attributes.color!.array)).toEqual([0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 0.5, 1]);
+    expect(four.geometry.attributes.color!.array.length).toBe(12);
+    expect(twin.geometry).toBe(bare.geometry);
+    expect(std.geometry.attributes.color).toBeUndefined(); // a PBR mesh and a material list are left alone
+    expect(multi.geometry.attributes.color).toBeUndefined();
   });
 });
 

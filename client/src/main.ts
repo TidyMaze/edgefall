@@ -214,7 +214,7 @@ import { DEFAULT_SKIN, nextSkin, skinById, type Extra } from './skins';
 import { DEFAULT_GLASS_SKIN, glassSkinById, nextGlassSkin } from './glassskins';
 import { skinKinds, startOnce } from './skinmaps';
 import { neonBreachGeometry, neonEggGeometry, nextToSight, neonLookOn, neonMarbleRim, marbleSheen, neonPedestal, neonShellFor, neonTells, neonVeil, tellLook, targetArrowMaterial, NEON } from './neonlook';
-import { bothSides, setSoftLook, softLook, softMarble } from './softlook';
+import { bothSides, setSoftLook, shareShapes, softLook, softMarble } from './softlook';
 import { TERRACE_VIEW, boardPoints, fitTerrace, hubKit, isDefaultView, mergeByMaterial, tableZeroActive, terraceEnvironment, terraceMaterial, withoutHubStaircase, type HubKit } from './tablezero';
 import { MARBLE_LOOK, TONAL, asksSkinMaps, flat, loadsTexture, readLook, tonalMarble } from './look';
 import { readDifficulty, writeDifficulty, nextDifficulty, scaleBudget, DIFFICULTY_NOTES, DIFFICULTY_PERCENT, TELL_MODE, type Difficulty } from './difficulty';
@@ -8384,7 +8384,7 @@ function loopFrame(now: number): void {
   for (const sync of syncMarbles) sync();
   for (const sync of syncPedestals) sync();
   renderer.info.reset();
-  if (draws === 0 && softLook()) bothSides(sceneRenderer.scene); // before the first frame builds the programs (#1710)
+  if (draws === 0 && softLook()) { bothSides(sceneRenderer.scene); shareShapes(sceneRenderer.scene); } // before the first frame builds the programs (#1710)
   sceneRenderer.render(pose, innerWidth, innerHeight);
   gpuFrame(modeOfScene(music));
   drawnKick = pose;
