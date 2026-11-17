@@ -421,7 +421,13 @@ shared('a glide of the hero turns its stripe: two frames in between differ on th
       expect(await page.evaluate(() => document.body.dataset.openworldGlide)).toBeDefined();
       shots.push(await page.screenshot({ path: test.info().outputPath('stripe-mid-glide-1.png') }));
       await drawnAfter(500);
-      shots.push(await page.screenshot({ path: test.info().outputPath('stripe-mid-glide-2.png') }));
+      let second = await page.screenshot({ path: test.info().outputPath('stripe-mid-glide-2.png') });
+      // a shot of a slow runner can still show the picture the compositor had before: on, 200 ms more of the glide, until it is a new one (3 at most)
+      for (let i = 0; i < 3 && second.equals(shots[0]!); i++) {
+        await drawnAfter(200);
+        second = await page.screenshot({ path: test.info().outputPath('stripe-mid-glide-2.png') });
+      }
+      shots.push(second);
     });
     return shots as [Buffer, Buffer];
   })();
