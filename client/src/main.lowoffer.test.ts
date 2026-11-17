@@ -110,6 +110,17 @@ describe('a machine with no GPU (#1483)', () => {
     expect([document.body.dataset.software, document.body.dataset.tier]).toEqual(['on', 'high']);
   });
 
+  it('turns the lighter look on for a software page only, and draws its first frame in it (#1710)', async () => {
+    for (const [url, soft] of [['?bot=off&software=on', true], ['?bot=off', false]] as const) {
+      const game = await boot(url);
+      const { softLook } = await import('./softlook'); // the page's own module: boot reset the registry
+      expect(softLook()).toBe(soft);
+      game.hook('__drawNext');
+      game.frame(16);
+      expect(game.hook('__draws')).toBe(1);
+    }
+  });
+
   it('is known by its first window of frames when the renderer says nothing', async () => {
     const game = await boot('?bot=off');
     game.hook('__slowWindow', 150);

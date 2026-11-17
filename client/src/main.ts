@@ -214,6 +214,7 @@ import { DEFAULT_SKIN, nextSkin, skinById, type Extra } from './skins';
 import { DEFAULT_GLASS_SKIN, glassSkinById, nextGlassSkin } from './glassskins';
 import { skinKinds, startOnce } from './skinmaps';
 import { neonBreachGeometry, neonEggGeometry, nextToSight, neonLookOn, neonMarbleRim, marbleSheen, neonPedestal, neonShellFor, neonTells, neonVeil, tellLook, targetArrowMaterial, NEON } from './neonlook';
+import { bothSides, setSoftLook, softLook, softMarble } from './softlook';
 import { TERRACE_VIEW, boardPoints, fitTerrace, hubKit, isDefaultView, mergeByMaterial, tableZeroActive, terraceEnvironment, terraceMaterial, withoutHubStaircase, type HubKit } from './tablezero';
 import { MARBLE_LOOK, TONAL, asksSkinMaps, flat, loadsTexture, readLook, tonalMarble } from './look';
 import { readDifficulty, writeDifficulty, nextDifficulty, scaleBudget, DIFFICULTY_NOTES, DIFFICULTY_PERCENT, TELL_MODE, type Difficulty } from './difficulty';
@@ -646,6 +647,7 @@ Object.defineProperty(window, '__gpuCost', { configurable: true, get: () => gpu.
 const softwareParam = new URLSearchParams(location.search).get('software');
 let software = softwareParam === null ? isSoftwareRenderer(rendererName(renderer.backend)) : softwareParam === 'on';
 document.body.dataset.software = software ? 'on' : 'off';
+setSoftLook(software);
 tier = readTier(store, { cores: navigator.hardwareConcurrency, memory: (navigator as { deviceMemory?: number }).deviceMemory, reducedMotion: reducedMotion(), software });
 // The neon tubes' rows of short lights (neonlight.ts) cost little when each pixel only adds the lights that reach it:
 // clustered (Forward+) lighting, 4x the frame rate of a rect light per tube. It needs compute shaders, so WebGPU only:
@@ -4542,8 +4544,11 @@ function loadBoard(): void {
 if (!bootsInWorld) loadBoard();
 // The terrace's own marbles (#1314): near-black with a sharp cool highlight, and warm white with its brightest pixel held at the
 // clamp. They stand in for the default skins only: a skin the player chose is worn as it is.
-const terraceShell = marbleSheen('black', neonMarbleRim('black', new THREE.MeshPhysicalMaterial({ color: neonLook ? NEON.blackMarble : 0x0a0c0f, roughness: 0.3, metalness: 0, specularIntensity: 0.12, envMapIntensity: 6 }), neonLook)); // #1553: the sky's reflection, both looks; #1552: the cyan rim on the edge, under the look only // the arena sky's reflection leads, the sun's highlight stays small (envMap set when the arena has loaded)
-const terraceGlass = marbleSheen('white', neonMarbleRim('white', new THREE.MeshStandardMaterial({ color: neonLook ? NEON.whiteMarble : 0xe8d9b4, emissive: neonLook ? 0x2a2a2a : 0x2a2012, roughness: 0.6, metalness: 0 }), neonLook)); // #1553: the soft rim and the sharper highlight, under the look only // warm ivory: the emissive keeps the hemisphere's blue fill off it, no reflection: the whites take no blue fill
+const blackMarble = neonLook ? NEON.blackMarble : 0x0a0c0f;
+const whiteMarble = neonLook ? NEON.whiteMarble : 0xe8d9b4;
+const whiteGlow = neonLook ? 0x2a2a2a : 0x2a2012;
+const terraceShell = softLook() ? (softMarble(blackMarble, NEON.pedestalRing, 0.06) as unknown as THREE.MeshPhysicalMaterial) : marbleSheen('black', neonMarbleRim('black', new THREE.MeshPhysicalMaterial({ color: blackMarble, roughness: 0.3, metalness: 0, specularIntensity: 0.12, envMapIntensity: 6 }), neonLook)); // #1553: the sky's reflection, both looks; #1552: the cyan rim on the edge, under the look only // the arena sky's reflection leads, the sun's highlight stays small (envMap set when the arena has loaded)
+const terraceGlass = softLook() ? (softMarble(whiteMarble, whiteGlow, 1) as unknown as THREE.MeshStandardMaterial) : marbleSheen('white', neonMarbleRim('white', new THREE.MeshStandardMaterial({ color: whiteMarble, emissive: whiteGlow, roughness: 0.6, metalness: 0 }), neonLook)); // #1553: the soft rim and the sharper highlight, under the look only // warm ivory: the emissive keeps the hemisphere's blue fill off it, no reflection: the whites take no blue fill
 function terraceMarbles(on: boolean): void {
   marbleMaterials[1] = on && skin === DEFAULT_SKIN ? terraceShell : shellMaterial(skin);
   marbleMaterials[2] = on && glass === DEFAULT_GLASS_SKIN ? terraceGlass : glassMaterial(glass);
@@ -8379,6 +8384,7 @@ function loopFrame(now: number): void {
   for (const sync of syncMarbles) sync();
   for (const sync of syncPedestals) sync();
   renderer.info.reset();
+  if (draws === 0 && softLook()) bothSides(sceneRenderer.scene); // before the first frame builds the programs (#1710)
   sceneRenderer.render(pose, innerWidth, innerHeight);
   gpuFrame(modeOfScene(music));
   drawnKick = pose;

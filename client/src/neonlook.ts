@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { abs, clamp, color, dot, float, mix, normalize, normalView, positionViewDirection, output, pow, reflect, smoothstep, vec3, vec4 } from 'three/tsl';
+import { softLook } from './softlook';
 import type { Deck } from './deck';
 import type { Space } from './bossspace';
 import { mixHex, type Phase, type WorldLook } from './daynight';
@@ -269,7 +270,9 @@ export function neonMaterial(name: string): THREE.Material {
       kind,
       kind === 'lamp' || kind === 'bar'
         ? new THREE.MeshBasicMaterial({ name: `neon_${kind}`, vertexColors: true, fog: false, color: new THREE.Color().setScalar(kind === 'lamp' ? 2.2 : 0.8) })
-        : new THREE.MeshStandardMaterial({ name: `neon_${kind}`, vertexColors: true, roughness: kind === 'glass' ? 0.42 : 0.7, metalness: 0.1 }),
+        : softLook()
+          ? new THREE.MeshLambertMaterial({ name: `neon_${kind}`, vertexColors: true })
+          : new THREE.MeshStandardMaterial({ name: `neon_${kind}`, vertexColors: true, roughness: kind === 'glass' ? 0.42 : 0.7, metalness: 0.1 }),
     );
   }
   return lit.get(kind)!;

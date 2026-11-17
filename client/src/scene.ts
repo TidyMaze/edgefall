@@ -16,6 +16,7 @@ import { applyDeckAtmosphere, DECK_ATMOSPHERES, type DeckId, type SpaceshipBayAs
 import { ROOM_SURFACE, type StructuralPart } from './room';
 import { type BoardLook, TERRACE_LOOK, terraceDeckLook, terraceSpaceLook } from './boardlook';
 import type { Space } from './bossspace';
+import { softLook } from './softlook';
 import { NEON, NEON_LIGHT, lightNeon, neonDeckLook, neonSkyOf, neonStars, type RunCue } from './neonlook';
 import { TERRACE_EXPOSURE, addSun, aimSunShadow, sunPosition } from './tablezero';
 
@@ -160,7 +161,7 @@ export class SceneRenderer {
   readonly roomDeck: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   readonly propsGroup: THREE.Group;
   /** The silhouette prop of the deck in play (#1551): one mesh, one flat material, its shape and colour changed with the deck; shown on the arena's terrace, not in the room nor at the hub. */
-  readonly deckProp: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  readonly deckProp: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial | THREE.MeshLambertMaterial>;
   private propShown = true;
   /** The terrace (#1314): the arena's glTF and its sun, shown in place of the room and of the plate and rim in a 1v1 game. */
   readonly terrace: THREE.Group;
@@ -295,7 +296,7 @@ export class SceneRenderer {
     this.roomDeck = new THREE.Mesh(new THREE.BoxGeometry(ROOM_SURFACE.width, 0.4, ROOM_SURFACE.depth), roomMaterial);
     this.roomDeck.position.set(0, ROOM_SURFACE.y - 0.2, 0);
     this.propsGroup = new THREE.Group();
-    this.deckProp = new THREE.Mesh(deckPropGeometry('mess'), new THREE.MeshStandardMaterial({ name: 'deck_prop', color: deckPropColour('mess'), roughness: 0.8, metalness: 0, fog: false }));
+    this.deckProp = new THREE.Mesh(deckPropGeometry('mess'), softLook() ? new THREE.MeshLambertMaterial({ name: 'deck_prop', color: deckPropColour('mess'), fog: false }) : new THREE.MeshStandardMaterial({ name: 'deck_prop', color: deckPropColour('mess'), roughness: 0.8, metalness: 0, fog: false }));
     this.deckProp.name = 'deck-prop';
     this.deckProp.visible = false;
     this.terrace = new THREE.Group();
@@ -332,7 +333,7 @@ export class SceneRenderer {
       this.ghosts,
     );
 
-    const smooth = smoothEdges(renderPixelRatio(dpr, webdriver), this.renderer.samples > 0);
+    const smooth = smoothEdges(renderPixelRatio(dpr, webdriver), this.renderer.samples > 0) && !softLook(); // no FXAA pass on a software renderer (#1710): a program less to build
     this.pipeline = createBloomPipeline(this.renderer, this.scene, this.camera, smooth, webdriver ? 1 : 2, options.bloom ?? true);
     this.flatPipeline = createBloomPipeline(this.renderer, this.scene, this.camera, smooth, options.neon && !webdriver ? 2 : 1, !!options.neon && (options.bloom ?? true), options.neon ? 1 : TERRACE_SATURATION, options.neon ? 1 : TERRACE_CONTRAST);
   }
