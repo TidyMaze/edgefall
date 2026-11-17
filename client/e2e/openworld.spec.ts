@@ -171,13 +171,14 @@ shared('the wheel zooms the Open world out far and back, and the hero still roll
 // at the widest zoom, the four edge strips of a screenshot have no pixel of the background colour (the neon look's sky, #04050c, #1424; the
 // terrace look's sky at the start of day, #93b5d9, drawn as (172, 190, 205) once graded, #1496).
 for (const [look, query, [br, bg, bb], allowed] of [
-  ['neon', '', [4, 5, 12], 3], // the default look (#1424): no look in the address
+  ['neon', '', [4, 5, 12], 3], // the default look (#1424): no look in the address; at night, where its sky is near black (#1747 gave its day the blue sky)
   ['terrace', '&look=terrace', [172, 190, 205], 0], // the way back, by address
 ] as const)
 test(`the widest zoom on a 32:9 screen shows no black background at its edges in the ${look} look, #976`, async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 270 }); // 32:9 at a quarter of the pixels: the ratio sets the reach, the software tier draws it faster
   await page.goto(`./?bot=off&openworld=7${query}`);
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
+  if (look === 'neon') await page.evaluate(() => (window as unknown as { __openworldTime: (ms: number) => void }).__openworldTime(9 * 60_000)); // night (#1747)
   const box = (await page.locator('canvas:not(#openworld-minimap)').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.wheel(0, 5000); // as far out as the screen allows

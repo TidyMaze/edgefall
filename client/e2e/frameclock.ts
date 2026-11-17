@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { pauseClock } from './clock';
 
 // The animation clock in the test's hand (#1643). A glide lasts a set time from its keydown, and each frame draws it at the frame's own
 // time: on a loaded machine a software-GL frame takes 0.5 to 1.4 s (load 25 to 45, 10 cores), so a frame could land past the whole glide
@@ -10,8 +11,7 @@ import type { Page } from '@playwright/test';
 
 /** Runs `body` with the page's clock paused; `frame(ms)` moves it on by `ms` and lets the one frame due at that time draw. */
 export async function paused(page: Page, body: (frame: (ms: number) => Promise<void>) => Promise<void>): Promise<void> {
-  // 1 s ahead of the page's time, which flows on during the call: one frame due on the way fires
-  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
+  await pauseClock(page); // 1 s ahead of the page's time, which flows on during the call: one frame due on the way fires
   const frame = async (ms: number): Promise<void> => {
     await page.clock.fastForward(ms); // a jump: a due timer or animation frame fires once, not once per 16 ms on the way
     await page.evaluate(() => undefined); // the frame's callback has run
