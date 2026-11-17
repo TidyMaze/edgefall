@@ -3,7 +3,7 @@ import { shot } from './shot';
 
 // Issue #849: a sustained slow frame rate offers the low tier, once, never taken without a press. Adaptation is skipped
 // under Playwright, so the hook __slowWindow feeds the slow windows (quality.ts SLOW_RUNS).
-test('a sustained slow rate offers the low tier; Accept switches to it and a reload does not ask again', async ({ page }) => {
+test('a sustained slow rate offers the low tier; Accept switches to it and stores it', async ({ page }) => {
   await page.goto('./?bot=off&quality=high');
   await page.locator('canvas').waitFor();
   const offer = page.locator('#low-offer');
@@ -17,10 +17,8 @@ test('a sustained slow rate offers the low tier; Accept switches to it and a rel
   await offer.getByRole('button', { name: 'Use low quality' }).click();
   await expect(offer).toBeHidden();
   await expect(page.locator('body')).toHaveAttribute('data-tier', 'low');
-
-  await page.goto('./?bot=off');
-  await page.locator('canvas').waitFor();
-  await expect(page.locator('body')).toHaveAttribute('data-tier', 'low');
+  // the stored tier read at the next page view: quality.test.ts readTier and main.boot.test.ts (#1710, no reload here)
+  expect(await page.evaluate(() => localStorage.getItem('ab-alone.tier'))).toBe('low');
 });
 
 test('on a phone the offer fits the screen and leaves the dock free', async ({ page }) => {
@@ -42,19 +40,4 @@ test('on a phone the offer fits the screen and leaves the dock free', async ({ p
   await expect(offer).toBeHidden();
 });
 
-test('Dismiss is remembered across a reload', async ({ page }) => {
-  await page.goto('./?bot=off&quality=high');
-  await page.locator('canvas').waitFor();
-  await page.evaluate(() => {
-    for (let i = 0; i < 4; i++) (window as any).__slowWindow(40);
-  });
-  await page.getByRole('button', { name: 'Dismiss' }).click();
-  await expect(page.locator('#low-offer')).toBeHidden();
-  await page.reload();
-  await page.locator('canvas').waitFor();
-  await page.evaluate(() => {
-    for (let i = 0; i < 4; i++) (window as any).__slowWindow(40);
-  });
-  await page.waitForTimeout(300);
-  await expect(page.locator('#low-offer')).toBeHidden();
-});
+// Dismiss remembered on the next page view: main.lowoffer.test.ts (`does not show again on the next page view once answered`, #1710).
