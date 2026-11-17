@@ -52,3 +52,24 @@ export function shareShapes(root: THREE.Object3D): void {
     (material as THREE.MeshBasicMaterial).vertexColors = true;
   });
 }
+
+/** What the Open world's lit materials share on a software renderer (#1710): `look` is the colour and glow the material had. */
+export interface SolidLook {
+  color?: number;
+  emissive?: number;
+  emissiveIntensity?: number;
+}
+
+/**
+ * The Open world's lit material of the lighter look: Lambert, flat shaded, with vertex colours on, whatever the GPU look is (a PBR
+ * material with an edge band, a striation, a rim or a node of glow). Every one of them is the same program, the colour, the glow and
+ * the intensity being uniforms; `shareShapes` gives its geometry the layout (see `shareIfSoft`).
+ */
+export function softSolid(look: SolidLook = {}): THREE.MeshLambertMaterial {
+  return new THREE.MeshLambertMaterial({ color: look.color ?? 0xffffff, emissive: look.emissive ?? 0x000000, emissiveIntensity: look.emissiveIntensity ?? 1, flatShading: true, vertexColors: true });
+}
+
+/** `shareShapes` when the lighter look is on, nothing otherwise: for the meshes the Open world makes after its first build. */
+export function shareIfSoft(root: THREE.Object3D): void {
+  if (on) shareShapes(root);
+}

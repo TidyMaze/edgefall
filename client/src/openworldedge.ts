@@ -4,6 +4,7 @@
 import * as THREE from 'three/webgpu';
 import { abs, attribute, color, float, fwidth, length, materialColor, max, mix, positionLocal, positionWorld, sin, smoothstep, step, texture, uniform, vec2, vec3 } from 'three/tsl';
 import type { Biome } from './openworld';
+import { softLook, softSolid } from './softlook';
 
 /** The radius of a ground prism (a hex of side 0.56 tiles the grid of spacing 1 with a thin gap) and its apothem. */
 export const HEX_RADIUS = 0.56;
@@ -111,6 +112,7 @@ export const NEON_GRID = { trace: 0.2, quiet: 0.2, near: 6, far: 18, farDim: 0.5
 /** A ground material: white until an instance colours it (the colour comes per cell), with the edge band of `gain` on the top face and
  * the `emissiveNode` given in place of the plain emissive colour. */
 export function edgeMaterial(look: { emissive: number; roughness: number; gain: number; emissiveNode?: THREE.Node; positionNode?: THREE.Node; widen?: THREE.UniformNode<'float', number>; neon?: NeonGrid; detail?: SurfaceUniforms }): THREE.MeshStandardNodeMaterial {
+  if (softLook()) return softSolid({ emissive: look.emissive }) as unknown as THREE.MeshStandardNodeMaterial; // no edge band, striation, foam or shimmer: one program for every ground (#1710)
   const material = new THREE.MeshStandardNodeMaterial({ color: 0xffffff, emissive: look.emissive, roughness: look.roughness });
   const distance = edgeDistanceNode();
   const band = float(1).sub(smoothstep(0, EDGE_WIDTH, distance));

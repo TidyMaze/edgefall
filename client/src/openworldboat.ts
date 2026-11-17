@@ -2,6 +2,7 @@
 // of 18 triangles, one geometry and one material shared by every boat (one instanced mesh of the view). It bobs gently, held still under
 // reduced motion, and turns to the way its marble sails. The shape, the bob and the turn are pure, so the unit tests read them.
 import * as THREE from 'three/webgpu';
+import { softLook, softSolid } from './softlook';
 
 /** The colours of the boat: a dark wooden hull and a pale sail, read on the dark water of the neon world. */
 export const BOAT_LOOK = { hull: 0x6b4426, sail: 0xf1ead8 };
@@ -74,4 +75,4 @@ export function boatGeometry(radius: number): THREE.BufferGeometry {
 }
 
 /** The one material of every boat: its colours are the vertices', flat shaded as the props are. */
-export const boatMaterial = (): THREE.MeshStandardMaterial => new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.7 });
+export const boatMaterial = (): THREE.MeshStandardMaterial => softLook() ? (softSolid() as unknown as THREE.MeshStandardMaterial) : new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.7 });

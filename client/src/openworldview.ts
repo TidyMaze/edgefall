@@ -23,6 +23,7 @@ import { ICON } from './openworldlairicon';
 import { BEACH, glowTint, shadeTop, shapeLand, shapingAt, terrace, type Landmarks, type Shaping } from './landshape';
 import { NEON, NEON_WHITE_GLOW, NEON_WORLD_LOOKS, lightWorldDay, neonHeroRim, neonMarbleRim, neonStars, neonWorldOn } from './neonlook';
 import { WORLD, WORLD_EDGE_GAIN, WORLD_SHADOW, neonProp, neonTraces } from './neonworld';
+import { shareIfSoft, softLook, softSolid } from './softlook';
 import { GLOW_SHARE, type MarbleSkins, stripedMaterial, stripeFadeNode, stripeStrength, wearSkin } from './openworldstripe';
 import { wrapPi } from './openworldtwist';
 import { fogScale, seenThrough } from './biomerules';
@@ -508,6 +509,7 @@ function landmarkGeometry(parts: readonly LandmarkPart[]): THREE.BufferGeometry 
 /** The material of a `landmarkGeometry`: its parts' colours, roughness and glow from their vertices, flat shaded; the glowing parts emit
  * their colour times `emissiveIntensity`, which the time of day sets as on a material of one colour. */
 function landmarkMaterial(emissiveIntensity: number): THREE.MeshStandardNodeMaterial {
+  if (softLook()) return softSolid({ emissive: 0x333333, emissiveIntensity }) as unknown as THREE.MeshStandardNodeMaterial; // the parts' colours say the glow (#1710)
   const material = new THREE.MeshStandardNodeMaterial({ vertexColors: true, flatShading: true, emissive: 0xffffff, emissiveIntensity });
   material.roughnessNode = attribute('roughness', 'float');
   material.emissiveNode = attribute('glow', 'vec3').mul(materialEmissive);
@@ -653,6 +655,7 @@ export const BOULDER_RIM = 1.6;
 const propMaterial = (prop: Prop, sway: THREE.Node): THREE.Material => {
   const { color, emissive, flat } = PROPS[prop];
   const look = { color, emissive, roughness: prop === 'boulder' ? 1 : 0.8, flatShading: flat, vertexColors: prop === 'boulder' };
+  if (softLook()) return softSolid({ color, emissive }) as unknown as THREE.Material; // Lambert, no sway, no rim (#1710)
   if (prop === 'boulder' && PROPS.boulder.rim !== 0) {
     const shell = new THREE.MeshStandardNodeMaterial(look); // the shell's edge in the look's rim colour, a fresnel (#1557 art round 1)
     shell.emissiveNode = tslColor(PROPS.boulder.rim).mul(pow(float(1).sub(abs(dot(normalView, positionViewDirection))), 2).mul(BOULDER_RIM));
@@ -975,7 +978,7 @@ export class OpenWorldView {
     this.ejected.castShadow = true;
     this.ejected.visible = false;
     this.scene.add(this.ejected);
-    const glow = (colour = TELEPORTER_LOOK.colour): THREE.Material => new THREE.MeshStandardMaterial({ color: colour, emissive: colour, emissiveIntensity: TELEPORTER_LOOK.emissive, roughness: 0.4, flatShading: true });
+    const glow = (colour = TELEPORTER_LOOK.colour): THREE.Material => softLook() ? softSolid({ color: colour, emissive: colour, emissiveIntensity: TELEPORTER_LOOK.emissive }) : new THREE.MeshStandardMaterial({ color: colour, emissive: colour, emissiveIntensity: TELEPORTER_LOOK.emissive, roughness: 0.4, flatShading: true });
     const pad = new THREE.CylinderGeometry(0.5, 0.56, 0.08, 6).translate(0, 0.04, 0);
     // A landmark whose parts glow in one colour is one geometry, drawn in one call (#1647): a teleporter's pad and ring, a town's pad and
     // spire (both ICON.town), a gate's pad and arch (both ICON.dungeon).
@@ -985,7 +988,7 @@ export class OpenWorldView {
     this.townPads = this.instances('town-pad', PLACE_CAPACITY, mergedParts([['pad', pad], ['spire', spire]]), glow(new THREE.Color(PLACE_LOOK.spire.colour).getHex()));
     const arch = new THREE.TorusGeometry(PLACE_LOOK.arch.radius, PLACE_LOOK.arch.tube, 6, 16, Math.PI).translate(0, PLACE_LOOK.arch.tube + 0.08, 0);
     this.gatePads = this.instances('gate-pad', PLACE_CAPACITY, mergedParts([['pad', pad], ['arch', arch]]), glow(new THREE.Color(PLACE_LOOK.arch.colour).getHex()));
-    this.gateMouths = this.instances('gate-mouth', PLACE_CAPACITY, mouthGeometry(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }));
+    this.gateMouths = this.instances('gate-mouth', PLACE_CAPACITY, mouthGeometry(), softLook() ? softSolid() : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }));
     this.gateMouths.castShadow = false; // flat on the pad
     // A hut and its lit windows, a cairn's stones and its glowing cap: one geometry each, the colours on the vertices (#1647)
     const hut = landmarkGeometry([
@@ -997,8 +1000,8 @@ export class OpenWorldView {
       const height = found ? LOG_LOOK.height.found : LOG_LOOK.height.open;
       return new THREE.CylinderGeometry(0.07, 0.1, height, 5).translate(0, height / 2, 0);
     };
-    this.stakes = this.instances('log-stake', LOG_CAPACITY, stake(false), new THREE.MeshStandardMaterial({ color: LOG_LOOK.open, emissive: LOG_LOOK.open, emissiveIntensity: LOG_LOOK.emissive, roughness: 0.5, flatShading: true }));
-    this.stakesFound = this.instances('log-stake-found', LOG_CAPACITY, stake(true), new THREE.MeshStandardMaterial({ color: LOG_LOOK.found, roughness: 0.9, flatShading: true }));
+    this.stakes = this.instances('log-stake', LOG_CAPACITY, stake(false), softLook() ? softSolid({ color: LOG_LOOK.open, emissive: LOG_LOOK.open, emissiveIntensity: LOG_LOOK.emissive }) : new THREE.MeshStandardMaterial({ color: LOG_LOOK.open, emissive: LOG_LOOK.open, emissiveIntensity: LOG_LOOK.emissive, roughness: 0.5, flatShading: true }));
+    this.stakesFound = this.instances('log-stake-found', LOG_CAPACITY, stake(true), softLook() ? softSolid({ color: LOG_LOOK.found }) : new THREE.MeshStandardMaterial({ color: LOG_LOOK.found, roughness: 0.9, flatShading: true }));
     const capAt = CAIRN_LOOK.step * CAIRN_LOOK.stones.length;
     const cap = new THREE.ConeGeometry(CAIRN_LOOK.stones[2]! * 1.05, 0.42, 6).translate(0, capAt + 0.21, 0);
     const cairn = landmarkGeometry([
@@ -1022,6 +1025,7 @@ export class OpenWorldView {
     mesh.name = name;
     mesh.receiveShadow = name !== 'particles'; // the sun's shadow falls on the ground, the props and the marbles (#1364)
     mesh.castShadow = !name.startsWith('terrain') && name !== 'particles'; // the props and the marbles cast it, the ground does not
+    shareIfSoft(mesh);
     this.scene.add(mesh);
     return mesh;
   }
@@ -1844,6 +1848,7 @@ export class OpenWorldView {
     grown.name = mesh.name;
     grown.castShadow = mesh.castShadow;
     grown.receiveShadow = mesh.receiveShadow;
+    shareIfSoft(grown);
     grown.count = 0;
     grown.frustumCulled = false;
     grown.instanceColor = whiteColours(capacity); // the build writes every colour it places (#984)
@@ -1996,10 +2001,10 @@ export class OpenWorldView {
       const model = this.lairModels && (isBeaten ? this.lairModels.beaten : this.lairModels.open);
       if (model) {
         // The Blender landmark (#1171): painted by its vertex colours, gold gem while open, a green stump once beaten.
-        group.add(new THREE.Mesh(model.clone(), Object.assign(new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.6, flatShading: true }), { emissiveNode: vertexColor().mul(this.shine).mul(LAIR_GLOW) }))); // it shines of its own at night (#1496)
+        group.add(new THREE.Mesh(model.clone(), softLook() ? softSolid({ emissive: 0x333333 }) : Object.assign(new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.6, flatShading: true }), { emissiveNode: vertexColor().mul(this.shine).mul(LAIR_GLOW) }))); // it shines of its own at night (#1496)
       } else {
         const colour = isBeaten ? LAIR_LOOK.beaten : LAIR_LOOK.open;
-        const material = new THREE.MeshStandardMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.6, roughness: 0.5 });
+        const material = softLook() ? softSolid({ color: colour, emissive: colour, emissiveIntensity: 0.6 }) : new THREE.MeshStandardMaterial({ color: colour, emissive: colour, emissiveIntensity: 0.6, roughness: 0.5 });
         const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, LAIR_LOOK.height, 6), material);
         pillar.position.y = LAIR_LOOK.height / 2;
         const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.15, 6), material);
@@ -2007,7 +2012,7 @@ export class OpenWorldView {
         group.add(pillar, plinth);
       }
       if (!isBeaten) {
-        const crown = new THREE.Mesh(crownGeometry(), new THREE.MeshStandardMaterial({ color: LAIR_LOOK.open, emissive: LAIR_LOOK.open, emissiveIntensity: TOWER_CROWN.glow, roughness: 0.5, flatShading: true }));
+        const crown = new THREE.Mesh(crownGeometry(), softLook() ? softSolid({ color: LAIR_LOOK.open, emissive: LAIR_LOOK.open, emissiveIntensity: TOWER_CROWN.glow }) : new THREE.MeshStandardMaterial({ color: LAIR_LOOK.open, emissive: LAIR_LOOK.open, emissiveIntensity: TOWER_CROWN.glow, roughness: 0.5, flatShading: true }));
         crown.name = 'lair-crown'; // the crenellated top of the map icon (#1518)
         group.add(crown);
       }
@@ -2015,6 +2020,7 @@ export class OpenWorldView {
       const tile = this.world.tile(q, r)!;
       group.position.set(p.x, topOf(GROUND[tile.terrain], tile.height, q, r), p.z);
       group.traverse((o) => void ((o as THREE.Mesh).isMesh && (o.castShadow = o.receiveShadow = true))); // the tower shades its cell (#1364)
+      shareIfSoft(group);
       this.scene.add(group);
     });
   }
