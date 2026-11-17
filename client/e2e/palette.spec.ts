@@ -3,7 +3,8 @@ import { mkdirSync } from 'node:fs';
 import { shot } from './shot';
 
 test.describe('Colorblind and high-contrast palettes (#381)', () => {
-  test('the palette setting steps through the 5 palettes, updates accent and survives reload', async ({ page }) => {
+  // The full cycle of the five palettes and the wrap to Default is main.palette.test.ts (#1710): here one step and the reload, in a browser.
+  test('the palette setting steps to the next palette, wears it and survives reload', async ({ page }) => {
     await page.goto('./?bot=off&net=hook');
     await page.locator('canvas').waitFor();
     const cog = page.locator('#settings');
@@ -21,36 +22,16 @@ test.describe('Colorblind and high-contrast palettes (#381)', () => {
     expect(await page.evaluate(() => document.documentElement.dataset.palette)).toBe('protan');
     expect(await page.evaluate(() => (window as any).__palette())).toBe('protan');
 
-    // Protan -> Deutan
-    await paletteBtn.click();
-    await expect(paletteBtn).toContainText('Palette: Deutan');
-    expect(await page.evaluate(() => localStorage.getItem('ab-alone.palette'))).toBe('deutan');
-
-    // Deutan -> Tritan
-    await paletteBtn.click();
-    await expect(paletteBtn).toContainText('Palette: Tritan');
-    expect(await page.evaluate(() => localStorage.getItem('ab-alone.palette'))).toBe('tritan');
-
-    // Tritan -> High contrast
-    await paletteBtn.click();
-    await expect(paletteBtn).toContainText('Palette: High contrast');
-    expect(await page.evaluate(() => localStorage.getItem('ab-alone.palette'))).toBe('contrast');
-
     // Reload and check persistence
     await page.reload();
     await page.locator('canvas').waitFor();
     await expect(page.locator('#hud')).not.toBeEmpty();
-    expect(await page.evaluate(() => localStorage.getItem('ab-alone.palette'))).toBe('contrast');
-    expect(await page.evaluate(() => document.documentElement.dataset.palette)).toBe('contrast');
-    expect(await page.evaluate(() => (window as any).__palette())).toBe('contrast');
+    expect(await page.evaluate(() => localStorage.getItem('ab-alone.palette'))).toBe('protan');
+    expect(await page.evaluate(() => document.documentElement.dataset.palette)).toBe('protan');
+    expect(await page.evaluate(() => (window as any).__palette())).toBe('protan');
 
     await cog.click();
-    await expect(paletteBtn).toContainText('Palette: High contrast');
-
-    // High contrast -> Default
-    await paletteBtn.click();
-    await expect(paletteBtn).toContainText('Palette: Default');
-    expect(await page.evaluate(() => localStorage.getItem('ab-alone.palette'))).toBe('default');
+    await expect(paletteBtn).toContainText('Palette: Protan');
   });
 
   test('captures screenshots for each palette', async ({ page }) => {

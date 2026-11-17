@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import { test } from './shared-world';
 import { lowTierOnCi } from './modes';
 import { shot } from './shot';
 
@@ -14,15 +15,15 @@ const hooks = (page: Page) => ({
 });
 const data = (page: Page, key: string) => page.evaluate((k) => document.body.dataset[k], key);
 
+// The world of seed 3 on the worker's shared page (shared-world.ts), booted once and fresh for each test: no page load in the test (#1710).
+test.use({ worldUrl: './?bot=off&openworld=3' });
+
 async function opened(page: Page): Promise<[number, number]> {
-  await page.goto('./?openworld=3&nodes=200');
-  await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
-  await expect.poll(() => data(page, 'openworldAt')).toBe('0,0');
   const [marble] = await hooks(page).enemies();
   return marble!;
 }
 
-test('a marble beside the hero starts the wipe, then the arena with Flee; Flee puts the hero back and the marble waits 5 s, #1511', async ({ page }) => {
+test('a marble beside the hero starts the wipe, then the arena with Flee; Flee puts the hero back and the marble waits 5 s, #1511', async ({ world: page }) => {
   const [q, r] = await opened(page);
   await hooks(page).put([q + 1, r]);
   await page.locator('#openworld-ask-fight').click(); // the wild marble asks first (#1662)

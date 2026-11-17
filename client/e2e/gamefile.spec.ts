@@ -126,11 +126,11 @@ test('a game exported to a file comes back on a new game, replayed and saved', a
   expect(file.name).toBe('edgefall-2026-10-24.json');
   expect(file.content).toEqual(save(false, [A, B]));
 
-  // A new game: the save cleared and the page reloaded.
+  // A new game: the save cleared and a new game started in the page, as the menu starts one (no page load: #1710).
   await clearSave(page);
-  await page.reload();
-  await ready(page);
-  expect(await plies(page)).toBe(0);
+  await page.evaluate(() => (window as any).__enterMode('arena'));
+  await expect.poll(() => plies(page)).toBe(0);
+  await expect(hud).toContainText('Black to move');
 
   await importGame(page, file.path);
   await expect.poll(() => plies(page)).toBe(2);
