@@ -8087,7 +8087,7 @@ else analyse(); // the start position
 const baseScreen: Screen = screenNow();
 exitReady = true;
 syncExit();
-new MutationObserver(syncExit).observe(document.body, { attributes: true }); // the Open world entered or left sets or clears body[data-openworld] (#1517)
+new MutationObserver(() => (syncExit(), watchBack())).observe(document.body, { attributes: true }); // the Open world entered or left sets or clears body[data-openworld] (#1517); a mode's entry is pushed as its screen is set, not a frame later (#1754)
 const screenExit = new ScreenExit(reducedMotion);
 let holdsEntry = (window.history.state as { ab?: number } | null)?.ab === 1; // a reload keeps the entry it was made on
 function screenNow(): Screen {

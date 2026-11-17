@@ -55,6 +55,14 @@ const MODES: [string, (game: Game) => Promise<void>, () => boolean][] = [
 vi.setConfig({ testTimeout: 8000 });
 
 describe('main.ts, browser Back (#1564)', () => {
+  it('a mode holds its entry as soon as its screen is set, before any frame (#1754)', async () => {
+    const game = await boot('?bot=off');
+    expect(marked()).toBe(false);
+    byId('trainer').click();
+    await game.settle(); // the screen is set; no frame drawn yet
+    expect(marked()).toBe(true);
+  });
+
   it.each(MODES)('%s holds one history entry and Back goes to the Hub', async (_name, enter, on) => {
     const game = await boot('?bot=off&openworld=7');
     expect(marked()).toBe(false);
