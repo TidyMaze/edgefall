@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { lowTierOnCi } from './modes';
+import { test as shared } from './shared-world';
 
 lowTierOnCi();
 
@@ -55,10 +56,12 @@ const upgrade = (page: Page) =>
 const bits = (text: string) => [...atob(text)].reduce((n, c) => n + c.charCodeAt(0).toString(2).replace(/0/g, '').length, 0);
 
 /** A world with progress, in a wild fight: the hero stands beside a marble, the record holds a long walk's cells. */
-async function fighting(page: Page): Promise<{ at: string; cells: number }> {
-  await page.goto('./?openworld=3&nodes=200');
-  await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
-  await expect.poll(() => data(page, 'openworldAt')).toBe('0,0');
+async function fighting(page: Page, booted = false): Promise<{ at: string; cells: number }> {
+  if (!booted) {
+    await page.goto('./?openworld=3&nodes=200');
+    await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
+    await expect.poll(() => data(page, 'openworldAt')).toBe('0,0');
+  }
   const [[q, r]] = await page.evaluate(() => (window as unknown as Hooks).__openworldEnemies());
   const at: [number, number] = [q! + 1, r!];
   await page.evaluate((h) => (window as unknown as Hooks).__openworldFixture({ hero: h, troop: [] }), at);
@@ -79,11 +82,16 @@ async function fled(page: Page, world: { at: string; cells: number }): Promise<v
   expect(await data(page, 'openworldBroken')).toBe('2');
 }
 
-test('a world whose saved time is unreadable keeps its hero cell, discovered cells and broken cells through Flee, #1661', async ({ page }) => {
-  const world = await fighting(page);
-  await patch(page, { time: 1e12 });
-  await fled(page, world);
-  expect(await read(page)).toBeDefined();
+// On the worker's shared page of seed 3 (shared-world.ts), fresh for the test: no page load (#1710). The next test upgrades the database,
+// so it keeps a page of its own.
+shared.describe('the shared world of seed 3', () => {
+  shared.use({ worldUrl: './?bot=off&openworld=3' });
+  shared('a world whose saved time is unreadable keeps its hero cell, discovered cells and broken cells through Flee, #1661', async ({ world: page }) => {
+    const world = await fighting(page, true);
+    await patch(page, { time: 1e12 });
+    await fled(page, world);
+    expect(await read(page)).toBeDefined();
+  });
 });
 
 test('a database connection a newer page closed does not reset the world on Flee, #1661', async ({ page }) => {
