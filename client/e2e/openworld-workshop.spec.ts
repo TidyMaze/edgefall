@@ -74,15 +74,12 @@ for (const { name, viewport, touch } of sizes) {
 }
 
 for (const { name, viewport, touch } of sizes.slice(0, 2)) {
-  test.describe(`${name}, wild fight`, () => {
-    test.use({ viewport, isMobile: touch, hasTouch: touch });
+  shared.describe(`${name}, wild fight`, () => {
+    shared.use({ viewport, isMobile: touch, hasTouch: touch, worldUrl: './?bot=off&openworld=3' }); // the shared seed-3 page, fresh per test (#1710)
 
     // Seed 3 has a marble within the hero's sight of the spawn (openworld-wild.spec.ts). The army brings a Heavy and a Bomb: both stand on its side.
-    test('a wild fight places the special marbles the army brings, and Flee gives the world back', async ({ page }) => {
-      await page.goto('./?bot=off&openworld=3');
-      await page.locator('canvas[aria-label="Edgefall board"]').waitFor();
+    shared('a wild fight places the special marbles the army brings, and Flee gives the world back', async ({ world: page }) => {
       const body = page.locator('body');
-      await expect(body).toHaveAttribute('data-openworld-at', '0,0');
       const [q, r] = (await page.evaluate(() => (window as unknown as Hooks).__openworldEnemies()))[0]!;
       await fixture(page, { hero: [q + 1, r], troop: [], army: army([1, 9], [1, 9]) });
       await page.locator('#openworld-ask-fight').click(); // the wild marble asks first (#1662)
