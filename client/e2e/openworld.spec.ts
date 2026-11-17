@@ -409,11 +409,18 @@ shared('a glide of the hero turns its stripe: two frames in between differ on th
   const [first, second] = await (async () => {
     const shots: Buffer[] = [];
     await paused(page, async (frame) => {
+      // a frame drawn after the clock moved `ms`: on a slow runner the frame's draw can come a frame later, and a shot of the frame before showed
+      // the same picture twice (#1710); frames of 16 ms more until a new draw has landed, 10 at most
+      const drawnAfter = async (ms: number): Promise<void> => {
+        const asked = await page.evaluate(() => (window as unknown as { __drawNext: () => number }).__drawNext());
+        await frame(ms);
+        for (let i = 0; i < 10 && !(await page.evaluate((n) => (window as unknown as { __draws: () => number }).__draws() > n, asked)); i++) await frame(16);
+      };
       await page.keyboard.press('ArrowRight');
-      await frame(100);
+      await drawnAfter(100);
       expect(await page.evaluate(() => document.body.dataset.openworldGlide)).toBeDefined();
       shots.push(await page.screenshot({ path: test.info().outputPath('stripe-mid-glide-1.png') }));
-      await frame(500);
+      await drawnAfter(500);
       shots.push(await page.screenshot({ path: test.info().outputPath('stripe-mid-glide-2.png') }));
     });
     return shots as [Buffer, Buffer];

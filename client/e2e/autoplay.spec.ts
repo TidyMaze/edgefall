@@ -11,7 +11,7 @@ const toggle = (page: Page) => page.getByRole('button', { name: 'Auto-play' });
 test('the bot plays the player side of a bot game until Auto-play is turned off', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' }); // no slides: the bot's moves land at once (5.4 s with them, #1710)
   await page.clock.install(); // the time flows as usual; the waits between two Auto-play moves are jumped, not slept (#1710)
-  await page.goto('./?nodes=50');
+  await page.goto('./?nodes=10'); // the smallest search that still moves: what is checked is who plays, not how well (#1710)
   await expect(toggle(page)).toBeEnabled();
   await toggle(page).click();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
