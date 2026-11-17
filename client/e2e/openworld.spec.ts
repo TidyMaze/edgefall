@@ -178,7 +178,10 @@ test(`the widest zoom on a 32:9 screen shows no black background at its edges in
   await page.setViewportSize({ width: 960, height: 270 }); // 32:9 at a quarter of the pixels: the ratio sets the reach, the software tier draws it faster
   await page.goto(`./?bot=off&openworld=7${query}`);
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
-  if (look === 'neon') await page.evaluate(() => (window as unknown as { __openworldTime: (ms: number) => void }).__openworldTime(9 * 60_000)); // night (#1747)
+  if (look === 'neon') {
+    await expect.poll(() => page.evaluate(() => document.body.dataset.openworldAt)).toBe('0,0'); // the world is in: its clock can be set
+    await page.evaluate(() => (window as unknown as { __openworldTime: (ms: number) => void }).__openworldTime(9 * 60_000)); // night (#1747)
+  }
   const box = (await page.locator('canvas:not(#openworld-minimap)').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.wheel(0, 5000); // as far out as the screen allows
