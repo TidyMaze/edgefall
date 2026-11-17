@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import { shot } from './shot';
-import { openMore } from './runstart';
 
 // The rogue-lite Collector (#1470, docs/specs/roguelite.md section 15), loaded through the test hook: the blueprint an elite
 // or an act boss dropped named on its reward screen, the Collector's room after the act 1 boss, a blueprint banked for good
@@ -34,11 +33,5 @@ test('the Collector: a drop on the reward screen, the room after the act boss, a
   await expect(page.locator('body')).toHaveAttribute('data-run', 'map');
   await expect(line).toHaveText('Rogue-lite run · army 12 marbles · 7 cells · 1 blueprint · pick a fight');
 
-  // A new run reads what was banked: the act 1 boss beaten unlocked the Anchor and the Shield (14 to bank less 2), the Lucky coin is one less.
-  await page.reload();
-  await page.waitForFunction(() => typeof (window as any).__run === 'function');
-  await expect(page.locator('#roguelite')).toBeEnabled(); // a disabled button ignores click(): wait for the game to enable it
-  await page.evaluate(() => (document.getElementById('roguelite') as HTMLButtonElement).click());
-  await openMore(page);
-  await expect(panel).toContainText('Blueprints to bank: 11');
+  // A new run reads what was banked (one less to bank): main.roguelite.test.ts `a new run starts with the blueprints banked before it` (#1710, no reload here).
 });
