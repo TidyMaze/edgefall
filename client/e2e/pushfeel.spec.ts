@@ -42,7 +42,13 @@ test('a push that ejects kicks the camera, and the picture is at rest again once
     }
     expect(kicked, 'the camera kicked within 1 s of the push').toBe(true);
     await frame(300); // past the kick's 250 ms
-    await frame(16);
+    // the mark leaves on a drawn frame, and under automation the page draws at most every 100 ms (drawDue): frames of 150 ms until it has
+    let rested = false;
+    for (let i = 0; i < 10 && !rested; i++) {
+      await frame(150);
+      rested = (await page.evaluate(() => document.body.dataset.kick)) === undefined;
+    }
+    expect(rested, 'the kick is over within 1.5 s of page clock after its 250 ms').toBe(true);
   });
   await expect(page.locator('#hud')).toContainText('White to move');
   await expect(page.locator('body')).toHaveAttribute('data-ejections', '1');
