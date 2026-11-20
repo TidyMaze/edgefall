@@ -176,7 +176,8 @@ for (const [look, query, [br, bg, bb], allowed] of [
 ] as const)
 test(`the widest zoom on a 32:9 screen shows no black background at its edges in the ${look} look, #976`, async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 270 }); // 32:9 at a quarter of the pixels: the ratio sets the reach, the software tier draws it faster
-  await page.goto(`./?bot=off&openworld=7${query}`);
+  // seed 1: seed 7's spawn view has a forest at its right edge whose night ground is the neon sky's near-black (#1758)
+  await page.goto(`./?bot=off&openworld=1${query}`);
   await page.locator('canvas:not(#openworld-minimap)').waitFor();
   if (look === 'neon') {
     await expect.poll(() => page.evaluate(() => document.body.dataset.openworldAt)).toBe('0,0'); // the world is in: its clock can be set
