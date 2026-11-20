@@ -896,7 +896,7 @@ describe('the teleporters of the Open world (#1412)', () => {
     await boot('?bot=off&openworld=7');
     const all = (window as unknown as { __openworldTeleporters: (seed: number) => number[] }).__openworldTeleporters(7);
     expect(all.slice(0, 2)).toEqual([2, -1]);
-    expect(all.length).toBe(2 * 34); // one a square of 8 x 8 chunks (#1444) that has an island in the archipelago (#1442)
+    expect(all.length).toBe(2 * 36); // one a square of 8 x 8 chunks (#1444) that has an island in the archipelago (#1442)
   });
 
   it('gives the e2e tests every town and dungeon gate of a world, the spawn town first, and the mode publishes them (#1514)', async () => {

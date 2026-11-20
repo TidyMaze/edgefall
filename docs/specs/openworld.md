@@ -54,9 +54,10 @@ A-light Explore (#720 to #725), which it does not touch.
   heights 0 and 1), sand (the shore, height 2), grass, rock, **mountains** (peaks, height 7). Forests
   (**trees**) and ruined **walls** (segments of 3 to 6 cells along one of
   three axes, one per 24-cell square at most, laid on land) come on top.
-- **Biomes** (#984, #1442): six, one per sextant of the hexagon seen from the spawn, with ragged borders that blend over a few
-  cells: meadow east (the start, the spawn's surroundings are meadow), forest north-east, tundra (snow) north-west, desert west,
-  badlands south-west and the archipelago south-east, mostly water with islands of sand and grass, crossed by boat. Each sets the
+- **Biomes** (#984, #1442, #1755): six, from a climate map over the whole world (temperature, wetness and sea fields of 384 cells and
+  less, no centre: patches of thousands of cells all over the map), with organic borders that blend over a few cells: meadow
+  (the start sits in one), forest (temperate and wet), tundra (cold, snow), desert (hot and dry), badlands (hot) and the archipelago
+  (where the sea field is high; a temperate band always lies between the tundra and the desert), mostly water with islands of sand and grass, crossed by boat. Each sets the
   colour of the low ground, in the 3D view and on the map, and the density of its trees and boulders (see
   [openworld-terrain.md](openworld-terrain.md) section 4).
 - **Obstacles**: blocked cells the hero, the troop and the enemies cannot enter: mountains,
@@ -371,14 +372,16 @@ The Open world has a goal: one landmark lair per boss of the roster (15 today, t
 
 - **Placement** is seeded world generation in Rust (`world::lairs(seed, count)` finds the cells; the bridge's `world_lairs(seed)` gives the cells of
   `world::towers(seed)`, `q, r` pairs, lair 0 first). Since #1532 the cell a boss stands on is its tier's, section 15: lair `k` is still boss `k`, and the
-  cells are the same set. The rest of this paragraph is how `lairs` draws a cell, whose number is the draw's, not the boss's. Cell `k` is drawn in the sextant `k % 6` of the hexagon (#1442, the biome of section 2), in the `k / 6`-th of its share of
-  that sextant's lairs (the middle 60 % of it), 160 to 420 ground units out, and kept when its cell and its six neighbours are open
-  ground of that sextant's biome on the world and it is at least 150 cells from the spawn (`LAIR_MIN`): so every biome holds two
+  cells are the same set. The rest of this paragraph is how `lairs` draws a cell, whose number is the draw's, not the boss's. Cell `k` is drawn in the biome `k % 6` (#1755; the codes of section 2: meadow, forest, tundra, desert, badlands, archipelago), at any angle, in the `k / 6`-th of its share of
+  the range of distance (the middle 60 % of it), 160 to 420 ground units out, and kept when its cell and its six neighbours are open
+  ground of that biome on the world and it is at least 150 cells from the spawn (`LAIR_MIN`): so every biome holds two
   lairs or more (three in the meadow, the forest and the tundra for the 15 bosses), on land, an island in the archipelago. Before
   #1442 lair `k` was drawn in the `k`-th `count`-th of the circle. The hexagon's corners are 448 ground units out and the middles
-  of its sides about 388, so a draw past the edge is drawn again. After 8000 tries in its share of the sextant a lair is drawn in the whole sextant, and the search
+  of its sides about 388, so a draw past the edge is drawn again. Two lairs stand at least 24 cells apart (`LAIR_SPACE`). A try first reads the smooth climate of the cell (`climate_biome`), so the many
+  tries a thin biome needs cost little. After 8000 tries in its share of the range a lair is drawn in the whole range, and the search
   ends after 40 000 (#1594: seed 711's third lair of the tundra had no open ground in its share and the world never opened); a lair found in its share
-  does not move. It reads the terrain, never changes it.
+  does not move. It reads the terrain, never changes it. The biome banner (#1742) counts the towers and logs of a biome by the biome of
+  their cell's tile, not by their number: boss `k` stands on the cell its tier gives it, so its biome is not `k % 6`.
 - **Look.** A low-poly landmark made in Blender (`client/models/openworld-lair.glb`, vertex colours, under 72 triangles each) on
   the lair's cell, tall enough to read from the widest zoom: a dark spire on a hex plinth with a gold band and a floating gold gem
   while the lair is unbeaten, a shorter stump with a green band and no gem once beaten (the shape changes, not only the colour).
@@ -532,13 +535,12 @@ same at any hour), the 2D Hub is unaffected. `?look=terrace` stays only as the o
 The Open world holds twelve logs of the story (`docs/specs/world.md` section 12), optional, never on the way to the ending.
 
 - **Placement** is seeded world generation in Rust (`world::logs(seed, avoid)`, bridge `world_logs(seed)`, `q, r` pairs, log 0 first, 12 in all,
-  `LOGS`). Log `k` is drawn in the sextant `k % 6` (the biome of section 2: meadow, forest, tundra, desert, badlands, archipelago), in ring `k / 6`:
-  the near ring 30 to 140 ground units from the spawn, the far ring 160 to 420 (the lairs' 160 to 420). So each biome holds two, one near the spawn and one
-  far, and the same seed gives the same cells on every peer. A draw is kept when its cell and its six neighbours are open ground of the sextant's biome
+  `LOGS`). Log `k` is drawn in the biome `k % 6` (section 2: meadow, forest, tundra, desert, badlands, archipelago; #1755: at any angle), in ring `k / 6`:
+  the near ring 30 to 140 ground units from the spawn, the far ring 160 to 420 (the lairs' 160 to 420). So each biome holds two, one in the near ring and one
+  in the far, and since a biome is a patch the near ring may hold none of it: the outer end of the ring then grows by 1 ground unit every 2 tries, up to 420, and the same seed gives the same cells on every peer. A draw is kept when its cell and its six neighbours are open ground of that biome
   (never water, a peak, a tree, a boulder or a wall), it is more than `SAFE` (8) cells from the spawn, it lies 2 cells or more inside its chunk with no
   generated enemy within 2 cells, and no lair or teleporter is within 3 cells (the bridge passes both as `avoid`). It reads the terrain and the enemies,
-  never changes them, so `WORLD_VERSION` does not move and the saves keep loading. After 30 000 tries in its own ring and wedge a log is
-  drawn anywhere in its whole sextant, 30 to 420 ground units out, and the search ends after 60 000 tries (#1595: seeds such as 2381, 3074, 3486,
+  never changes them, so `WORLD_VERSION` does not move and the saves keep loading. The search ends after 60 000 tries (#1595: seeds such as 2381, 3074, 3486,
   7825 and 205585469 had no fit for one log in its ring, 38 in 40 000 seeds sampled, and the world never opened); a log found in its ring does
   not move. A log with no fit at all is left out: the bridge's `world_logs` still gives 12 pairs, so every log keeps its number, and a log left
   out is the pair `i32::MIN, i32::MIN`, a cell no hero reaches that no chunk holds (no stake, no icon, never found). None was left out in the
@@ -556,7 +558,7 @@ The Open world holds twelve logs of the story (`docs/specs/world.md` section 12)
   spaces), `data-openworld-logs-found` the numbers found and `data-openworld-log` the id of the log the panel shows.
 - **MCP.** The server does not expose the logs: its `save_world` carries the numbers found as the client wrote them (`mcp.md`).
 - **Tests.** Rust: 12 cells per seed from the seed alone, each on open ground of its biome with its neighbours, off the spawn, the lairs, the teleporters and the
-  enemies, two per sextant. Client: the save of `logs` and its migration, the stakes and their glow, the icon, the panel, the archive. E2E
+  enemies, two per biome. Client: the save of `logs` and its migration, the stakes and their glow, the icon, the panel, the archive. E2E
   (`openworld-lore.spec.ts`): a log read by a roll, closed by the next move, found after a reload and in the archive.
 
 ## 13. The world as the map of the whole game (#1514, Decision #1513)
@@ -583,15 +585,15 @@ plan as the game.
   lair does (section 7). No place moves the hero anywhere else.
 - **Placement is seeded world generation in Rust** (`world::places(seed, avoid)`, bridge `world_places(seed)`, `kind, q, r` triples,
   `kind` 0 a town and 1 a dungeon gate). The towns come first and the spawn clearing, `(0, 0)`, is the first town. The other four towns
-  are drawn in the sextants 1 to 4 (the biomes of section 2, from the forest), 40 to 120 ground units out, inside the nearest tower's 150
+  are drawn in the biomes 1 to 4 (section 2, from the forest), 40 to 120 ground units out, inside the nearest tower's 150
   cells. The far edge of that ring grows by 1 ground unit every 2 tries, up to 420 (the towers' `LAIR_FAR`): on seeds 862, 1178, 1279, 1339,
-  1413, 1540 and 1616 a sextant holds too little open ground of its biome within 120 units (a pad of 7 cells with no tree, boulder or peak), and the town stands further out. The five dungeon gates are drawn in the sextants 1 to 5, 160 to 420 ground units out, as the towers.
-  A draw is kept when its cell and its six neighbours are open ground of the sextant's biome, it is more than `SAFE` (8) cells from the
+  1413, 1540 and 1616 a biome holds too little open ground of its biome within 120 units (a pad of 7 cells with no tree, boulder or peak), and the town stands further out. The five dungeon gates are drawn in the biomes 1 to 5, 160 to 420 ground units out, as the towers.
+  A draw is kept when its cell and its six neighbours are open ground of its biome, it is more than `SAFE` (8) cells from the
   spawn, 2 cells or more inside its chunk with no generated enemy within 2 cells, and it is more than 3 cells from every lair,
   teleporter, log and place placed before it, so no two places overlap and none sits on blocked ground (a tower is a lair: they do not
-  move). The search ends: a place has `PLACE_TRIES` (1000) tries, four times what the most demanding of the seeds 1 to 2000 needs (239),
-  and a place with no fit in them is left out, so the world holds fewer than ten (the spawn town always stays). The biome of the sextant
-  stays required: every sextant of the seeds 1 to 2000 holds open ground of its biome. The bridge passes the lairs, the teleporters and the logs, in that order, so none of them moves. It reads the terrain and the
+  move). The search ends: a place has `PLACE_TRIES` (40 000) tries, four times what the most demanding of the seeds 1 to 2000 needs (at most 10 000: a thin archipelago, #1755; a try first reads the smooth climate of the cell, so they cost little),
+  and a place with no fit in them is left out, so the world holds fewer than ten (the spawn town always stays). The biome
+  stays required: every biome of the seeds 1 to 2000 holds open ground. The bridge passes the lairs, the teleporters and the logs, in that order, so none of them moves. It reads the terrain and the
   enemies, never changes them, and needs no record in the save: the places are a function of the seed, so `WORLD_VERSION` does not move
   and the saves keep loading.
 - **Map.** A town is a cyan spire on a hexagonal plate, a dungeon gate a round sodium arch on a triangular plate, a tower the crenellated
@@ -672,7 +674,7 @@ cell, and what the map shows.
   to the bosses in `TOWER_ORDER`, the easiest first: the boss `TOWER_ORDER[i]` stands on the `i`-th nearest cell. A pure function of the seed. The
   bridge's `world_lairs` gives this list, so lair `k` of the client, the save, the map's letters and colours, `onLair`, the MCP's `lairs` and the
   fight a roll starts are all still boss `k` of the roster: nothing was renumbered. Only the cell of a boss moved (a boss's biome is no longer
-  the sextant `k % 6`; the set of cells, and so the biomes of the towers, is the same).
+  the biome `k % 6`; the set of cells, and so the biomes of the towers, is the same).
 - **Saves.** `lairs` of the save is the list of the numbers beaten, boss numbers, so every record from 1 to 6 loads and means the same bosses: a
   medal belongs to a boss. No record, no migration, `WORLD_VERSION` unchanged. A world saved before stands the hero on its saved cell, and the
   boss that stood there then may be another one now.

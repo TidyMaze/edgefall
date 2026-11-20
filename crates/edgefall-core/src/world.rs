@@ -10,7 +10,7 @@ use std::sync::{Mutex, PoisonError};
 
 /// The version of the generated world, saved with each Open world save (#968): bump it with every change of the generator, the
 /// same moment the pinned digest of the tests changes (the line of `the_generated_world_is_pinned_by_a_digest`).
-pub const WORLD_VERSION: u32 = 5;
+pub const WORLD_VERSION: u32 = 6;
 /// A chunk is `CHUNK` x `CHUNK` cells of the axial grid.
 pub const CHUNK: i32 = 16;
 /// The world is a hexagon of cells round the spawn `(0, 0)`: the cells within `WORLD_RADIUS` of it (#1440).
@@ -38,29 +38,62 @@ const MOISTURE_WEIGHTS: [f64; 3] = [0.45, 0.35, 0.20];
 /// enemy draws already use the salts 12 to 21, so these start after them.
 const HEIGHT_SALT: u64 = 30;
 const MOISTURE_SALT: u64 = 33;
-/// The border field, which makes the borders of the sextants ragged (#1442): its salts are `BORDER_SALT` to `+ 2` (the
-/// temperature's before), its weights of the macro, meso and micro levels.
-const BORDER_SALT: u64 = 37;
-const BORDER_WEIGHTS: [f64; 3] = [0.55, 0.30, 0.15];
-/// A border of two sextants turns round the spawn by `(border - 0.5) * BORDER_TURN` radians, so it is never a straight line and it
-/// wanders further the further it runs from the spawn.
-const BORDER_TURN: f64 = 1.2;
-/// Each cell moves by a draw of up to `BLEND` cells either way (salt `BLEND_SALT`) when its biome is picked, so two biomes mix over
-/// a few cells along their border; the archipelago's sea comes in over the same width, smoothly.
-const BLEND: f64 = 3.0;
+/// The climate (#1755): three fields over the whole map, the same everywhere, value noise at `CLIMATE_SCALES` (a few hundred cells)
+/// summed with `CLIMATE_WEIGHTS`: the temperature (salts `TEMP_SALT` to `+ 2`), the wetness (`WET_SALT`) and the archipelago's sea
+/// (`SEA_SALT`). The biome is read from them by `Climate::biome`.
+const CLIMATE_SCALES: [i32; 3] = [384, 144, 48];
+const CLIMATE_WEIGHTS: [f64; 3] = [0.55, 0.30, 0.15];
+const TEMP_SALT: u64 = 52;
+const WET_SALT: u64 = 55;
+const SEA_SALT: u64 = 62;
+/// The temperature below `COLD` is tundra, above `HOT` is desert or badlands; between, meadow or forest. The wetness above
+/// `FOREST_WET` makes a temperate cell forest, below `HOT_DRY` a hot cell desert. The sea field above `SEA_LEVEL` is the archipelago. Quantiles
+/// of the fields measured on seeds 0 to 30 (`the_climate_shares_are_measured`).
+const COLD: f64 = 0.353;
+const HOT: f64 = 0.57;
+const FOREST_WET: f64 = 0.53;
+const HOT_DRY: f64 = 0.49;
+const SEA_LEVEL: f64 = 0.655;
+/// The archipelago's sea deepens over `SEA_EDGE` of the sea field either side of `SEA_LEVEL`.
+const SEA_EDGE: f64 = 0.012;
+/// The climate of the map is shifted per seed by one of `CLIMATE_CANDIDATES` offsets of up to `OFFSET_SPAN` cells (salt
+/// `CLIMATE_SALT`), the first whose map starts in meadow (the spawn and a ring of `HOME_RING` round it) and shows every biome near
+/// (`CLIMATE_NEAR` rings) and far (`CLIMATE_FAR`). The map itself is drawn from the climate alone, never from the spawn: only the choice
+/// among the offsets looks at it.
+const CLIMATE_SALT: u64 = 48;
+const CLIMATE_CANDIDATES: u64 = 4096;
+const HOME_RING: i32 = 10;
+const CLIMATE_NEAR: [(f64, u32); 5] = [
+    (60.0, 12),
+    (100.0, 12),
+    (140.0, 12),
+    (180.0, 12),
+    (220.0, 12),
+];
+const CLIMATE_FAR: [(f64, u32); 6] = [
+    (170.0, 24),
+    (220.0, 24),
+    (270.0, 24),
+    (320.0, 24),
+    (370.0, 24),
+    (420.0, 24),
+];
+/// A candidate fits when its rarest biome has at least this many points on the near (of 60) and the far (of 144) rings.
+const NEAR_ENOUGH: usize = 1;
+const FAR_ENOUGH: usize = 12;
+/// Each cell's climate moves by a draw of up to `BLEND` either way (salt `BLEND_SALT`) when its biome is picked, so two biomes mix over
+/// a few cells along their border.
+const BLEND: f64 = 0.005;
 const BLEND_SALT: u64 = 45;
-/// The draw of a cell against `meadow_bias` (salt `MEADOW_SALT`): below the bias it is meadow.
-const MEADOW_SALT: u64 = 46;
-/// Some borders of the sextants are marked (#1752): past `FEATURE_FROM` cells from the spawn, the cells within `FEATURE_HALF` of the
-/// border turn to a river (water, sailed across) or a ridge (peaks, with a pass `PASS_WIDTH` cells wide every `PASS_EVERY` cells of
-/// distance from the spawn), the kind of each of the six borders drawn from the seed (salt `FEATURE_SALT`): a river, a ridge or none.
+/// Some borders between two biomes are marked (#1752): past `FEATURE_FROM` cells from the spawn, the cells next to a cell of another
+/// biome turn to a river (water, sailed across) or a ridge (peaks, with a pass `PASS_WIDTH` cells wide every `PASS_EVERY` cells of
+/// distance from the spawn), the kind drawn from the seed for each pair of biomes (salt `FEATURE_SALT`): a river, a ridge or none.
 const FEATURE_SALT: u64 = 47;
 const FEATURE_FROM: i32 = 40;
-const FEATURE_HALF: f64 = 0.9;
 const PASS_EVERY: i32 = 16;
 const PASS_WIDTH: i32 = 3;
 
-/// What marks the sextants' border `b` (between the sextant `b` and `b + 1`) of the world `seed` (#1752).
+/// What marks the border between two biomes of the world `seed` (#1752).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BorderFeature {
     River,
@@ -68,9 +101,10 @@ pub enum BorderFeature {
     Plain,
 }
 
-/// The feature of the border `b` of the world `seed`: a third each.
-pub fn border_feature(seed: u64, b: usize) -> BorderFeature {
-    let draw = unit(seed, FEATURE_SALT, b as i32, 0);
+/// The feature of the border between the biomes `a` and `b` of the world `seed`, the same either way round: a third each.
+pub fn border_feature(seed: u64, a: Biome, b: Biome) -> BorderFeature {
+    let (low, high) = (a.min(b) as i32, a.max(b) as i32);
+    let draw = unit(seed, FEATURE_SALT, low * 6 + high, 0);
     if draw < 1.0 / 3.0 {
         BorderFeature::River
     } else if draw < 2.0 / 3.0 {
@@ -80,35 +114,20 @@ pub fn border_feature(seed: u64, b: usize) -> BorderFeature {
     }
 }
 
-/// The terrain a border feature gives `(q, r)`, its point turned `turn` as the biomes' borders are: water on a river, a peak on a ridge
-/// out of its passes, `None` off a marked border, near the spawn, or in a pass.
-fn feature_at(seed: u64, q: i32, r: i32, turn: f64) -> Option<Terrain> {
-    let from = distance(q, r);
+/// The terrain the border feature between `biome` and `other` gives the cell at `from` cells of the spawn: water on a river, a peak on
+/// a ridge out of its passes, `None` on a plain border or near the spawn.
+fn feature_at(seed: u64, from: i32, biome: Biome, other: Biome) -> Option<Terrain> {
     if from < FEATURE_FROM {
         return None;
     }
-    let (x, y) = (
-        f64::from(q) + f64::from(r) / 2.0,
-        -(3f64.sqrt() / 2.0) * f64::from(r),
-    );
-    let reach = x.hypot(y);
-    let turns = (y.atan2(x) + turn) / (std::f64::consts::PI / 3.0);
-    let nearest = turns.round();
-    let frac = turns - nearest;
-    let inside = (0.5 - frac.abs()) * (std::f64::consts::PI / 3.0) * reach;
-    if inside >= FEATURE_HALF {
-        return None;
-    }
-    let b = (nearest as i64 + if frac > 0.0 { 0 } else { -1 }).rem_euclid(6) as usize;
-    match border_feature(seed, b) {
+    match border_feature(seed, biome, other) {
         BorderFeature::River => Some(Terrain::Water),
         BorderFeature::Ridge if from % PASS_EVERY >= PASS_WIDTH => Some(Terrain::Peak),
         _ => None,
     }
 }
-/// The biome of each sextant round the spawn, by the axial direction it is centred on: east, north-east, north-west, west,
-/// south-west and south-east (`openworld-terrain.md` section 4).
-pub const SEXTANTS: [Biome; 6] = [
+/// The biomes by code: tower, lair, log and place `k` are drawn in `BIOMES[k % 6]` (`openworld-terrain.md` section 4).
+pub const BIOMES: [Biome; 6] = [
     Biome::Meadow,
     Biome::Forest,
     Biome::Tundra,
@@ -117,12 +136,9 @@ pub const SEXTANTS: [Biome; 6] = [
     Biome::Archipelago,
 ];
 /// The archipelago's sea: its elevation is the meso and micro levels' alone (no continent, so every seed has islands) lowered
-/// by `SEA_DROP`, its tops cut at `ISLAND_TOP` (height 4, below the rock). It comes in by a smoothstep from `SEA_NEAR` to `SEA_FAR`
-/// cells from the spawn, so the spawn's ring stays land.
+/// by `SEA_DROP`, its tops cut at `ISLAND_TOP` (height 4, below the rock). It comes in by a smoothstep of the sea field.
 const SEA_DROP: f64 = 0.19;
 const ISLAND_TOP: f64 = 0.58;
-const SEA_NEAR: f64 = 40.0;
-const SEA_FAR: f64 = 90.0;
 /// Upper bounds of the elevation of heights 1 to 7 (height 0 is below the first). They were found by
 /// measuring the elevation of chunks -8 to 8 of seeds 1 to 4 (`the_eight_height_levels_hold_their_measured_shares`):
 /// their quantiles give the shares of 8, 10, 12, 16, 18, 16, 12 and 8 % per height.
@@ -173,11 +189,6 @@ const LAND: std::ops::Range<f64> = 0.45..0.70;
 /// Moisture below `DRY` makes a rock level (5) sand-coloured rock. It is a quantile of the moisture, measured like the
 /// elevation.
 const DRY: f64 = 0.422;
-/// The soft Meadow bias around the spawn (`meadow_bias`): full up to `MEADOW_INNER` cells, none from `MEADOW_OUTER`, a
-/// smoothstep between.
-const MEADOW_INNER: f64 = 8.0;
-const MEADOW_OUTER: f64 = 16.0;
-
 /// What a cell looks like and whether it can be entered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Terrain {
@@ -205,7 +216,7 @@ impl Terrain {
 
 /// The region a cell belongs to: its ground and its obstacle density on the low ground (see `openworld-terrain.md` section 4).
 /// The code of a biome is its place in this list.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Biome {
     Meadow = 0,
@@ -280,11 +291,11 @@ struct Lattice {
 }
 
 impl Lattice {
-    /// The lattice of the cells `q0..q0 + CHUNK` by `r0..r0 + CHUNK`.
+    /// The lattice of the cells `q0..q0 + CHUNK` by `r0..r0 + CHUNK`, and one cell round them (the neighbours of a border).
     fn new(seed: u64, salt: u64, q0: i32, r0: i32, scale: i32) -> Self {
-        let (x0, y0) = (q0.div_euclid(scale), r0.div_euclid(scale));
-        let x1 = (q0 + CHUNK - 1).div_euclid(scale) + 1;
-        let y1 = (r0 + CHUNK - 1).div_euclid(scale) + 1;
+        let (x0, y0) = ((q0 - 1).div_euclid(scale), (r0 - 1).div_euclid(scale));
+        let x1 = (q0 + CHUNK).div_euclid(scale) + 1;
+        let y1 = (r0 + CHUNK).div_euclid(scale) + 1;
         debug_assert!(x1 - x0 < LATTICE as i32 && y1 - y0 < LATTICE as i32);
         let mut values = [[0.0; LATTICE]; LATTICE];
         for y in y0..=y1 {
@@ -319,27 +330,6 @@ fn distance(q: i32, r: i32) -> i32 {
 fn smoothstep(t: f64) -> f64 {
     let t = t.clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
-}
-
-/// How much the spawn pulls the biome of `(q, r)` to Meadow, from 0 to 1: 1 within `MEADOW_INNER` cells of the spawn,
-/// 0 beyond `MEADOW_OUTER`, a smoothstep between (no edge). A pure function of the distance, so it is order free.
-fn meadow_bias(q: i32, r: i32) -> f64 {
-    smoothstep((MEADOW_OUTER - f64::from(distance(q, r))) / (MEADOW_OUTER - MEADOW_INNER))
-}
-
-/// Where `(q, r)` lies round the spawn, its point turned `turn` radians and moved `shift` cells more, counter-clockwise: the
-/// sextant it falls in (0 east to 5 south-east, `SEXTANTS`) and how many cells inside that sextant's border it lies. The
-/// pointy-top layout of the client: x runs along `q`, the north is `-r`.
-fn sextant(q: i32, r: i32, turn: f64, shift: f64) -> (usize, f64) {
-    let (x, y) = (
-        f64::from(q) + f64::from(r) / 2.0,
-        -(3f64.sqrt() / 2.0) * f64::from(r),
-    );
-    let reach = x.hypot(y).max(1.0);
-    let turns = (y.atan2(x) + turn + shift / reach) / (std::f64::consts::PI / 3.0);
-    let nearest = turns.round();
-    let inside = (0.5 - (turns - nearest).abs()) * (std::f64::consts::PI / 3.0) * reach;
-    ((nearest as i64).rem_euclid(6) as usize, inside)
 }
 
 /// The elevation at `(q, r)` from the seed alone, with the macro level shifted by `shift`: the same values as the
@@ -397,6 +387,158 @@ fn search_shift(seed: u64) -> (i32, i32) {
         .map_or((0, 0), |(_, shift)| shift)
 }
 
+/// The climate of a cell (#1755): its temperature, its wetness and the sea field, each from 0 to 1.
+#[derive(Clone, Copy)]
+struct Climate {
+    temperature: f64,
+    wetness: f64,
+    sea: f64,
+}
+
+impl Climate {
+    /// The biome of this climate: the archipelago where the sea field is high, else tundra when cold, desert or badlands when hot
+    /// (dry or not), forest when temperate and wet, meadow otherwise. The temperature is continuous, so a temperate band always
+    /// lies between the tundra and the desert.
+    fn biome(self) -> Biome {
+        if self.sea > SEA_LEVEL {
+            Biome::Archipelago
+        } else if self.temperature < COLD {
+            Biome::Tundra
+        } else if self.temperature > HOT {
+            if self.wetness < HOT_DRY {
+                Biome::Desert
+            } else {
+                Biome::Badlands
+            }
+        } else if self.wetness > FOREST_WET {
+            Biome::Forest
+        } else {
+            Biome::Meadow
+        }
+    }
+
+    /// How deep the cell lies in the archipelago's sea, from 0 to 1: it grows over `SEA_EDGE` either side of `SEA_LEVEL`.
+    fn depth(self) -> f64 {
+        smoothstep((self.sea - SEA_LEVEL + SEA_EDGE) / (2.0 * SEA_EDGE))
+    }
+
+    /// The same climate moved by `by` in all three fields: the dither of a border.
+    fn moved(self, by: f64) -> Climate {
+        Climate {
+            temperature: self.temperature + by,
+            wetness: self.wetness + by,
+            sea: self.sea + by,
+        }
+    }
+}
+
+/// The climate at `(q, r)` from the seed alone, the map shifted by `shift`: the same values as the chunk lattices.
+fn climate_at(seed: u64, q: i32, r: i32, shift: (i32, i32)) -> Climate {
+    let field = |salt: u64| {
+        (0..3)
+            .map(|i| {
+                CLIMATE_WEIGHTS[i]
+                    * noise_at(
+                        |x, y| unit(seed, salt + i as u64, x, y),
+                        q + shift.0,
+                        r + shift.1,
+                        CLIMATE_SCALES[i],
+                    )
+            })
+            .sum::<f64>()
+    };
+    Climate {
+        temperature: field(TEMP_SALT),
+        wetness: field(WET_SALT),
+        sea: field(SEA_SALT),
+    }
+}
+
+/// The climate shifts searched so far, by seed (a pure memo, `CLIMATE_KEPT` of them: the chunks of one world search once, and a
+/// few worlds at a time, as the tests' threads do, do not search again). A lock keeps a racing thread from reading another seed's shift.
+static CLIMATE_SHIFTS: Mutex<Vec<(u64, (i32, i32))>> = Mutex::new(Vec::new());
+const CLIMATE_KEPT: usize = 64;
+
+/// The climate shift of `seed`, from `CLIMATE_SHIFTS` when it is known.
+fn climate_shift(seed: u64) -> (i32, i32) {
+    let known = CLIMATE_SHIFTS
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .iter()
+        .find(|&&(known, _)| known == seed)
+        .map(|&(_, shift)| shift);
+    known.unwrap_or_else(|| {
+        let shift = search_climate(seed);
+        let mut shifts = CLIMATE_SHIFTS
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        if shifts.len() >= CLIMATE_KEPT {
+            shifts.remove(0);
+        }
+        shifts.push((seed, shift));
+        shift
+    })
+}
+
+/// The `count` points of the ring `reach` ground units from the spawn.
+/// The biome the smooth climate gives the cell `(q, r)`, without the dither of its border: a cheap first look for the draws of the lairs,
+/// the logs and the places, which then read the cell itself.
+fn climate_biome(seed: u64, q: i32, r: i32) -> Biome {
+    climate_at(seed, q, r, climate_shift(seed)).biome()
+}
+
+fn ring_points(reach: f64, count: u32) -> impl Iterator<Item = (i32, i32)> {
+    (0..count).map(move |k| {
+        let angle = f64::from(k) * std::f64::consts::TAU / f64::from(count);
+        // The pointy-top layout of the client's `cellAtPoint`, as the lairs.
+        let r = (-reach * angle.sin() / (3f64.sqrt() / 2.0)).round() as i32;
+        ((reach * angle.cos() - f64::from(r) / 2.0).round() as i32, r)
+    })
+}
+
+/// The search of the climate shift of `seed` (see `CLIMATE_CANDIDATES`). A candidate is scored on the biomes met at the points of
+/// `CLIMATE_NEAR` (where the near logs and the towns are drawn) and of `CLIMATE_FAR` (the lairs, the far logs and the gates): first the
+/// spawn and the ring of 10 cells round it all meadow (the start), then the count of the rarest biome on each, capped at `NEAR_ENOUGH` and `FAR_ENOUGH`, so no biome is missing or rare where something is
+/// drawn; then the meadow among the spawn and the rings round it; then the uncapped counts. The first of equals.
+fn search_climate(seed: u64) -> (i32, i32) {
+    let points = |rings: &[(f64, u32)]| -> Vec<(i32, i32)> {
+        rings
+            .iter()
+            .flat_map(|&(reach, count)| ring_points(reach, count))
+            .collect()
+    };
+    let (near, far) = (points(&CLIMATE_NEAR), points(&CLIMATE_FAR));
+    let home: Vec<(i32, i32)> = std::iter::once((0, 0))
+        .chain(ring_points(f64::from(HOME_RING), 6))
+        .collect();
+    let shift_of = |c: u64| {
+        let c = c as i32;
+        let span = f64::from(OFFSET_SPAN);
+        (
+            (unit(seed, CLIMATE_SALT, c, 0) * span) as i32,
+            (unit(seed, CLIMATE_SALT, c, 1) * span) as i32,
+        )
+    };
+    let fits = |shift: (i32, i32)| {
+        let biome = |&(q, r): &(i32, i32)| climate_at(seed, q, r, shift).biome();
+        let rarest = |points: &[(i32, i32)]| {
+            let mut seen = [0; 6];
+            for b in points.iter().map(biome) {
+                seen[b as usize] += 1;
+            }
+            seen.into_iter().min().unwrap_or(0)
+        };
+        // Cheapest test first: most candidates fail the meadow at the start.
+        home.iter().all(|p| biome(p) == Biome::Meadow)
+            && rarest(&near) >= NEAR_ENOUGH
+            && rarest(&far) >= FAR_ENOUGH
+    };
+    (0..CLIMATE_CANDIDATES)
+        .map(shift_of)
+        .find(|&shift| fits(shift))
+        .unwrap_or(shift_of(0))
+}
+
 /// Whether the cell `(q, r)` is in the world: the one test of the edge, for the cells, the chunks, the enemies, the lairs and
 /// the teleporters.
 fn in_world(q: i32, r: i32) -> bool {
@@ -449,6 +591,19 @@ struct Field {
 impl Field {
     /// The field of the chunk at `(q0, r0)`, its macro level shifted by `shift` cells.
     fn new(seed: u64, salt: u64, q0: i32, r0: i32, weights: [f64; 3], shift: (i32, i32)) -> Self {
+        Self::with_scales(seed, salt, q0, r0, weights, shift, LEVEL_SCALES)
+    }
+
+    /// The same with its own `scales` for the three levels.
+    fn with_scales(
+        seed: u64,
+        salt: u64,
+        q0: i32,
+        r0: i32,
+        weights: [f64; 3],
+        shift: (i32, i32),
+        scales: [i32; 3],
+    ) -> Self {
         let shifts = [shift, (0, 0), (0, 0)];
         Field {
             levels: std::array::from_fn(|i| {
@@ -457,7 +612,7 @@ impl Field {
                     salt + i as u64,
                     q0 + shifts[i].0,
                     r0 + shifts[i].1,
-                    LEVEL_SCALES[i],
+                    scales[i],
                 )
             }),
             shifts,
@@ -484,8 +639,9 @@ struct Window {
     height: Field,
     /// Moisture, which gives the dry rock.
     moisture: Field,
-    /// The border field, which makes the borders of the sextants ragged.
-    border: Field,
+    /// The temperature, the wetness and the sea field, over the map shifted by `shift`.
+    climate: [Field; 3],
+    shift: (i32, i32),
     /// Whether each cell of the chunk is on a wall, row by row.
     wall: [bool; (CHUNK * CHUNK) as usize],
 }
@@ -512,40 +668,58 @@ impl Window {
                 }
             }
         }
+        let shift = climate_shift(seed);
         Window {
             seed,
             q0,
             r0,
             height: Field::new(seed, HEIGHT_SALT, q0, r0, HEIGHT_WEIGHTS, macro_shift(seed)),
             moisture: Field::new(seed, MOISTURE_SALT, q0, r0, MOISTURE_WEIGHTS, (0, 0)),
-            border: Field::new(seed, BORDER_SALT, q0, r0, BORDER_WEIGHTS, (0, 0)),
+            climate: [TEMP_SALT, WET_SALT, SEA_SALT].map(|salt| {
+                Field::with_scales(
+                    seed,
+                    salt,
+                    q0 + shift.0,
+                    r0 + shift.1,
+                    CLIMATE_WEIGHTS,
+                    (0, 0),
+                    CLIMATE_SCALES,
+                )
+            }),
+            shift,
             wall,
         }
     }
 
-    /// The biome of `(q, r)` and how deep it lies in the archipelago's sea, from 0 to 1. The biome is its sextant's, the border
-    /// moved by the border field and by a draw of up to `BLEND` cells, so it is ragged and two biomes mix along it; near the
-    /// spawn a draw below `meadow_bias` makes it meadow, so the surroundings are meadow and their edge is soft. The sea grows
-    /// smoothly over `BLEND` cells inside the archipelago's border, and from `SEA_NEAR` to `SEA_FAR` cells out.
+    /// The climate at `(q, r)`, which lies in this chunk or one cell round it.
+    fn climate(&self, q: i32, r: i32) -> Climate {
+        let [temperature, wetness, sea] = self
+            .climate
+            .each_ref()
+            .map(|field| field.value(q + self.shift.0, r + self.shift.1));
+        Climate {
+            temperature,
+            wetness,
+            sea,
+        }
+    }
+
+    /// The biome of `(q, r)` and how deep it lies in the archipelago's sea, from 0 to 1. The biome is the climate's, moved by a
+    /// draw of up to `BLEND` so two biomes mix along their border.
     fn biome(&self, q: i32, r: i32) -> (Biome, f64) {
-        let turn = (self.border.value(q, r) - 0.5) * BORDER_TURN;
-        let blend = (unit(self.seed, BLEND_SALT, q, r) - 0.5) * 2.0 * BLEND;
-        let biome = if unit(self.seed, MEADOW_SALT, q, r) < meadow_bias(q, r) {
-            Biome::Meadow
-        } else {
-            SEXTANTS[sextant(q, r, turn, blend).0]
-        };
-        let (k, inside) = sextant(q, r, turn, 0.0);
-        let edge = if SEXTANTS[k] == Biome::Archipelago {
-            inside
-        } else {
-            -inside
-        };
-        let out = (f64::from(distance(q, r)) - SEA_NEAR) / (SEA_FAR - SEA_NEAR);
-        (
-            biome,
-            smoothstep((edge + BLEND) / (2.0 * BLEND)) * smoothstep(out),
-        )
+        let climate = self.climate(q, r);
+        let dither = (unit(self.seed, BLEND_SALT, q, r) - 0.5) * 2.0 * BLEND;
+        (climate.moved(dither).biome(), climate.depth())
+    }
+
+    /// The first biome other than the cell's own among its six neighbours (the climate, not dithered), the border it lies on.
+    fn neighbour_biome(&self, q: i32, r: i32) -> Option<(Biome, Biome)> {
+        let own = self.climate(q, r).biome();
+        STEPS
+            .iter()
+            .map(|&(dq, dr)| self.climate(q + dq, r + dr).biome())
+            .find(|&other| other != own)
+            .map(|other| (own, other))
     }
 
     /// The cell at `(q, r)`, which must lie in this chunk.
@@ -558,8 +732,15 @@ impl Window {
             };
         }
         let (biome, sea) = self.biome(q, r);
-        let turn = (self.border.value(q, r) - 0.5) * BORDER_TURN;
-        if let Some(terrain) = feature_at(self.seed, q, r, turn) {
+        let from = distance(q, r);
+        let marked = if from < FEATURE_FROM {
+            None
+        } else {
+            self.neighbour_biome(q, r)
+        };
+        if let Some(terrain) =
+            marked.and_then(|(own, other)| feature_at(self.seed, from, own, other))
+        {
             let height = if terrain == Terrain::Water { 1 } else { 7 };
             return Cell {
                 height,
@@ -687,21 +868,26 @@ pub const LAIR_MIN: i32 = 150;
 const LAIR_SALT: u64 = 40;
 /// The distance of a lair from the spawn is drawn in ground units between these two (the corners of the hexagon are `WORLD_RADIUS`
 /// away, the middles of its sides about 388): a draw off the world is drawn again.
+/// Two lairs stand at least this many cells apart (#1755: a biome is a patch now, not a wedge that shares its lairs out).
+const LAIR_SPACE: i32 = 24;
 const LAIR_NEAR: f64 = 160.0;
 const LAIR_FAR: f64 = 420.0;
 
 /// The cells of the `count` boss lairs of the world `seed` (docs/specs/openworld.md section 7), one per boss of the roster: lair `k`
-/// is drawn in the sextant `k % 6` (#1442), in the `k / 6`-th of its share of the sextant's lairs, the first draw whose cell and six
-/// neighbours are open ground on the world, of the sextant's biome, and at least `LAIR_MIN` cells from the spawn. So each biome holds
+/// is drawn in the biome `k % 6` (#1755), in the `k / 6`-th of its share of the range of distance, the first draw whose cell and six
+/// neighbours are open ground on the world, of that biome, at least `LAIR_MIN` cells from the spawn and `LAIR_SPACE` from the lairs before it. So each biome holds
 /// two lairs or more of a roster of 12. From the seed alone, so the order of visit of the chunks does not matter.
 pub fn lairs(seed: u64, count: usize) -> Vec<(i32, i32)> {
-    (0..count as i32)
-        .map(|k| {
-            (0..LAIR_TRIES)
-                .find_map(|n| lair_try(seed, count, k, n))
-                .expect("a fit lair in the sextant")
-        })
-        .collect()
+    let mut found: Vec<(i32, i32)> = Vec::with_capacity(count);
+    for k in 0..count as i32 {
+        let apart =
+            |&(q, r): &(i32, i32)| found.iter().all(|&o| hex_distance(o, (q, r)) >= LAIR_SPACE);
+        let lair = (0..LAIR_TRIES)
+            .find_map(|n| lair_try(seed, count, k, n).filter(apart))
+            .expect("a fit lair in its biome");
+        found.push(lair);
+    }
+    found
 }
 
 /// The roster's bosses, by their number in `boss_ids()`, from the easiest tower to the hardest (docs/specs/openworld.md section 15).
@@ -757,31 +943,31 @@ pub fn tower_pad(seed: u64, tower: (i32, i32)) -> (i32, i32) {
         .expect("a tower stands on open ground")
 }
 
-/// A lair is drawn in its share of the sextant for its first `LAIR_SLOT_TRIES` tries (the most any seed of 1 to 2000 but 711 needs is
-/// 5 666), then in the whole sextant (#1594: the third of seed 711's tundra that lair 14 is drawn in holds no open ground). So the
+/// A lair is drawn in its share of the range for its first `LAIR_SLOT_TRIES` tries (the most any seed of 1 to 2000 but 711 needs is
+/// 5 666), then in the whole range (#1594: the third of seed 711's range that lair 14 is drawn in holds no open ground). So the
 /// lairs of a seed that found them in the share do not move. The search ends after `LAIR_TRIES` tries.
 const LAIR_SLOT_TRIES: i32 = 8000;
 const LAIR_TRIES: i32 = 40_000;
 
 /// The `n`-th try of lair `k`: its cell when it is a fit one.
 fn lair_try(seed: u64, count: usize, k: i32, n: i32) -> Option<(i32, i32)> {
-    let (wedge, nth) = (k as usize % 6, f64::from(k / 6));
-    let shares = (count / 6 + usize::from(wedge < count % 6)) as f64;
+    let (biome, nth) = (BIOMES[k as usize % 6], f64::from(k / 6));
+    let shares = (count / 6 + usize::from((k as usize % 6) < count % 6)) as f64;
     let slot = if n < LAIR_SLOT_TRIES {
-        nth + 0.2 + 0.6 * unit(seed, LAIR_SALT, k, n)
+        (nth + 0.2 + 0.6 * unit(seed, LAIR_SALT + 1, k, n)) / shares
     } else {
-        shares * unit(seed, LAIR_SALT, k, n) // the whole sextant
+        unit(seed, LAIR_SALT + 1, k, n) // the whole range
     };
-    let angle = (wedge as f64 - 0.5 + slot / shares) * std::f64::consts::FRAC_PI_3;
-    let reach = LAIR_NEAR + (LAIR_FAR - LAIR_NEAR) * unit(seed, LAIR_SALT + 1, k, n);
+    let angle = std::f64::consts::TAU * unit(seed, LAIR_SALT, k, n);
+    let reach = LAIR_NEAR + (LAIR_FAR - LAIR_NEAR) * slot;
     // The pointy-top layout of the client's `cellAtPoint`: x runs along q, z along the rows, the north up.
     let r = (-reach * angle.sin() / (3f64.sqrt() / 2.0)).round() as i32;
     let q = (reach * angle.cos() - f64::from(r) / 2.0).round() as i32;
     let open = |(dq, dr): (i32, i32)| {
-        cell(seed, q + dq, r + dr)
-            .is_some_and(|c| !c.terrain.blocked() && c.biome == SEXTANTS[wedge])
+        cell(seed, q + dq, r + dr).is_some_and(|c| !c.terrain.blocked() && c.biome == biome)
     };
     let fit = distance(q, r) >= LAIR_MIN
+        && climate_biome(seed, q, r) == biome
         && [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1)]
             .into_iter()
             .all(open);
@@ -853,56 +1039,49 @@ fn teleporter_in(seed: u64, cx: i32, cy: i32, avoid: &[(i32, i32)]) -> Option<(i
     })
 }
 
-/// The lore logs placed in a world (#1589, docs/specs/openworld.md section 12): two in each sextant, one near the spawn and one far.
+/// The lore logs placed in a world (#1589, docs/specs/openworld.md section 12): two in each biome, one near the spawn and one far.
 pub const LOGS: usize = 12;
-/// The salt of the log draws: the angle in the sextant, then the distance from the spawn.
+/// The salt of the log draws: the angle, then the distance from the spawn.
 const LOG_SALT: u64 = 50;
 /// The distance of a log from the spawn in ground units, drawn between these two, by ring: the near ring stays inside the lairs' (`LAIR_NEAR`).
 const LOG_RINGS: [(f64, f64); 2] = [(30.0, 140.0), (160.0, 420.0)];
 
-/// The cells of the `LOGS` lore logs of the world `seed`: log `k` is drawn in the sextant `k % 6` (ring `k / 6`, near then far), the first
-/// draw whose cell and six neighbours are open ground of that sextant's biome, off the spawn's `SAFE` radius, 2 cells or more inside its
+/// The cells of the `LOGS` lore logs of the world `seed`: log `k` is drawn in the biome `k % 6` (ring `k / 6`, near then far), the first
+/// draw whose cell and six neighbours are open ground of that biome, off the spawn's `SAFE` radius, 2 cells or more inside its
 /// chunk with no generated enemy within 2 cells, and no cell of `avoid` (the lairs and the teleporters) within 3. From the seed alone: it
 /// reads the terrain and the enemies, never changes them, so `WORLD_VERSION` does not move. Log `k` is the `k`-th of the answer, `None` for a
-/// log that has no fit (see `LOG_RING_TRIES`), so the others keep their numbers.
+/// log that has no fit (see `LOG_TRIES`), so the others keep their numbers.
 pub fn logs(seed: u64, avoid: &[(i32, i32)]) -> Vec<Option<(i32, i32)>> {
     (0..LOGS as i32)
         .map(|k| (0..LOG_TRIES).find_map(|n| log_try(seed, k, n, avoid)))
         .collect()
 }
 
-/// A log is drawn in its own ring and wedge for its first `LOG_RING_TRIES` tries (the most any seed of 1 to 2000 needs is 4 053; the seeds
-/// of #1595 had none in 100 000), then anywhere in its whole sextant out to the lairs' `LAIR_FAR`. So the logs of a seed that found them
-/// in their ring do not move. The search ends after `LOG_TRIES` tries and a log with no fit is left out (`None`, the others keep their
-/// numbers).
-const LOG_RING_TRIES: i32 = 30_000;
+/// A log is drawn in its own ring (`LOG_RINGS`) of its biome; the outer end of the ring grows by 1 ground unit every 2 tries, up to the
+/// lairs' `LAIR_FAR`, as the places' rings do (#1755: a biome is a patch now, so the near ring may hold none of it). The search ends
+/// after `LOG_TRIES` tries and a log with no fit is left out (`None`, the others keep their numbers).
 const LOG_TRIES: i32 = 60_000;
 
 /// The `n`-th try of log `k`: its cell when it is a fit one.
 fn log_try(seed: u64, k: i32, n: i32, avoid: &[(i32, i32)]) -> Option<(i32, i32)> {
-    let (wedge, (near, far)) = (k as usize % 6, LOG_RINGS[k as usize / 6]);
-    let ring = if n < LOG_RING_TRIES {
-        (near, far, 0.8)
-    } else {
-        (LOG_RINGS[0].0, LOG_RINGS[1].1, 1.0)
-    };
-    spot(seed, LOG_SALT, k, n, wedge, ring, avoid)
+    let (biome, (near, far)) = (BIOMES[k as usize % 6], LOG_RINGS[k as usize / 6]);
+    let ring = (near, (far + f64::from(n) / 2.0).min(LAIR_FAR));
+    spot(seed, LOG_SALT, k, n, biome, ring, avoid)
 }
 
-/// The `n`-th try of the spot `k` drawn from `salt` in the sextant `wedge`, 30 to 140 or 160 to 420 ground units out (`reach`): its cell
-/// when it is a fit one. The cell and its six neighbours are open ground of the sextant's biome, off the spawn's `SAFE` radius, 2 cells
+/// The `n`-th try of the spot `k` drawn from `salt` in the biome, 30 to 140 or 160 to 420 ground units out (`reach`): its cell
+/// when it is a fit one. The cell and its six neighbours are open ground of the biome, off the spawn's `SAFE` radius, 2 cells
 /// or more inside its chunk with no generated enemy within 2 cells, and no cell of `avoid` within 3. Logs, towns and dungeon gates use it.
 fn spot(
     seed: u64,
     salt: u64,
     k: i32,
     n: i32,
-    wedge: usize,
-    (near, far, span): (f64, f64, f64),
+    biome: Biome,
+    (near, far): (f64, f64),
     avoid: &[(i32, i32)],
 ) -> Option<(i32, i32)> {
-    let angle =
-        (wedge as f64 - span / 2.0 + span * unit(seed, salt, k, n)) * std::f64::consts::FRAC_PI_3;
+    let angle = std::f64::consts::TAU * unit(seed, salt, k, n);
     let reach = near + (far - near) * unit(seed, salt + 1, k, n);
     // The pointy-top layout of the client's `cellAtPoint`, as the lairs.
     let r = (-reach * angle.sin() / (3f64.sqrt() / 2.0)).round() as i32;
@@ -910,12 +1089,12 @@ fn spot(
     let (cx, cy) = (q.div_euclid(CHUNK), r.div_euclid(CHUNK));
     let inside = |v: i32| (2..CHUNK - 2).contains(&v.rem_euclid(CHUNK));
     let open = |&(dq, dr): &(i32, i32)| {
-        cell(seed, q + dq, r + dr)
-            .is_some_and(|c| !c.terrain.blocked() && c.biome == SEXTANTS[wedge])
+        cell(seed, q + dq, r + dr).is_some_and(|c| !c.terrain.blocked() && c.biome == biome)
     };
     let fit = distance(q, r) > SAFE
         && inside(q)
         && inside(r)
+        && climate_biome(seed, q, r) == biome
         && TELEPORT_PAD.iter().all(open)
         && avoid.iter().all(|&cell| hex_distance(cell, (q, r)) > 3)
         && enemy_groups(seed, cx, cy)
@@ -937,19 +1116,19 @@ pub const TOWNS: usize = 5;
 pub const DUNGEONS: usize = 5;
 /// The salt of the town and dungeon gate draws (as `LOG_SALT`, two salts each).
 const PLACE_SALT: u64 = 60;
-/// Town `k` is drawn in the sextant `k`, 40 to 120 ground units out at first (a hex distance of 139 at most, inside the lairs' `LAIR_MIN`);
-/// the gate `k` in the sextant `k + 1`, as far out as the lairs.
+/// Town `k` is drawn in the biome `k`, 40 to 120 ground units out at first (a hex distance of 139 at most, inside the lairs' `LAIR_MIN`);
+/// the gate `k` in the biome `k + 1`, as far out as the lairs.
 const TOWN_RING: (f64, f64) = (40.0, 120.0);
 const DUNGEON_RING: (f64, f64) = (160.0, 420.0);
 
-/// The most tries a place has, so the search always ends: the most any seed of 1 to 2000 needed is 239 (`PLACE_TRIES` is four times that).
-pub const PLACE_TRIES: i32 = 1000;
+/// The most tries a place has, so the search always ends: the biomes are patches now (#1755), a thin archipelago may need thousands: every seed of 1 to 2000 finds its places in a quarter of `PLACE_TRIES`.
+pub const PLACE_TRIES: i32 = 40_000;
 
 /// The towns then the dungeon gates of the world `seed` (docs/specs/openworld.md section 13), each with its kind and its cell. The first
-/// town is the spawn clearing, `(0, 0)`. Town `k` (1 to 4) is drawn in the sextant `k` (forest, tundra, desert, badlands) and the dungeon
-/// gate `k` in the sextant `k + 1` (forest to archipelago): the first draw that `spot` keeps and that is more than 3 cells from every cell
+/// town is the spawn clearing, `(0, 0)`. Town `k` (1 to 4) is drawn in the biome `k` (forest, tundra, desert, badlands) and the dungeon
+/// gate `k` in the biome `k + 1` (forest to archipelago): the first draw that `spot` keeps and that is more than 3 cells from every cell
 /// of `avoid` (the lairs, the teleporters and the logs) and from the places placed before it. The far edge of the ring of the place
-/// grows by 1 ground unit every 2 tries, up to the lairs' `LAIR_FAR`, so a sextant with no open ground near the spawn still gets its
+/// grows by 1 ground unit every 2 tries, up to the lairs' `LAIR_FAR`, so a biome with no open ground near the spawn still gets its
 /// town further out. From the seed alone, it reads the terrain and the enemies, never changes them, so `WORLD_VERSION` does not move.
 pub fn places(seed: u64, avoid: &[(i32, i32)]) -> Vec<(PlaceKind, (i32, i32))> {
     places_within(seed, avoid, PLACE_TRIES)
@@ -961,14 +1140,18 @@ fn places_within(seed: u64, avoid: &[(i32, i32)], tries: i32) -> Vec<(PlaceKind,
     taken.push((0, 0));
     let mut found = vec![(PlaceKind::Town, (0, 0))];
     let wanted = (1..TOWNS as i32)
-        .map(|k| (PlaceKind::Town, k, k as usize, TOWN_RING))
-        .chain(
-            (0..DUNGEONS as i32)
-                .map(|k| (PlaceKind::Dungeon, 10 + k, k as usize + 1, DUNGEON_RING)),
-        );
-    for (kind, k, wedge, (near, far)) in wanted {
-        let ring = |n: i32| (near, (far + f64::from(n) / 2.0).min(LAIR_FAR), 0.8);
-        let fit = (0..tries).find_map(|n| spot(seed, PLACE_SALT, k, n, wedge, ring(n), &taken));
+        .map(|k| (PlaceKind::Town, k, BIOMES[k as usize], TOWN_RING))
+        .chain((0..DUNGEONS as i32).map(|k| {
+            (
+                PlaceKind::Dungeon,
+                10 + k,
+                BIOMES[k as usize + 1],
+                DUNGEON_RING,
+            )
+        }));
+    for (kind, k, biome, (near, far)) in wanted {
+        let ring = |n: i32| (near, (far + f64::from(n) / 2.0).min(LAIR_FAR));
+        let fit = (0..tries).find_map(|n| spot(seed, PLACE_SALT, k, n, biome, ring(n), &taken));
         if let Some(cell) = fit {
             taken.push(cell);
             found.push((kind, cell));
@@ -1495,16 +1678,19 @@ mod tests {
 
     #[test]
     fn the_eight_height_levels_hold_their_measured_shares() {
-        // The 16 x 16 chunks around the spawn, the real window, of four seeds, out of the archipelago, whose sea lowers it (#1442).
+        // The 16 x 16 chunks around the spawn, the real window, of four seeds, out of the archipelago, whose sea lowers it (#1442),
+        // and off the borders between biomes, which a river or a ridge marks (#1752).
         let mut counts = [0usize; 8];
         for seed in 1..=4 {
             for cx in -8..8 {
                 for cy in -8..8 {
-                    for c in full(seed, cx, cy)
-                        .into_iter()
-                        .filter(|c| c.biome != Biome::Archipelago)
-                    {
-                        counts[c.height as usize] += 1;
+                    let window = Window::new(seed, cx, cy);
+                    for k in 0..CHUNK * CHUNK {
+                        let (q, r) = (cx * CHUNK + k % CHUNK, cy * CHUNK + k / CHUNK);
+                        let c = window.cell(q, r);
+                        if c.biome != Biome::Archipelago && window.neighbour_biome(q, r).is_none() {
+                            counts[c.height as usize] += 1;
+                        }
                     }
                 }
             }
@@ -1549,7 +1735,7 @@ mod tests {
             .into_iter()
             .filter(|c| c.height >= 2)
             .collect();
-        for biome in SEXTANTS {
+        for biome in BIOMES {
             assert!(
                 land.iter().any(|c| c.biome == biome),
                 "{biome:?} never appears"
@@ -1557,103 +1743,187 @@ mod tests {
         }
     }
 
-    /// The cell `reach` cells from the spawn at `angle` degrees, counter-clockwise from the east with the north up (the `r` of
-    /// the axial grid grows southward).
-    fn polar(angle: f64, reach: f64) -> (i32, i32) {
-        let (x, z) = (
-            reach * angle.to_radians().cos(),
-            -reach * angle.to_radians().sin(),
-        );
-        let r = (z / (3f64.sqrt() / 2.0)).round() as i32;
-        ((x - f64::from(r) / 2.0).round() as i32, r)
+    /// The climate of the cell `(q, r)` of the world `seed` as the chunks have it, from the point formula.
+    fn climate_of(seed: u64, q: i32, r: i32) -> Climate {
+        climate_at(seed, q, r, climate_shift(seed))
     }
 
     #[test]
-    fn the_six_sextants_round_the_spawn_are_meadow_forest_tundra_desert_badlands_and_archipelago() {
-        // The axial directions east, north-east, north-west, west, south-west and south-east, in that order (#1442).
-        assert_eq!(
-            SEXTANTS,
-            [
-                Biome::Meadow,
-                Biome::Forest,
-                Biome::Tundra,
-                Biome::Desert,
-                Biome::Badlands,
-                Biome::Archipelago,
-            ]
-        );
-        assert_eq!(polar(60.0, 100.0), (100, -100));
-        // The middle 20 degrees of each sextant, from 40 cells out to the edge: its own biome, on seeds 1 to 4.
-        for seed in 1..=4 {
-            for (k, &biome) in SEXTANTS.iter().enumerate() {
-                let (mut own, mut total) = (0, 0);
-                for reach in (40..380).step_by(8) {
-                    for turn in (-10..=10).step_by(2) {
-                        let (q, r) = polar(60.0 * k as f64 + f64::from(turn), f64::from(reach));
-                        total += 1;
-                        own += usize::from(cell(seed, q, r).unwrap().biome == biome);
+    fn the_biomes_by_code_are_the_order_the_towers_and_logs_are_drawn_in() {
+        // Tower, lair, log and place `k` stand in `BIOMES[k % 6]`, and the client reads the same order (#1755).
+        assert_eq!(BIOMES.map(|b| b as usize), [0, 1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn the_climate_gives_each_biome_and_a_temperate_band_lies_between_tundra_and_desert() {
+        let at = |temperature, wetness, sea| {
+            Climate {
+                temperature,
+                wetness,
+                sea,
+            }
+            .biome()
+        };
+        assert_eq!(at(0.2, 0.9, 0.1), Biome::Tundra);
+        assert_eq!(at(0.9, 0.2, 0.1), Biome::Desert);
+        assert_eq!(at(0.9, 0.9, 0.1), Biome::Badlands);
+        assert_eq!(at(0.5, 0.9, 0.1), Biome::Forest);
+        assert_eq!(at(0.5, 0.2, 0.1), Biome::Meadow);
+        assert_eq!(at(0.2, 0.2, 0.9), Biome::Archipelago);
+        assert_eq!(at(COLD + 0.01, 0.2, 0.1), Biome::Meadow, "a temperate band");
+        assert_eq!(at(HOT - 0.01, 0.2, 0.1), Biome::Meadow);
+        // The climate is continuous, so on seeds 0 to 7 no cell of the tundra touches a hot biome.
+        for seed in 0..8 {
+            for q in (-448..448).step_by(5) {
+                for r in (-448..448).step_by(5) {
+                    let own = climate_of(seed, q, r).biome();
+                    if own != Biome::Tundra {
+                        continue;
+                    }
+                    for (dq, dr) in STEPS {
+                        let other = climate_of(seed, q + dq, r + dr).biome();
+                        assert!(
+                            !matches!(other, Biome::Desert | Biome::Badlands),
+                            "seed {seed}: tundra beside {other:?} at {q},{r}"
+                        );
                     }
                 }
-                assert!(
-                    own * 100 >= total * 95,
-                    "seed {seed}: {biome:?} on {own} of {total} cells of its sextant"
-                );
             }
         }
     }
 
     #[test]
-    fn a_border_between_two_sextants_is_ragged_and_blends_over_a_few_cells() {
-        // Arcs from 5 to 55 degrees, across the border between the meadow and the forest (30 degrees), every 10 cells out, a
-        // cell a step: where each arc first turns forest moves from arc to arc (ragged), some arcs turn more than once
-        // (blended), and each starts meadow and ends forest.
-        let seed = 3;
-        let (mut offsets, mut mixed) = (Vec::new(), 0);
-        for reach in (100..=370).step_by(10) {
-            let reach = f64::from(reach);
-            let degree = 180.0 / std::f64::consts::PI / reach; // one cell along the arc, in degrees
-            let half = (25.0 / degree) as i32;
-            let arc: Vec<Biome> = (-half..=half)
-                .map(|k| polar(30.0 + f64::from(k) * degree, reach))
-                .map(|(q, r)| cell(seed, q, r).unwrap().biome)
-                .collect();
-            assert!(
-                arc[..5].iter().all(|&b| b == Biome::Meadow),
-                "{reach}: {arc:?}"
-            );
-            assert!(
-                arc[arc.len() - 5..].iter().all(|&b| b == Biome::Forest),
-                "{reach}: {arc:?}"
-            );
-            let first = arc.iter().position(|&b| b == Biome::Forest).unwrap() as i32 - half;
-            offsets.push(first);
-            mixed += usize::from(arc.windows(2).filter(|w| w[0] != w[1]).count() > 1);
+    fn the_chunks_and_the_point_formula_have_the_same_climate() {
+        for seed in [1, 7] {
+            for (cx, cy) in [(0, 0), (-3, 5), (20, -9)] {
+                let window = Window::new(seed, cx, cy);
+                for k in 0..(CHUNK + 2) * (CHUNK + 2) {
+                    // the chunk and one cell round it
+                    let (q, r) = (
+                        cx * CHUNK - 1 + k % (CHUNK + 2),
+                        cy * CHUNK - 1 + k / (CHUNK + 2),
+                    );
+                    let (a, b) = (window.climate(q, r), climate_of(seed, q, r));
+                    assert!(
+                        (a.temperature - b.temperature).abs() < 1e-9
+                            && (a.wetness - b.wetness).abs() < 1e-9
+                            && (a.sea - b.sea).abs() < 1e-9,
+                        "seed {seed}: {q},{r}"
+                    );
+                }
+            }
         }
-        let spread = offsets.iter().max().unwrap() - offsets.iter().min().unwrap();
-        assert!(spread >= 6, "the border is a straight line: {offsets:?}");
-        assert!(mixed >= 10, "{mixed} arcs blend");
+    }
+
+    #[test]
+    fn the_climate_shift_is_searched_once_per_seed_and_does_not_depend_on_the_order() {
+        let first = climate_shift(11);
+        assert_eq!(climate_shift(12), search_climate(12));
+        assert_eq!(climate_shift(11), first);
+        assert_eq!(first, search_climate(11));
+    }
+
+    #[test]
+    fn every_biome_lies_within_the_radius_the_towers_are_drawn_in_on_seeds_0_to_30() {
+        // Cells every 4 (axial), in the world: the farthest nearest cell of a biome over the seeds is the number the spec gives.
+        for seed in 0..31 {
+            let mut nearest = [i32::MAX; 6];
+            for q in (-WORLD_RADIUS..=WORLD_RADIUS).step_by(4) {
+                for r in (-WORLD_RADIUS..=WORLD_RADIUS).step_by(4) {
+                    if in_world(q, r) {
+                        let b = climate_of(seed, q, r).biome() as usize;
+                        nearest[b] = nearest[b].min(distance(q, r));
+                    }
+                }
+            }
+            let far = nearest.into_iter().max().unwrap();
+            assert!(far <= LAIR_FAR as i32, "seed {seed}: {nearest:?}");
+        }
+    }
+
+    #[test]
+    fn the_start_is_meadow_on_every_seed_without_the_map_being_drawn_round_it() {
+        // The spawn and the ring of `HOME_RING` cells round it are meadow of the climate itself: only the offset of the climate is searched.
+        for seed in 0..300 {
+            for (q, r) in std::iter::once((0, 0)).chain(ring_points(f64::from(HOME_RING), 6)) {
+                assert_eq!(climate_of(seed, q, r).biome(), Biome::Meadow, "seed {seed}");
+            }
+        }
+    }
+
+    #[test]
+    fn nothing_but_the_clearing_looks_at_the_spawn() {
+        // The biome of a cell round the spawn (past the clearing) is the climate's, dithered along the borders only: no bias toward
+        // meadow, no sector.
+        for seed in 0..8 {
+            let (mut total, mut off) = (0, 0);
+            for q in -60..=60 {
+                for r in -60..=60 {
+                    if distance(q, r) <= CLEARING || distance(q, r) > 60 {
+                        continue;
+                    }
+                    total += 1;
+                    let cell = cell(seed, q, r).unwrap();
+                    off += (cell.biome != climate_of(seed, q, r).biome()) as i32;
+                }
+            }
+            assert!(off * 12 < total, "seed {seed}: {off} of {total}");
+        }
+        assert_eq!(cell(5, 0, 0).unwrap().biome, Biome::Meadow);
+        assert_eq!(cell(5, CLEARING, 0).unwrap().terrain, Terrain::Grass);
+    }
+
+    #[test]
+    fn the_borders_of_the_biomes_blend_over_a_few_cells_and_are_not_straight() {
+        // A cell's biome is its climate's moved by a small draw: a few cells differ from the smooth biome (never more than 1 in
+        // 30), and the borders wander (they cross many columns).
+        let seed = 3;
+        let (mut mixed, mut total, mut columns) = (0, 0, std::collections::HashSet::new());
+        for cx in -8..8 {
+            for cy in -8..8 {
+                let window = Window::new(seed, cx, cy);
+                for k in 0..CHUNK * CHUNK {
+                    let (q, r) = (cx * CHUNK + k % CHUNK, cy * CHUNK + k / CHUNK);
+                    total += 1;
+                    let smooth = window.climate(q, r).biome();
+                    if window.biome(q, r).0 != smooth {
+                        mixed += 1;
+                    }
+                    if window.neighbour_biome(q, r).is_some() {
+                        columns.insert(q);
+                    }
+                }
+            }
+        }
+        assert!(mixed > 0 && mixed * 30 < total, "{mixed} of {total}");
+        let columns = columns.len();
+        assert!(columns > 100, "{columns} columns hold a border");
     }
 
     #[test]
     fn the_archipelago_is_mostly_water_with_islands_of_sand_and_grass() {
-        // The middle 20 degrees of the south-east sextant, from 120 cells out, seeds 1 to 4: three quarters water, the
-        // islands sand and low grass (heights 2 to 4) with their trees, boulders and walls; no rock, no peak.
-        let cells: Vec<Cell> = (1..=4)
-            .flat_map(|seed| {
-                (120..380).step_by(2).flat_map(move |reach| {
-                    (-10..=10).map(move |turn| {
-                        let (q, r) = polar(300.0 + f64::from(turn), f64::from(reach));
-                        cell(seed, q, r).unwrap()
-                    })
-                })
-            })
-            .collect();
+        // The cells deep in the archipelago's sea, seeds 1 to 4, in the chunks -14 to 13: most of them water, the islands sand and
+        // low grass (heights 2 to 4) with their trees, boulders and walls; no rock, no peak but a marked ridge's (height 7).
+        let mut cells: Vec<Cell> = Vec::new();
+        for seed in 1..=4 {
+            for cx in -14..14 {
+                for cy in -14..14 {
+                    let window = Window::new(seed, cx, cy);
+                    for k in 0..CHUNK * CHUNK {
+                        let (q, r) = (cx * CHUNK + k % CHUNK, cy * CHUNK + k / CHUNK);
+                        if in_world(q, r) && window.biome(q, r).1 > 0.999 {
+                            cells.push(window.cell(q, r));
+                        }
+                    }
+                }
+            }
+        }
         let water =
             cells.iter().filter(|c| c.terrain == Terrain::Water).count() * 100 / cells.len();
-        assert!((65..=85).contains(&water), "{water} % water");
+        assert!((60..=90).contains(&water), "{water} % water");
         let land: Vec<&Cell> = cells
             .iter()
-            .filter(|c| c.terrain != Terrain::Water)
+            .filter(|c| c.terrain != Terrain::Water && c.height != 7)
             .collect();
         assert!(
             land.iter().all(|c| (2..=4).contains(&c.height)),
@@ -1670,7 +1940,7 @@ mod tests {
     #[test]
     fn enemies_live_on_the_land_of_every_biome() {
         let mut groups = HashMap::new();
-        for seed in 1..=2 {
+        for seed in 1..=4 {
             for cx in -8..8 {
                 for cy in -8..8 {
                     for group in enemy_groups(seed, cx, cy) {
@@ -1682,7 +1952,7 @@ mod tests {
                 }
             }
         }
-        for biome in SEXTANTS {
+        for biome in BIOMES {
             let found = groups.get(&(biome as u8)).copied().unwrap_or(0);
             assert!(found >= 10, "{biome:?}: {found} groups");
         }
@@ -1922,9 +2192,10 @@ mod tests {
 
     #[test]
     fn some_borders_are_a_river_or_a_ridge_with_passes_past_the_spawn() {
-        // each kind is drawn for some border of some seed
+        use Biome::{Forest, Meadow, Tundra};
+        // each kind is drawn for some pair of biomes of some seed, the same either way round
         let kinds: Vec<BorderFeature> = (0..30)
-            .flat_map(|seed| (0..6).map(move |b| border_feature(seed, b)))
+            .flat_map(|seed| BIOMES.map(|a| border_feature(seed, a, Tundra)))
             .collect();
         for kind in [
             BorderFeature::River,
@@ -1933,41 +2204,73 @@ mod tests {
         ] {
             assert!(kinds.contains(&kind), "{kind:?}");
         }
-        // the border between the sextants 0 and 1 runs at 30 degrees, through (2d, -d), d * 2 cells from the spawn; no turn here
-        let seed = (0..30)
-            .find(|&s| border_feature(s, 0) == BorderFeature::Ridge)
-            .unwrap();
-        assert_eq!(feature_at(seed, 100, -50, 0.0), Some(Terrain::Peak));
-        assert_eq!(feature_at(seed, 96, -48, 0.0), None); // a pass: 96 % 16 < 3
-        assert_eq!(feature_at(seed, 100, 0, 0.0), None); // the middle of a sextant
-        assert_eq!(feature_at(seed, 20, -10, 0.0), None); // near the spawn
-        let river = (0..30)
-            .find(|&s| border_feature(s, 0) == BorderFeature::River)
-            .unwrap();
-        assert_eq!(feature_at(river, 100, -50, 0.0), Some(Terrain::Water));
-        let plain = (0..30)
-            .find(|&s| border_feature(s, 0) == BorderFeature::Plain)
-            .unwrap();
-        assert_eq!(feature_at(plain, 100, -50, 0.0), None);
-        // at -30 degrees, through (d, d), lies the border 5, between the sextants 5 and 0
-        let other = (0..30)
-            .find(|&s| border_feature(s, 5) == BorderFeature::River)
-            .unwrap();
-        assert_eq!(feature_at(other, 30, 30, 0.0), Some(Terrain::Water));
-        // the generated world carries it, along its ragged border: some water and a peak at height 7 or a river at 1 near (100, -50)
-        let marked = (60..140)
-            .flat_map(|q| (-80..-20).map(move |r| (q, r)))
-            .filter_map(|(q, r)| cell(river, q, r))
-            .filter(|c| c.terrain == Terrain::Water && c.height == 1)
-            .count();
-        assert!(marked > 20, "{marked}");
+        assert_eq!(
+            border_feature(3, Meadow, Forest),
+            border_feature(3, Forest, Meadow)
+        );
+        let seed_of = |kind| {
+            (0..30)
+                .find(|&s| border_feature(s, Meadow, Forest) == kind)
+                .unwrap()
+        };
+        let ridge = seed_of(BorderFeature::Ridge);
+        assert_eq!(feature_at(ridge, 100, Meadow, Forest), Some(Terrain::Peak));
+        assert_eq!(feature_at(ridge, 96, Meadow, Forest), None); // a pass: 96 % 16 < 3
+        assert_eq!(feature_at(ridge, 20, Meadow, Forest), None); // near the spawn
+        let river = seed_of(BorderFeature::River);
+        assert_eq!(feature_at(river, 100, Forest, Meadow), Some(Terrain::Water));
+        let plain = seed_of(BorderFeature::Plain);
+        assert_eq!(feature_at(plain, 100, Meadow, Forest), None);
+    }
+
+    #[test]
+    fn the_generated_world_marks_the_borders_between_two_biomes_past_the_spawn() {
+        // On seeds 1 to 3, in the chunks -12 to 11: a cell next to another biome's, 40 cells or more out, is what its pair's feature says
+        // (a river is water at height 1, a ridge a peak at height 7 out of the passes), and a cell off any border is never marked.
+        let (mut rivers, mut ridges, mut plains) = (0, 0, 0);
+        for seed in 1..=3 {
+            for cx in -12..12 {
+                for cy in -12..12 {
+                    let window = Window::new(seed, cx, cy);
+                    for (q, r) in (0..CHUNK * CHUNK)
+                        .map(|k| (cx * CHUNK + k % CHUNK, cy * CHUNK + k / CHUNK))
+                        .filter(|&(q, r)| in_world(q, r) && distance(q, r) > CLEARING)
+                    {
+                        let c = window.cell(q, r);
+                        let border = window.neighbour_biome(q, r);
+                        let from = distance(q, r);
+                        if let Some((own, other)) = border.filter(|_| from >= FEATURE_FROM) {
+                            {
+                                let want = feature_at(seed, from, own, other);
+                                match border_feature(seed, own, other) {
+                                    BorderFeature::River => rivers += 1,
+                                    BorderFeature::Ridge => ridges += 1,
+                                    BorderFeature::Plain => plains += 1,
+                                }
+                                if let Some(terrain) = want {
+                                    assert_eq!(c.terrain, terrain, "seed {seed}: {q},{r}");
+                                    assert_eq!(
+                                        c.height,
+                                        if terrain == Terrain::Water { 1 } else { 7 }
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            rivers > 50 && ridges > 50 && plains > 50,
+            "{rivers} {ridges} {plains}"
+        );
     }
 
     #[test]
     fn the_generated_world_is_pinned_by_a_digest() {
         assert_eq!(
             (WORLD_VERSION, world_digest()),
-            (5, 17_632_621_638_291_259_565),
+            (6, 2_184_942_252_771_043_681),
             "WORLD_VERSION and digest of the reference world"
         );
     }
@@ -2099,7 +2402,7 @@ mod tests {
 
     #[test]
     fn the_lairs_of_seed_7_are_pinned() {
-        assert_eq!(lairs(7, 3), vec![(256, -38), (337, -412), (31, -224)]);
+        assert_eq!(lairs(7, 3), vec![(249, -76), (313, -31), (369, -348)]);
     }
 
     #[test]
@@ -2178,9 +2481,9 @@ mod tests {
     #[test]
     fn the_teleporters_of_seed_7_are_pinned() {
         let found = teleporters(7, &[]);
-        // A quarter as many as one a square of 4 x 4 chunks, which gave 137 (#1444); 36 before the archipelago's sea (#1442).
-        assert_eq!(found.len(), 34);
-        assert_eq!(found[..3], [(2, -1), (29, -382), (130, -355)]);
+        // A quarter as many as one a square of 4 x 4 chunks, which gave 137 (#1444); 34 before the climate map (#1755).
+        assert_eq!(found.len(), 36);
+        assert_eq!(found[..3], [(2, -1), (29, -382), (153, -364)]);
     }
 
     /// The cells the lore logs of a seed keep off: the lairs and the teleporters, as the bridge passes them.
@@ -2220,11 +2523,7 @@ mod tests {
                 for (dq, dr) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1)] {
                     let c = cell(seed, q + dq, r + dr).expect("on the world");
                     assert!(!c.terrain.blocked(), "seed {seed}: log {k} at ({q}, {r})");
-                    assert_eq!(
-                        c.biome,
-                        SEXTANTS[k % 6],
-                        "seed {seed}: log {k} at ({q}, {r})"
-                    );
+                    assert_eq!(c.biome, BIOMES[k % 6], "seed {seed}: log {k} at ({q}, {r})");
                 }
             }
         }
@@ -2252,15 +2551,15 @@ mod tests {
     }
 
     #[test]
-    fn every_sextant_holds_two_logs_one_near_the_spawn_and_one_far() {
+    fn every_biome_holds_two_logs_one_in_the_near_ring_and_one_in_the_far() {
         for seed in [1, 7, 1305, 2, 3, 4] {
             let found = log_cells(seed, &log_avoid(seed));
-            for wedge in 0..6 {
-                let (near, far) = (found[wedge], found[wedge + 6]);
-                assert_eq!(cell(seed, near.0, near.1).unwrap().biome, SEXTANTS[wedge]);
-                assert_eq!(cell(seed, far.0, far.1).unwrap().biome, SEXTANTS[wedge]);
-                assert!(distance(near.0, near.1) < 150, "seed {seed}: log {wedge}");
-                assert!(distance(far.0, far.1) > 150, "seed {seed}: far log {wedge}");
+            for k in 0..6 {
+                let (near, far) = (found[k], found[k + 6]);
+                assert_eq!(cell(seed, near.0, near.1).unwrap().biome, BIOMES[k]);
+                assert_eq!(cell(seed, far.0, far.1).unwrap().biome, BIOMES[k]);
+                assert!(distance(near.0, near.1) > SAFE, "seed {seed}: log {k}");
+                assert!(distance(far.0, far.1) > 150, "seed {seed}: far log {k}");
             }
         }
     }
@@ -2278,7 +2577,7 @@ mod tests {
     fn the_logs_of_seed_7_are_pinned() {
         assert_eq!(
             log_cells(7, &log_avoid(7))[..3],
-            [(29, 5), (60, -36), (24, -67)]
+            [(-13, -35), (53, 23), (342, -437)]
         );
     }
 
@@ -2364,14 +2663,14 @@ mod tests {
             let found = places(seed, &place_avoid(seed));
             let towns = kind_cells(&found, PlaceKind::Town);
             for (k, &(q, r)) in towns.iter().enumerate().skip(1) {
-                assert_eq!(cell(seed, q, r).unwrap().biome, SEXTANTS[k], "seed {seed}");
+                assert_eq!(cell(seed, q, r).unwrap().biome, BIOMES[k], "seed {seed}");
                 assert!(distance(q, r) < WORLD_RADIUS, "seed {seed}: town {k}");
             }
             let gates = kind_cells(&found, PlaceKind::Dungeon);
             for (k, &(q, r)) in gates.iter().enumerate() {
                 assert_eq!(
                     cell(seed, q, r).unwrap().biome,
-                    SEXTANTS[k + 1],
+                    BIOMES[k + 1],
                     "seed {seed}: gate {k}"
                 );
                 assert!(distance(q, r) >= LAIR_MIN, "seed {seed}: gate {k}");
@@ -2397,15 +2696,15 @@ mod tests {
             found,
             vec![
                 town(0, 0),
-                town(50, -44),
-                town(22, -88),
-                town(-101, 20),
-                town(-92, 72),
-                gate(392, -366),
-                gate(44, -217),
-                gate(-312, -21),
-                gate(-292, 331),
-                gate(-151, 434),
+                town(13, 40),
+                town(315, -346),
+                town(-333, 122),
+                town(-77, 98),
+                gate(-190, -108),
+                gate(173, -343),
+                gate(-435, 343),
+                gate(197, 82),
+                gate(146, -172),
             ]
         );
     }
@@ -2453,7 +2752,7 @@ mod tests {
 
     #[test]
     fn every_seed_from_1_to_2000_finds_its_places_in_a_quarter_of_the_tries_a_place_has() {
-        // A quarter of the tries is enough for every seed (the most any needs is 239), so `PLACE_TRIES` has four times the room.
+        // A quarter of the tries is enough for every seed, so `PLACE_TRIES` has four times the room.
         sweep(
             "places never end",
             |seed| places_within(seed, &[], PLACE_TRIES / 4),
@@ -2499,14 +2798,14 @@ mod tests {
                     for (dq, dr) in TELEPORT_PAD {
                         let c = cell(seed, q + dq, r + dr).expect("on the world");
                         assert!(!c.terrain.blocked(), "seed {seed}: lair {k}");
-                        assert_eq!(c.biome, SEXTANTS[k % 6], "seed {seed}: lair {k}");
+                        assert_eq!(c.biome, BIOMES[k % 6], "seed {seed}: lair {k}");
                     }
                 }
             },
         );
     }
 
-    /// The seeds of 1 to 22 000 and the random 32-bit ones found so far whose log `k` has no fit in its own ring and wedge (#1595): the
+    /// The seeds of 1 to 22 000 and the random 32-bit ones found so far whose log `k` had no fit in its own ring and wedge before #1755 (#1595): the
     /// search of `logs` never ended on them.
     const LOG_HANG_SEEDS: [(u64, i32); 21] = [
         (2381, 2),
@@ -2548,14 +2847,14 @@ mod tests {
                 .expect("logs never end");
             assert_eq!(found.len(), LOGS, "seed {seed}");
             assert!(found.iter().all(Option::is_some), "seed {seed}");
-            // The log that had no fit in its ring is anywhere in its own sextant, on open ground of its biome, off the spawn.
+            // The log is on open ground of its biome, off the spawn.
             let (q, r) = found[k as usize].unwrap();
-            let wedge = k as usize % 6;
+            let biome = BIOMES[k as usize % 6];
             assert!(distance(q, r) > SAFE, "seed {seed}: log {k}");
             for (dq, dr) in TELEPORT_PAD {
                 let c = cell(seed, q + dq, r + dr).expect("on the world");
                 assert!(!c.terrain.blocked(), "seed {seed}: log {k}");
-                assert_eq!(c.biome, SEXTANTS[wedge], "seed {seed}: log {k}");
+                assert_eq!(c.biome, biome, "seed {seed}: log {k}");
             }
         }
     }
@@ -2684,12 +2983,22 @@ mod tests {
 
     #[test]
     fn the_dungeon_walk_goes_to_the_nearest_unbeaten_tower_round_its_neighbours() {
-        let seed = 3;
+        // The first seed whose nearest tower has a way on foot (a river between two biomes can cut it, #1752).
+        let nearest_of = |lairs: &[(i32, i32)]| {
+            (0..15)
+                .min_by_key(|&k| hex_distance((0, 0), lairs[k]))
+                .unwrap()
+        };
+        let seed = (0..40)
+            .find(|&seed| {
+                let lairs = lairs(seed, 15);
+                dungeon_walk(seed, (0, 0), &lairs, &[], &[], &lairs)
+                    .is_some_and(|(k, _)| k == nearest_of(&lairs))
+            })
+            .expect("a seed whose nearest tower has a way");
         let lairs = lairs(seed, 15);
         let (k, path) = dungeon_walk(seed, (0, 0), &lairs, &[], &[], &lairs).expect("a way");
-        let nearest = (0..15)
-            .min_by_key(|&k| hex_distance((0, 0), lairs[k]))
-            .unwrap();
+        let nearest = nearest_of(&lairs);
         assert_eq!(k, nearest);
         assert_eq!(path.last(), Some(&lairs[k]), "the tower's cell is last");
         assert!(path.len() as i32 >= LAIR_MIN);
@@ -2785,15 +3094,17 @@ mod tests {
     }
 
     #[test]
-    fn a_tower_stands_where_the_tier_order_says_and_not_in_its_old_sextant() {
-        // Seed 7: the nearest lair is not lair 0, yet boss 0 stands on it, and a lair's cell never moves.
-        let cells = lairs(7, 15);
-        let nearest = (0..15)
-            .min_by_key(|&k| (hex_distance((0, 0), cells[k]), k))
-            .unwrap();
-        assert_ne!(nearest, 0);
-        assert_eq!(towers(7)[0], cells[nearest]);
-        assert_eq!(towers(7), towers(7));
+    fn a_tower_stands_where_the_tier_order_says_and_not_on_its_own_lair() {
+        // The first seed whose nearest lair is not lair 0: boss 0 stands on it all the same, and a lair's cell never moves.
+        let nearest_of = |seed| {
+            let cells = lairs(seed, 15);
+            (0..15)
+                .min_by_key(|&k| (hex_distance((0, 0), cells[k]), k))
+                .unwrap()
+        };
+        let seed = (0..60).find(|&seed| nearest_of(seed) != 0).unwrap();
+        assert_eq!(towers(seed)[0], lairs(seed, 15)[nearest_of(seed)]);
+        assert_eq!(towers(seed), towers(seed));
     }
 
     #[test]
@@ -2887,7 +3198,7 @@ mod tests {
     #[test]
     fn the_pads_of_seed_7_are_pinned() {
         let found: Vec<(i32, i32)> = pads(7).into_iter().map(|p| p.1).collect();
-        assert_eq!(found[..3], [(74, -208), (-129, -285), (155, 288)]);
+        assert_eq!(found[..3], [(-190, -5), (301, -435), (-334, -102)]);
     }
 
     /// The cells the logs, then the places, keep off, as the bridge passes them (the 15 towers' lairs and the teleporters, then the logs).
@@ -2907,27 +3218,18 @@ mod tests {
         found.into_iter().flatten().chain(gates).collect()
     }
 
-    /// The farthest a near log is from the spawn in cells: its ring ends 140 ground units out, and a cell is 2 / sqrt(3) of a unit across.
-    const NEAR_REACH: i32 = 165;
-
     #[test]
-    fn a_world_holds_twelve_logs_and_five_gates_two_or_three_points_of_interest_in_every_biome_and_one_near_the_spawn_in_each(
-    ) {
+    fn a_world_holds_twelve_logs_and_five_gates_two_or_three_points_of_interest_in_every_biome() {
         for seed in 1..=300 {
             let found = points_of_interest(seed);
             assert_eq!(found.len(), LOGS + DUNGEONS, "seed {seed}");
-            for (wedge, biome) in SEXTANTS.into_iter().enumerate() {
-                let here: Vec<(i32, i32)> = found
+            for (k, biome) in BIOMES.into_iter().enumerate() {
+                let here = found
                     .iter()
-                    .copied()
-                    .filter(|&(q, r)| cell(seed, q, r).unwrap().biome == biome)
-                    .collect();
-                let want = if wedge == 0 { 2 } else { 3 };
-                assert_eq!(here.len(), want, "seed {seed}: biome {wedge}");
-                assert!(
-                    here.iter().any(|&c| hex_distance((0, 0), c) <= NEAR_REACH),
-                    "seed {seed}: biome {wedge} has nothing within {NEAR_REACH} cells of the spawn"
-                );
+                    .filter(|&&(q, r)| cell(seed, q, r).unwrap().biome == biome)
+                    .count();
+                let want = if k == 0 { 2 } else { 3 };
+                assert_eq!(here, want, "seed {seed}: biome {k}");
             }
         }
     }

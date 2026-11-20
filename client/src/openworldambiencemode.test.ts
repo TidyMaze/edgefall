@@ -11,7 +11,7 @@ stopLeftIntervalsAfterEach();
 // #1104: each biome of the Open world drifts its own particles (pollen, leaves, snow, dust) and the desert shimmers. Seed 1 has a
 // cell of each (found with `world_chunk`). The page marks what is drawn on a webdriver page. This was an e2e spec
 // (e2e/openworld-ambience.spec.ts): a frame cost seconds on the CI runner, and the mode draws the same on the real world here.
-const CELL = { forest: [29, -59], tundra: [-19, -44], desert: [-60, 30], meadow: [40, -20] } as const; // one a sextant (#1442)
+const CELL = { forest: [36, -115], tundra: [73, -74], desert: [-85, 14], meadow: [-7, 0] } as const; // open ground of the biome and its six neighbours (#1755)
 const body = () => document.body.dataset;
 const mode = (reduced = false) => new OpenWorldMode(world_chunk, () => new Int32Array(), async () => ({ low: {}, high: {} }), () => reduced, worldSaves(memoryStore(), 1));
 const stand = (m: OpenWorldMode, cell: readonly [number, number], at: number): void => {

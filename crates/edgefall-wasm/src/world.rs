@@ -838,7 +838,8 @@ mod tests {
         let pairs: Vec<(i32, i32)> = lairs.chunks(2).map(|c| (c[0], c[1])).collect();
         let (lair, path) = world::dungeon_walk(3, (0, 0), &pairs, &[], &[], &pairs).unwrap();
         assert_eq!(flat[0], lair as i32);
-        assert_eq!(lair, 0, "the nearest tower is the Echo's");
+        // The first tower with a way, nearest first: the nearest of seed 3 (the Echo's, 0) has none, the walk goes on to the next.
+        assert!(lair < pairs.len() && path.last() == Some(&pairs[lair]));
         assert_eq!(
             flat[1..],
             path.iter().flat_map(|&(q, r)| [q, r]).collect::<Vec<_>>()
@@ -937,9 +938,9 @@ mod tests {
         assert!(fight
             .herd_goals(9, vec![0, 0, 1, 0], vec![], vec![])
             .is_empty());
-        // Seed 1: a foe on (9,-30) with the water three cells away, the hero behind it: the one follower flanks.
-        let goals = fight.herd_goals(1, vec![8, -30, 7, -30], vec![0, -2, 1, 9, -30], vec![]);
-        assert_eq!(goals, vec![0, 9, -31]);
+        // Seed 1: a foe on (9,-260), on a tundra shore, with the water three cells away, the hero behind it: the one follower flanks.
+        let goals = fight.herd_goals(1, vec![8, -260, 7, -260], vec![0, -17, 1, 9, -260], vec![]);
+        assert_eq!(goals, vec![0, 9, -261]);
         let out = world_flock(
             7,
             0,
@@ -1030,15 +1031,15 @@ mod tests {
 
     #[test]
     fn the_hero_behind_a_foe_near_the_water_herds_it_one_cell_with_the_world_terrain() {
-        // Seed 1, as the herd goals: the foe on (9,-30) with water three cells east, the hero right behind it (#1682).
+        // Seed 1, as the herd goals: the foe on (9,-260) with water three cells east, the hero right behind it (#1682).
         let mut fight = WorldFight::new();
         let out = fight
-            .troop_push(1, vec![8, -30], vec![0, -2, 1, 9, -30], vec![], 1)
+            .troop_push(1, vec![8, -260], vec![0, -17, 1, 9, -260], vec![], 1)
             .unwrap();
         assert!(out.ejected.is_empty());
-        // herded one cell onto (10,-30), the tundra's ice, which carries it one more (#1751)
-        assert!(iced(1)(10, -30));
-        assert_eq!(out.enemies, vec![11, -30]);
+        // herded one cell onto (10,-260), the tundra's ice, which carries it one more (#1751)
+        assert!(iced(1)(10, -260));
+        assert_eq!(out.enemies, vec![11, -260]);
     }
 
     #[test]

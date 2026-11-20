@@ -246,8 +246,8 @@ describe('a wild fight in a biome (#1738)', () => {
     const withFoes = vi.spyOn(Engine, 'with_foes');
     byId('openworld').click();
     await settle();
-    hooks().__openworldFixture({ hero: [-30, 30], troop: [] }); // the badlands of seed 3 (south-west)
-    const [q, r] = hooks().__openworldEnemies().find(([eq, er]) => eq < -25 && er > 25)!;
+    hooks().__openworldFixture({ hero: [-42, -47], troop: [] }); // the badlands of seed 3 (north-west), a foe on (-43, -47)
+    const [q, r] = hooks().__openworldEnemies().find(([eq, er]) => eq === -43 && er === -47)!;
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     hooks().__openworldFixture({ hero: [q! + 1, r!], troop: [] });
     document.getElementById('openworld-ask-fight')!.click();

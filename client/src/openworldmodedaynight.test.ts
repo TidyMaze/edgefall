@@ -57,6 +57,30 @@ describe('the biome entered (#1742)', () => {
   });
 });
 
+describe('the towers and logs of the biome entered, by the biome of their cells (#1755)', () => {
+  it('counts the towers on the forest tiles in the forest and the badlands tiles in the badlands, a log with no cell nowhere', () => {
+    const banner = document.body.appendChild(Object.assign(document.createElement('p'), { id: 'openworld-biome', hidden: true }));
+    const two = (_s: number, cx: number, cy: number): Uint8Array => {
+      if (Math.abs(cx) > 2 || Math.abs(cy) > 2) return new Uint8Array();
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([1, 2, cx < 0 ? 1 : 4], i * 3);
+      return out;
+    };
+    const lairs = Int32Array.of(-20, 3, 10, 0, -10, -2); // towers 0 and 2 stand in the forest, tower 1 in the badlands
+    const logs = Int32Array.of(-5, 0, -2147483648, -2147483648); // log 0 in the forest, log 1 has no fit
+    const none = undefined;
+    const m = new OpenWorldMode(two, () => new Int32Array(), async () => ({ low: {}, high: {} }), () => true, worldSaves(memoryStore(), 1), () => lairs, none, none, none, none, none, none, none, none, none, none, () => logs);
+    m.enter(1, 800, 600);
+    m.frame(() => {}, 16);
+    expect(banner.textContent).toBe('Badlands · towers 0/1 · logs 0/0');
+    m.fixture({ hero: [-3, 0], troop: [], enemies: [] });
+    m.frame(() => {}, 32);
+    expect(banner.textContent).toBe('Forest · towers 0/2 · logs 0/1');
+    m.leave();
+    banner.remove();
+  });
+});
+
 describe('the world\'s clock on the plate (#1743)', () => {
   it('shows the hour, the phase and the time to the next, and follows the clock', () => {
     const clock = document.body.appendChild(Object.assign(document.createElement('p'), { id: 'openworld-clock' }));

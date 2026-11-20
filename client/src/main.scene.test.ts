@@ -24,7 +24,7 @@ const settle = async (): Promise<void> => {
   for (let i = 0; i < 10; i++) await new Promise((done) => setTimeout(done));
 };
 const LOUD = { 'ab-alone.volume.music': '100' }; // under automation the music starts at 0 (readMix), as e2e pages would play it out loud
-const CELL = { forest: [29, -59], desert: [-60, 30], meadow: [40, -20] } as const; // one a sextant of seed 1 (openworldambiencemode.test.ts)
+const CELL = { forest: [36, -115], desert: [-85, 14], meadow: [-7, 0] } as const; // one cell of each biome of seed 1 (openworldambiencemode.test.ts)
 
 function start(game: Game, name: string): void {
   startBoss(name);

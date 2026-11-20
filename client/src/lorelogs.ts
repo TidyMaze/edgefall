@@ -82,8 +82,8 @@ export const bossBlurb = (boss: string): string | undefined => BOSS_BLURBS.find(
 
 const log = (id: string, stage: number, title: string, body: string, reread = false): WorldLog => ({ id: `log-${id}`, stage, title, body, reread });
 
-/** Twelve logs, in the order of the cells of `world_logs`: log `k` lies in the sextant `k % 6` (meadow, forest, tundra, desert, badlands,
- * archipelago, `SEXTANTS` of world.rs), the first six near the spawn and the next six far from it. The near ones are stage 1 and 2, the far
+/** Twelve logs, in the order of the cells of `world_logs`: log `k` lies in the biome `k % 6` (meadow, forest, tundra, desert, badlands,
+ * archipelago, `BIOMES` of world.rs), the first six near the spawn and the next six far from it. The near ones are stage 1 and 2, the far
  * ones stage 2 and 3. Three carry the hint of a reread. */
 export const WORLD_LOGS: readonly WorldLog[] = [
   log('meadow-near', 1, 'Stake: the clearing', 'Survey stake, driven in by hand. Ground: grass, warm underfoot. Hollow grows no grass. Cause: not entered. Marbles in sight: none. Appended by TALLY: Claim: unworked.'),

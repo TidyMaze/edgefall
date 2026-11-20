@@ -4,8 +4,8 @@ import { shot } from './shot';
 
 lowTierOnCi();
 
-// #1531: the gains of the Open world. A marble the troop pushes into the water joins it as a recruit (seed 1: the hero on (11, -29) steps up-left to
-// (11, -30), the foe on (12, -30) has water on (13, -30) behind it, and the lone hero shoves it in, #1504), and a tower beaten through the world
+// #1531: the gains of the Open world. A marble the troop pushes into the water joins it as a recruit (seed 1: the hero on (11, -259) steps up-left to
+// (11, -260), the foe on (12, -260) has water on (13, -260) behind it, and the lone hero shoves it in, #1504), and a tower beaten through the world
 // leaves a teleporter pad beside it (seed 7). The states come from the test hook.
 type Hooks = { __openworldFixture: (f: object) => void; __openworldPads: (seed: number) => number[] };
 const sizes = [
@@ -23,7 +23,7 @@ for (const { name, viewport, touch } of sizes) {
       await page.goto('./?bot=off&openworld=1');
       await expect(page.locator('body')).toHaveAttribute('data-openworld-at', '0,0');
       await expect(page.locator('#openworld-recruits')).toBeHidden();
-      await fixture(page, { hero: [11, -29], troop: [], enemies: [[12, -30]] });
+      await fixture(page, { hero: [11, -259], troop: [], enemies: [[12, -260]] });
       await page.keyboard.press('ArrowLeft');
       await expect(page.locator('body')).toHaveAttribute('data-openworld-beaten', '1');
       await expect(page.locator('body')).toHaveAttribute('data-openworld-recruits', '1');

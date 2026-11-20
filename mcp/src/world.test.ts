@@ -114,8 +114,8 @@ describe('a new world', () => {
     expect(state.troop).toHaveLength(15);
     expect(state.broken).toBe(0);
     expect(state.lairs).toHaveLength(15);
-    expect(state.lairs[0]).toEqual({ boss: bossIds()[0], cell: '(185,-12)', distance: 185, beaten: false }); // the nearest tower is the Echo's (#1532)
-    expect(Math.min(...state.lairs.map((lair: { distance: number }) => lair.distance))).toBe(185);
+    expect(state.lairs[0]).toEqual({ boss: bossIds()[0], cell: '(-179,3)', distance: 179, beaten: false }); // the nearest tower is the Echo's (#1532)
+    expect(Math.min(...state.lairs.map((lair: { distance: number }) => lair.distance))).toBe(179);
     expect(state.ending).toBeUndefined();
   });
 

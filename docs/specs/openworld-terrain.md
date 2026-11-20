@@ -75,36 +75,41 @@ Smallest task, first in the order. Only constants of `cell`:
 - `openworld.md` section 2 states "about 6 %" and "about half": updated in the same PR (or in the pending
   spec PR #969 if it is still open).
 
-## 4. Biomes (#984, six sextants since #1442)
+## 4. Biomes (#984, #1442, a climate map since #1755)
 
-A biome is a region with its own ground, trees and boulders. Since #1442 (owner, 2026-11-02: "6 biomes, one per zone of the
-hexagon") the biome of a cell is the **sextant** of the hexagon it lies in, seen from the spawn: the six wedges of 60 degrees
-centred on the six axial directions, each running out to a corner of the world. Before, a temperature and a moisture field
-mixed five climate biomes everywhere (#984), so every direction looked alike.
+A biome is a region with its own ground, trees and boulders. Since #1755 (owner, 2026-11-17: "no central point on the map, an even,
+organic spread over the whole map") the biome of a cell comes from a **climate** read from three fields over the whole map, the same
+everywhere: no angle, no distance, no reference to the spawn. (Before, #1442 made it the sextant of the hexagon seen from the spawn;
+before that, #984 mixed a temperature and a moisture field.) Each field is value noise at the scales 384, 144 and 48 cells
+(`CLIMATE_SCALES`, weights 0.55, 0.30, 0.15, section 2's `Field`): the **temperature** (salts 52 to 54), the **wetness** (55 to 57) and
+the **sea** field (62 to 64).
 
-| Sextant (axial direction) | Biome | Ground tint | Tree | Boulder (per mille) |
+| Climate | Biome | Ground tint | Tree | Boulder (per mille) |
 |---|---|---|---|---|
-| East `(1, 0)`, the start | Meadow | green | 2 % | 15 |
-| North-east `(1, -1)` | Forest | deep green | 25 % | 15 |
-| North-west `(0, -1)` | Tundra | snow white | 4 % | 25 |
-| West `(-1, 0)` | Desert | warm sand | none | 30 |
-| South-west `(-1, 1)` | Badlands | dark red rock | none | 45 |
-| South-east `(0, 1)` | Archipelago (new) | fresh green `#5c7d58` | 5 % | 10 |
+| sea field above `SEA_LEVEL` 0.655 | Archipelago (new) | fresh green `#5c7d58` | 5 % | 10 |
+| temperature below `COLD` 0.353 | Tundra | snow white | 4 % | 25 |
+| temperature above `HOT` 0.57, wetness below 0.49 | Desert | warm sand | none | 30 |
+| temperature above `HOT` 0.57, wetter | Badlands | dark red rock | none | 45 |
+| temperate, wetness above 0.53 | Forest | deep green | 25 % | 15 |
+| temperate, otherwise | Meadow, the start | green | 2 % | 15 |
 
-- **Ragged borders**: the angle of a cell round the spawn (the pointy-top layout of the client: x along `q`, the north is `-r`)
-  is turned by `(border - 0.5) * 1.2` radians (`BORDER_TURN`), `border` a field of section 2 (macro, meso and micro levels, the
-  salts of the old temperature), so a border is never a straight line and wanders further the further it runs from the spawn
-  (some 10 degrees either way).
-- **Blend**: each cell is moved again by a draw of up to 3 cells either way (`BLEND`) when its biome is picked, so two biomes
-  mix over a few cells along their border.
-- **Spawn**: the clearing (radius 3) is Meadow grass at height 3. Around it a soft Meadow bias (#1024): a cell is Meadow when a
-  draw of its own falls below the bias, full within 8 cells of the spawn and falling by a smoothstep to nothing at 16. So the
-  disc of axial radius 10 is Meadow on at least 80 % of its cells, on seeds 1 to 16.
+The thresholds are quantiles of the fields (shares measured over seeds 0 to 30): meadow 26 %, forest 18 %, archipelago 16 %, badlands 15 %,
+desert 13 % and tundra 13 %. The temperature is continuous and `HOT - COLD` is 0.22, so a temperate band (forest or meadow) always lies
+between the tundra and the desert, and they never touch (a test walks the map of eight seeds).
+
+- **Organic borders**: the three fields have a meso and a micro level, so a border wanders. A patch holds thousands of cells: on seed 7
+  within 150 cells of the spawn, nine patches of 50 cells or more average 7 500 cells (the six wedges of #1442 averaged 9 650 there, all
+  meeting at the spawn; a disc of 150 cells holds 68 000).
+- **Blend**: each cell's climate is moved by a draw of up to 0.005 (`BLEND`, a few cells where the fields are steep) when its biome is
+  picked, so two biomes mix over a few cells along their border.
+- **Spawn**: the clearing (radius 3) is Meadow grass at height 3. The map is not drawn round it, and there is no meadow bias: the
+  climate is shifted per seed by the first of 4096 offsets (`CLIMATE_CANDIDATES`, `search_climate`) whose spawn and ring of 10 cells are
+  meadow of the climate itself and whose rings (`CLIMATE_NEAR`, up to 220 cells; `CLIMATE_FAR`, 170 to 420) hold every biome, the rarest at
+  least once near and 12 times of 144 far. So the start is meadow on every seed and every biome lies in the radius the towers are drawn in
+  (seeds 0 to 30: the farthest nearest cell of a biome is 220 away, seed 0; before, 14).
 - **Archipelago**: mostly water, with islands of sand and low grass, crossed by boat (#1441). Its elevation is that of the meso
   and micro levels only (no continent), lowered by `SEA_DROP` 0.19, and its tops are cut at `ISLAND_TOP` (height 4): no rock, no
-  peak. The sea comes in smoothly, by a smoothstep over the 3 cells of the blend inside its border and from 40 to 90 cells out
-  of the spawn, so the land round the spawn (section 2's ring) is kept. Its middle 20 degrees, from 120 cells out, is 65 to 85 %
-  water over seeds 1 to 4.
+  peak. The sea comes in smoothly, by a smoothstep over `SEA_EDGE` (0.012) of the sea field either side of `SEA_LEVEL`.
 - **What a biome changes**: the ground of every height in the 3D view and the minimap (#1734): its grass is the biome's ground, its sand,
   rock and peaks the game's colour with the biome mixed in (`BIOME_MIX`: 35, 40 and 30 %), in either look; and the density of the
   obstacles per open cell on the low ground. Water keeps its colour; the archipelago alone also changes the relief, as above.
@@ -116,16 +121,16 @@ mixed five climate biomes everywhere (#984), so every direction looked alike.
   `LOOK[ground] x BIOME_TINT[biome]` (`setColorAt`), so no new mesh. The map paints a low grass cell in the same ground.
 - **Chunk bytes**: 3 per cell, `height, terrain, biome` (the biome code is the order of the `Biome` enum: `0` meadow to
   `5` archipelago, `u8`). Enemies stand on the open land of every biome, never on water.
-- **Lairs and teleporters** (`openworld.md` sections 7 and 10): lair cell `k` (the draw's number; the boss on it is by tier since #1532, section 15) is drawn in the sextant `k % 6` and kept only on the
+- **Lairs and teleporters** (`openworld.md` sections 7 and 10): lair cell `k` (the draw's number; the boss on it is by tier since #1532, section 15) is drawn in the biome `k % 6` (the order of the codes: meadow, forest, tundra, desert, badlands, archipelago) and kept only on the
   open ground of its biome, so each biome holds two lairs or more (15 bosses: three in the meadow, the forest and the tundra, two
-  in the others). The teleporters keep their squares; an archipelago square with no island that fits has none (seed 7 holds 34,
+  in the others). The teleporters keep their squares; an archipelago square with no island that fits has none (seed 7 holds 36,
   36 before, and seed 1305 36, 37 before; at least four in every biome).
-- **Tests**: each sextant's middle 20 degrees is its biome (95 % of the cells, seeds 1 to 4); a border is ragged and blends;
-  the archipelago is mostly water with islands of sand and grass, no rock nor peak; the obstacle densities of each biome hold on
+- **Tests**: the climate maps to the six biomes and a temperate band lies between tundra and desert; the Lattice and the point
+  climate agree; every biome lies in reach on seeds 0 to 30; a border is ragged and blends; the archipelago is mostly water with islands of sand and grass, no rock nor peak; the obstacle densities of each biome hold on
   the low ground (trees within a fifth, boulders within a third); enemies, two lairs and a teleporter in every biome; the spawn
   clearing is Meadow and open; the order of visit does not matter. The eight-height shares and the far view's sea and range are
   measured out of the archipelago, whose sea is meant; the blocked share and the 32-seed flood fill of #987 still hold.
-  `WORLD_VERSION` is 4 since #1442 (3 for the hexagon of #1440).
+  `WORLD_VERSION` is 6 since #1755 (5 for #1752, 4 for #1442, 3 for the hexagon of #1440).
 
 **Measured (#1442)**, the 16 x 16 chunks around the spawn, seeds 1 to 4. Share of the window per biome: meadow 15.3 %, forest
 11.8 %, tundra 16.6 %, desert 21.3 %, badlands 12.7 %, archipelago 22.2 %. Low ground obstacles: meadow trees 2.0 % and 16.4
@@ -133,7 +138,7 @@ boulders per mille, forest 25.1 % and 10.6, tundra 4.1 % and 26.4, desert 0 % an
 4.8 % and 8.6. Blocked share 36.3 % (bound 26 to 37), water 26.5 %. The middle of the archipelago is 64.9, 76.3, 88.0 and 66.5 %
 water on seeds 1 to 4.
 
-**Digest**: the world digest moves to 16742511850258042212 (`WORLD_VERSION` 4).
+**Digest**: the world digest moves to 2184942252771043681 (`WORLD_VERSION` 6).
 
 **Cost** (`world_timing`, the minimum of three runs on a shared machine): the 2465 chunks of the hexagon 30.1 ms before and
 39.8 ms after (budget 117 ms): two angles and two draws more per cell.
@@ -146,15 +151,18 @@ water on seeds 1 to 4.
   moves onto the tundra slides one cell more the same way when that cell is open ground with no marble (#1751, `troop_push_on` in
   edgefall-core, so the client and the MCP server agree).
 
-- **Rings (#1741)**: past `OUTER_RING` (250) cells from the spawn each biome shows its harsh outer one: the meadow a steppe, the forest a
-  jungle, the tundra a crystal plain, the desert salt flats, the badlands a volcanic field, the archipelago a swamp, 12 in all. Their
-  ground and props lean to the outer colour and the banner names them (`biomerings.ts`). A look only: the rules stay the sextant's biome's,
-  the world and its saves are unchanged. **Borders (#1740)**: a ground cell's colour averages the biomes within `BLEND_REACH` (4) cells
+- **Outer biomes (#1741, #1755)**: where a large-scale noise field of the cell is above `OUTER_ABOVE` (0.52, a little under half the map)
+  each biome shows its harsh outer one: the meadow a steppe, the forest a jungle, the tundra a crystal plain, the desert salt flats, the
+  badlands a volcanic field, the archipelago a swamp, 12 in all. The field (`outerField` of `biomerings.ts`, value noise at 160 and 56
+  cells, a hash of the cell alone) is the same for every player and has no centre, so the outer lands are patches all over the map. Their
+  ground and props lean to the outer colour and the banner names them. A look only: the rules stay the biome's, the world and its saves
+  are unchanged. **Borders (#1740)**: a ground cell's colour averages the biomes within `BLEND_REACH` (4) cells
   and its tree or boulder is drawn from them, so two biomes mix over a gradient.
 
-- **Marked borders (#1752)**: each of the six sextant borders is drawn from the seed as a river, a ridge or plain, a third each. Past 40
-  cells from the spawn, the cells within 0.9 of a marked border (on its ragged line) are water on a river, sailed across, or peaks at
-  height 7 on a ridge, with a pass 3 cells wide every 16 cells of distance from the spawn. `WORLD_VERSION` 5: older saves start fresh.
+- **Marked borders (#1752, #1755)**: the border between each pair of biomes is drawn from the seed as a river, a ridge or plain, a third
+  each (`border_feature`, the same either way round). Past 40 cells from the spawn, a cell next to a cell of another biome (the climate, not
+  dithered) is water on a river, sailed across, or a peak at height 7 on a ridge, with a pass 3 cells wide every 16 cells of distance from
+  the spawn (`feature_at`). `WORLD_VERSION` 6: older saves start fresh.
 
 ## 5. Relief (#988)
 

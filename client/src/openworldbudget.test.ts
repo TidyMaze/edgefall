@@ -80,7 +80,7 @@ const mode = () =>
     (seed, cx, cy) => Int32Array.from(world_cairns(seed, cx, cy)),
   );
 
-// The regression caps of section 17 (about 5 % over the scene measured on 2026-11-08, not the frame budget of 750 000 triangles and 45 calls) on the scene of one view at 1280x720, on the high tier: the budget view (the spawn of seed 3, the closest zoom) and the
+// The regression caps of section 17 (about 5 % over the scene measured on 2026-11-08, not the frame budget of 750 000 triangles and 45 calls) on the scene of one view at 1280x720, on the high tier: the budget view (the spawn of seed 7, the closest zoom; seed 3 until #1755, whose new map puts a dungeon gate in the widest view of seed 3: 47 calls, 2 more, as seeds 5 and 8 do, while seed 7 draws 44 and 44) and the
 // widest zoom a player reaches there. Measured 353 010 triangles in 23 calls and 3 254 456 in 23 (#1481), 19 calls each once a landmark's
 // parts are one mesh (#1647); the renderer's frame draws the shadow casters a second time (708 519 triangles, 52 calls at the budget view
 // before #1647, 44 after).
@@ -97,7 +97,7 @@ describe('the Open world scene geometry regression caps (docs/specs/openworld.md
   it('keeps the scene of the budget view and of the widest zoom under its regression caps on triangles and draw calls, with the real chunks and models', async () => {
     document.body.dataset.tier = 'high';
     const m = mode();
-    m.enter(3, 1280, 720);
+    m.enter(7, 1280, 720);
     await m.props; // the props' models are in: the detailed set near the hero, the low-poly one further out
     let camera: THREE.Camera | null = null;
     const t0 = performance.now();

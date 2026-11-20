@@ -1456,7 +1456,8 @@ export class OpenWorldMode {
     const name = ringName(biome, this.hero!.at[0], this.hero!.at[1]); // the outer ring's biome too (#1741)
     if (name === this.named) return;
     this.named = name;
-    banner.textContent = biomeLine(biome, this.lairs.length, this.beaten, this.logs.length, this.found, name);
+    const biomeOf = (cell: Axial): Biome | undefined => this.world!.tile(cell[0], cell[1])?.biome; // the tile's, not the number's (#1755)
+    banner.textContent = biomeLine(biome, this.lairs.map(biomeOf), this.beaten, this.logs.map(biomeOf), this.found, name);
     banner.hidden = false;
     banner.classList.remove('fade');
     void banner.offsetWidth; // the fade starts again
