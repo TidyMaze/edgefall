@@ -763,10 +763,11 @@ describe('a step moves only the props near the hero (#1054)', () => {
     view.show([0, 0]);
     view.show([1, 0]);
     const reach = view.reach;
-    const write = vi.spyOn(THREE.InstancedMesh.prototype, 'setMatrixAt');
     view.show([reach * CHUNK, 0]); // the edge of the square, still on the world: the square moves, so the grounds and every prop are written
     expect(view.centreChunk).toEqual([reach, 0]);
-    expect(write).toHaveBeenCalledTimes(2 * ground(view));
+    let written = 0;
+    view.scene.traverse((o) => void ((o as THREE.InstancedMesh).isInstancedMesh && /^(terrain|prop)-/.test(o.name) && (written += (o as THREE.InstancedMesh).count)));
+    expect(written).toBe(2 * ground(view));
     expect((view.drawn['prop-mountain'] ?? 0) + (view.drawn['prop-mountain-hi'] ?? 0)).toBe(ground(view));
   });
 
@@ -2421,6 +2422,7 @@ describe('the loaded chunks keep their centre while the hero paces along a chunk
     view.resize(1600, 900);
     view.show([0, 0]);
     zoomed(view, 1e9);
+    for (let i = 0; i < (2 * MAX_REACH + 5) ** 2; i++) view.show([0, 0]); // the frames read the ring ahead, a chunk each (#1756)
     const loaded = load.mock.calls.length;
     const version = mesh(view, 'terrain-grass').instanceMatrix.version;
     for (let i = 0; i < 10; i++) {
@@ -3154,12 +3156,12 @@ describe('the ground in view only, on a software renderer (#1483)', () => {
       return out;
     };
     const view = new OpenWorldView(new World(treed));
+    const stand = vi.spyOn(view as unknown as { stand: () => void }, 'stand');
     view.resize(1600, 900);
     view.cullGround(true);
-    const stand = vi.spyOn(view as unknown as { stand: () => void }, 'stand');
     view.show([0, 0]);
     expect(stand.mock.calls.length).toBeGreaterThan(0);
-    expect(stand.mock.calls.length).toBeLessThanOrEqual((CELLS / 16) * 2 + 4); // the count and the lay, a tree in 16 cells
+    expect(stand.mock.calls.length).toBeLessThanOrEqual(CELLS / 16 + 4); // a tree in 16 cells, asked once
   });
 
   it('lays the whole chunks again when it is switched off', () => {

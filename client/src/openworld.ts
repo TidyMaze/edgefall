@@ -112,6 +112,11 @@ export class World {
     this.restore([[q, r]]);
   }
 
+  /** How many cells have been broken: a view keeps what it laid until this changes (#1756). */
+  get breaks(): number {
+    return this.broken.length;
+  }
+
   /** Breaks the cells given, as a saved world kept them. Call it before the cells are read; a chunk already read is changed too. */
   restore(cells: readonly Axial[]): void {
     for (const [q, r] of cells) {

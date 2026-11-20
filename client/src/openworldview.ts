@@ -609,7 +609,10 @@ let shaped: ReadonlyMap<string, Shaping> = new Map();
 /** The biome of a cell of the world on show, for its relief signature (#1735): set by each new view; none before. */
 let biomeAt = (_q: number, _r: number): Biome | undefined => undefined;
 /** The landmarks of the world the view draws: the mound of each tower, the hollow of each gate, the pool of each light (#1719). */
-export const shapeWorld = (marks: Landmarks): void => void ((shaped = shapeLand(marks)), shades.clear());
+export const shapeWorld = (marks: Landmarks): void => void ((shaped = shapeLand(marks)), shades.clear(), groundEpoch++);
+/** Counts what the laid chunks' records read besides their own tiles: the landmarks, the biome reader, the lifting flag, the prop models. A change
+ * makes every view drop its records (#1756). */
+let groundEpoch = 0;
 /** The height of the top of the ground of the cell `(q, r)`: water lies low and flat, the land is lifted by `hexLift` (#1418), rises
  * inside its level (`relief`, #1718) and by the landmark that shapes it (#1719). The low tier's flat look draws none of the three. */
 export const topOf = (terrain: Terrain, height: number, q: number, r: number): number =>
@@ -690,7 +693,20 @@ type Lay = (prop: Prop, near: boolean, x: number, y: number, z: number, scaleY: 
 /** The colour that leaves an instance as its mesh's material has it (no tint). */
 const WHITE = 0xffffff;
 /** A cell with no height: the props of a count are laid at no place, so the position they are given is never read. */
-const NOWHERE = { x: 0, z: 0 };
+/** How many chunks round the loaded square get their records before the walk needs them (#1756): two, fewer at the widest zoom, where the
+ * chunks and the blend's halo would pass the world's cache and evict the ones round the hero. */
+const AHEAD = 2;
+/** What a chunk lays (#1756): a ground column or flat top, and a prop of a cell, with the colour as the instance holds it. */
+interface GroundRecord { ground: Ground; flat: boolean; x: number; y: number; z: number; scaleY: number; red: number; green: number; blue: number }
+interface PropRecord { prop: Prop; near: boolean; q: number; r: number; cell: number; x: number; y: number; z: number; scaleY: number; red: number; green: number; blue: number }
+interface ChunkRecords {
+  props: PropRecord[];
+  /** The ground cells shown, for the footprint `view` (the cull's quad, null when the whole chunk is laid); null until asked. */
+  ground: GroundRecord[] | null;
+  view: object | null;
+  kx: number;
+  ky: number;
+}
 /** The modelled prop of each terrain: a step moves its instance between the low-poly and the detailed mesh (#1054). */
 const PROP_OF: Partial<Record<Terrain, Prop>> = { peak: 'mountain', tree: 'tree', boulder: 'boulder', wall: 'wall' };
 /** A cell as one number, the key of its instance in a props mesh. The offset keeps the axial coordinates of any world positive. */
@@ -817,6 +833,10 @@ export class OpenWorldView {
    * in place of 24). One mesh per ground, empty on the high tier. */
   private readonly flats = {} as Record<Ground, THREE.InstancedMesh>;
   private flatTops = false;
+  /** The records of each chunk laid (#1756): its ground columns and its props, with their places and colours, kept while the chunk stays in the
+   * loaded square so a walk lays only the chunks that enter it. Dropped with the chunk, or whole when `groundEpoch` or the world's breaks change. */
+  private readonly laidChunks = new Map<number, ChunkRecords>();
+  private recordsFor = { epoch: -1, breaks: -1 };
   private readonly props = {} as Record<Prop, THREE.InstancedMesh>;
   /** The detailed meshes of the modelled props, and the props whose detailed model has arrived: only those draw near the hero. */
   private readonly detailed: Partial<Record<Prop, THREE.InstancedMesh>> = {};
@@ -942,6 +962,7 @@ export class OpenWorldView {
   ) {
     lifting = true; // a new view starts on the high tier (#1418)
     biomeAt = (q, r) => world.tile(q, r)?.biome; // each biome's relief (#1735)
+    groundEpoch++; // another view's records read another reader
     shades.clear(); // another world: its own colours (#1756)
     this.scene.background = new THREE.Color(this.neon ? NEON.sky : WORLD_LOOKS.day.sky);
     this.scene.fog = this.fog;
@@ -1055,7 +1076,7 @@ export class OpenWorldView {
       const geometry = low[prop];
       if (!geometry) continue;
       this.paint(this.props[prop], this.neon ? neonProp(prop, geometry) : geometry);
-      if (VARIANTS.includes(prop)) this.variantReady.add(prop); // a biome's own prop, laid from now on (#1733)
+      if (VARIANTS.includes(prop)) (this.variantReady.add(prop), groundEpoch++); // a biome's own prop, laid from now on (#1733)
     }
     for (const prop of MODELLED) {
       const geometry = high[prop];
@@ -1823,11 +1844,52 @@ export class OpenWorldView {
       this.drawnKey = key;
       this.loadedReach = reach;
       this.build(this.centre[0], this.centre[1], reach, hero, true);
-    } else if (key !== this.drawnKey) {
+      return;
+    }
+    if (key !== this.drawnKey) {
       this.drawnKey = key;
       if (this.laidHero) this.shift(this.laidHero, hero);
       else this.build(this.centre[0], this.centre[1], reach, hero, false);
     }
+    if (!this.culling) this.prefetch(reach, hero);
+  }
+
+  /** Makes the records of the one chunk nearest the hero that lies in the ring of `AHEAD` chunks round the loaded square and has none, so a walk
+   * that moves the square finds its entering chunks ready and its build writes instead of computing (#1756). One a frame: it never stalls one. */
+  private prefetch(reach: number, hero: Axial): void {
+    this.validRecords();
+    const [cx, cy] = this.centre;
+    const [hx, hy] = chunkOf(hero);
+    let best: [number, number] | undefined;
+    let nearest = Infinity;
+    const far = reach + this.ahead(reach);
+    for (let ky = cy - far; ky <= cy + far; ky++) {
+      for (let kx = cx - far; kx <= cx + far; kx++) {
+        const known = this.laidChunks.get(kx * 65536 + ky);
+        const d = (kx - hx) ** 2 + (ky - hy) ** 2;
+        if ((known?.ground && known.view === null) || d >= nearest) continue;
+        [best, nearest] = [[kx, ky], d];
+      }
+    }
+    if (!best) return;
+    const [kx, ky] = best;
+    const key = kx * 65536 + ky;
+    const chunk = this.laidChunks.get(key) ?? { props: this.propRecords(kx, ky), ground: null, view: null, kx, ky };
+    [chunk.ground, chunk.view] = [this.groundRecords(kx, ky), null];
+    this.laidChunks.set(key, chunk);
+  }
+
+  /** The rings of chunks kept ahead at `reach`: the most, up to `AHEAD`, whose square and one chunk of halo the world's cache holds. */
+  private ahead(reach: number): number {
+    return Math.max(0, Math.min(AHEAD, Math.floor((Math.sqrt(this.world.limit) - 3) / 2) - reach));
+  }
+
+  /** Drops every record when what they read has changed: the landmarks, the biome reader, the lifting flag, the models, or a broken prop. */
+  private validRecords(): void {
+    const breaks = this.world.breaks;
+    if (this.recordsFor.epoch === groundEpoch && this.recordsFor.breaks === breaks) return;
+    this.laidChunks.clear();
+    this.recordsFor = { epoch: groundEpoch, breaks };
   }
 
   /** Lays marbles on the cells, each on its ground, in an instanced mesh (grown to hold them, up to `MOST`). */
@@ -1896,23 +1958,72 @@ export class OpenWorldView {
     return near && this.detailedReady.has(prop) ? this.detailed[prop]! : this.props[prop];
   }
 
-  /** How many instances each managed mesh takes for the chunks `reach` around `(cx, cy)`. It runs the build's own `stand` and
-   * routing, so a mesh is grown to hold them all before the build writes a single instance. */
-  private need(cx: number, cy: number, reach: number, hero: Axial): Map<THREE.InstancedMesh, number> {
+  /** How many instances each managed mesh takes for the records of `square`, routed as the build routes them, so a mesh is grown to
+   * hold them all before the build writes a single instance. */
+  private need(square: readonly ChunkRecords[], hero: Axial, terrain: boolean): Map<THREE.InstancedMesh, number> {
     const need = new Map<THREE.InstancedMesh, number>();
     const add = (mesh: THREE.InstancedMesh) => need.set(mesh, (need.get(mesh) ?? 0) + 1);
-    const lay: Lay = (prop, near) => add(this.route(prop, near));
-    for (let ky = cy - reach; ky <= cy + reach; ky++) {
-      for (let kx = cx - reach; kx <= cx + reach; kx++) {
-        this.world.chunk(kx, ky).forEach((tile, i) => {
-          const q = kx * CHUNK + (i % CHUNK);
-          const r = ky * CHUNK + Math.floor(i / CHUNK);
-          if (this.shows(q, r)) add(this.groundMesh(tile, q, r));
-          if (PROP_OF[tile.terrain]) this.stand(tile, q, r, NOWHERE, 0, lay, hexDistance([q, r], hero) <= HI_RADIUS); // the plain ground carries none (#1756)
-        });
-      }
+    for (const chunk of square) {
+      if (terrain) for (const g of chunk.ground!) add(g.flat ? this.flats[g.ground] : this.grounds[g.ground]);
+      for (const p of chunk.props) add(this.route(p.prop, p.near && hexDistance([p.q, p.r], hero) <= HI_RADIUS));
     }
     return need;
+  }
+
+  /** The records of the chunks `reach` around `(cx, cy)`, made for the chunks not kept yet (the ground only when `terrain`); the kept
+   * chunks outside the square are dropped (#1756). */
+  private records(cx: number, cy: number, reach: number, terrain: boolean): ChunkRecords[] {
+    this.validRecords();
+    const view = this.culling ? this.laidView : null;
+    const square: ChunkRecords[] = [];
+    for (let ky = cy - reach; ky <= cy + reach; ky++) {
+      for (let kx = cx - reach; kx <= cx + reach; kx++) {
+        const key = kx * 65536 + ky;
+        let chunk = this.laidChunks.get(key);
+        if (!chunk) this.laidChunks.set(key, (chunk = { props: this.propRecords(kx, ky), ground: null, view, kx, ky }));
+        if (terrain && (chunk.ground === null || chunk.view !== view)) [chunk.ground, chunk.view] = [this.groundRecords(kx, ky), view];
+        square.push(chunk);
+      }
+    }
+    const far = reach + this.ahead(reach); // the chunks ahead stay, ready for the walk
+    for (const [key, chunk] of this.laidChunks) if (Math.abs(chunk.kx - cx) > far || Math.abs(chunk.ky - cy) > far) this.laidChunks.delete(key);
+    return square;
+  }
+
+  /** The props of chunk `(kx, ky)`: only the cells that carry one are asked (#1756). */
+  private propRecords(kx: number, ky: number): PropRecord[] {
+    const out: PropRecord[] = [];
+    const { colour } = this;
+    this.world.chunk(kx, ky).forEach((tile, i) => {
+      if (PROP_OF[tile.terrain] === undefined) return;
+      const q = kx * CHUNK + (i % CHUNK);
+      const r = ky * CHUNK + Math.floor(i / CHUNK);
+      const p = axialTo3D(q, r);
+      const top = topOf(GROUND[tile.terrain], tile.height, q, r);
+      const cell = cellKey(q, r);
+      this.stand(tile, q, r, p, top, (prop, near, x, y, z, scaleY, hex) => {
+        colour.set(hex);
+        out.push({ prop, near, q, r, cell, x, y, z, scaleY, red: colour.r, green: colour.g, blue: colour.b });
+      }, true);
+    });
+    return out;
+  }
+
+  /** The ground of chunk `(kx, ky)` that shows: every cell, or with `cullGround` the cells inside the laid footprint. */
+  private groundRecords(kx: number, ky: number): GroundRecord[] {
+    const out: GroundRecord[] = [];
+    const { colour } = this;
+    this.world.chunk(kx, ky).forEach((tile, i) => {
+      const q = kx * CHUNK + (i % CHUNK);
+      const r = ky * CHUNK + Math.floor(i / CHUNK);
+      if (!this.shows(q, r)) return;
+      const p = axialTo3D(q, r);
+      const ground = GROUND[tile.terrain];
+      const top = topOf(ground, tile.height, q, r);
+      colour.set(ground === 'water' ? waterColor(this.world, q, r) : shadedGround(tile, ground, q, r));
+      out.push({ ground, flat: this.groundMesh(tile, q, r) === this.flats[ground], x: p.x, y: top / 2, z: p.z, scaleY: top, red: colour.r, green: colour.g, blue: colour.b });
+    });
+    return out;
   }
 
   /** The cell under a point of the screen, `x` and `y` from -1 to 1. The ray is cast against the top of each of the hero's cell and
@@ -2212,55 +2323,42 @@ export class OpenWorldView {
   /** Lays the chunks `reach` around `(cx, cy)`: the ground columns, the props (the detailed ones within `HI_RADIUS` of `hero`) and
    * the enemies. With `terrain` false (a step within the same chunks) it lays the props alone. */
   private build(cx: number, cy: number, reach: number, hero: Axial, terrain: boolean): void {
-    const need = this.need(cx, cy, reach, hero);
+    const square = this.records(cx, cy, reach, terrain);
+    const need = this.need(square, hero, terrain);
     // Every mesh holds what this build writes. With `cullGround` every ground mesh holds as many as the whole laid ground, so none is ever
     // replaced when the cells in view change kind: a replaced mesh is a new shader program, a second of software compiling (#1483).
     const grounds = this.culling && terrain ? this.groundMeshes() : [];
     const room = grounds.reduce((sum, mesh) => sum + (need.get(mesh) ?? 0), 0);
     for (const mesh of this.laid(terrain)) this.fit(mesh, grounds.includes(mesh) ? room : need.get(mesh) ?? 0);
     const counts = new Map<THREE.InstancedMesh, number>();
-    const { dummy } = this;
-    // Writes the next instance of `mesh` (it holds them all: `fit`).
-    const put = (mesh: THREE.InstancedMesh, x: number, y: number, z: number, scaleY: number, colour: number) => {
+    // Writes the next instance of `mesh` (it holds them all: `fit`): a place, a height and a colour, nothing turned.
+    const put = (mesh: THREE.InstancedMesh, x: number, y: number, z: number, scaleY: number, red: number, green: number, blue: number) => {
       const n = counts.get(mesh) ?? 0;
-      dummy.position.set(x, y, z);
-      dummy.scale.set(1, scaleY, 1);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(n, dummy.matrix);
-      mesh.setColorAt(n, this.colour.set(colour));
+      const m = mesh.instanceMatrix.array as Float32Array;
+      const o = n * 16;
+      m.fill(0, o, o + 16);
+      m[o] = m[o + 10] = m[o + 15] = 1;
+      m[o + 5] = scaleY;
+      m[o + 12] = x;
+      m[o + 13] = y;
+      m[o + 14] = z;
+      const c = mesh.instanceColor!.array as Float32Array;
+      c[n * 3] = red;
+      c[n * 3 + 1] = green;
+      c[n * 3 + 2] = blue;
       counts.set(mesh, n + 1);
     };
     // The props are laid by their cell too, so a step can move one of them (`slots`, #1054).
     this.slots.clear();
     for (const mesh of this.propMeshes()) this.slots.set(mesh, { cells: [], at: new Map() });
-    let cell = 0;
-    const lay: Lay = (prop, near, x, y, z, scaleY, colour) => {
-      const mesh = this.route(prop, near);
-      put(mesh, x, y, z, scaleY, colour);
-      const slots = this.slots.get(mesh)!;
-      slots.at.set(cell, slots.cells.length);
-      slots.cells.push(cell);
-    };
-    for (let ky = cy - reach; ky <= cy + reach; ky++) {
-      for (let kx = cx - reach; kx <= cx + reach; kx++) {
-        this.world.chunk(kx, ky).forEach((tile, i) => {
-          const q = kx * CHUNK + (i % CHUNK);
-          const r = ky * CHUNK + Math.floor(i / CHUNK);
-          const p = axialTo3D(q, r);
-          const ground = GROUND[tile.terrain];
-          const prop = PROP_OF[tile.terrain] !== undefined; // the plain ground asks for no prop and, off the screen, no top (#1756)
-          const shown = terrain && this.shows(q, r);
-          if (!shown && !prop) return;
-          const top = topOf(ground, tile.height, q, r);
-          if (shown) {
-            const column = this.groundMesh(tile, q, r);
-            put(column, p.x, top / 2, p.z, top, shadedGround(tile, ground, q, r));
-            if (ground === 'water') column.setColorAt(counts.get(column)! - 1, waterColor(this.world, q, r));
-          }
-          if (!prop) return;
-          cell = cellKey(q, r);
-          this.stand(tile, q, r, p, top, lay, hexDistance([q, r], hero) <= HI_RADIUS);
-        });
+    for (const chunk of square) {
+      if (terrain) for (const g of chunk.ground!) put(g.flat ? this.flats[g.ground] : this.grounds[g.ground], g.x, g.y, g.z, g.scaleY, g.red, g.green, g.blue);
+      for (const p of chunk.props) {
+        const mesh = this.route(p.prop, p.near && hexDistance([p.q, p.r], hero) <= HI_RADIUS);
+        put(mesh, p.x, p.y, p.z, p.scaleY, p.red, p.green, p.blue);
+        const slots = this.slots.get(mesh)!;
+        slots.at.set(p.cell, slots.cells.length);
+        slots.cells.push(p.cell);
       }
     }
     if (terrain) this.updateEnemies();
@@ -2269,7 +2367,7 @@ export class OpenWorldView {
     if (terrain) this.placeLogs();
     if (terrain) this.placeCairns(cx, cy, reach);
     for (const mesh of this.laid(terrain)) {
-      if (grounds.includes(mesh) && !counts.has(mesh)) put(mesh, 0, -100, 0, 1e-4, 0); // a ground out of view keeps one speck: a mesh drawn the first time is a shader to compile
+      if (grounds.includes(mesh) && !counts.has(mesh)) put(mesh, 0, -100, 0, 1e-4, 0, 0, 0); // a ground out of view keeps one speck: a mesh drawn the first time is a shader to compile
       mesh.count = counts.get(mesh) ?? 0;
       mesh.instanceMatrix.needsUpdate = true;
       mesh.instanceColor!.needsUpdate = true;
@@ -2319,6 +2417,7 @@ export class OpenWorldView {
     if (on === this.flatTops) return;
     this.flatTops = on;
     lifting = !on;
+    groundEpoch++; // the heights and the meshes of the records change
     this.drawnChunks = ''; // the ground is laid again
   }
 
