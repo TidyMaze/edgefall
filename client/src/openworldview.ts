@@ -1908,7 +1908,7 @@ export class OpenWorldView {
           const q = kx * CHUNK + (i % CHUNK);
           const r = ky * CHUNK + Math.floor(i / CHUNK);
           if (this.shows(q, r)) add(this.groundMesh(tile, q, r));
-          this.stand(tile, q, r, NOWHERE, 0, lay, hexDistance([q, r], hero) <= HI_RADIUS);
+          if (PROP_OF[tile.terrain]) this.stand(tile, q, r, NOWHERE, 0, lay, hexDistance([q, r], hero) <= HI_RADIUS); // the plain ground carries none (#1756)
         });
       }
     }
@@ -2248,12 +2248,16 @@ export class OpenWorldView {
           const r = ky * CHUNK + Math.floor(i / CHUNK);
           const p = axialTo3D(q, r);
           const ground = GROUND[tile.terrain];
+          const prop = PROP_OF[tile.terrain] !== undefined; // the plain ground asks for no prop and, off the screen, no top (#1756)
+          const shown = terrain && this.shows(q, r);
+          if (!shown && !prop) return;
           const top = topOf(ground, tile.height, q, r);
-          if (terrain && this.shows(q, r)) {
+          if (shown) {
             const column = this.groundMesh(tile, q, r);
             put(column, p.x, top / 2, p.z, top, shadedGround(tile, ground, q, r));
             if (ground === 'water') column.setColorAt(counts.get(column)! - 1, waterColor(this.world, q, r));
           }
+          if (!prop) return;
           cell = cellKey(q, r);
           this.stand(tile, q, r, p, top, lay, hexDistance([q, r], hero) <= HI_RADIUS);
         });
@@ -2440,7 +2444,7 @@ export class OpenWorldView {
     if (tile.terrain === 'peak') lay('mountain', near, p.x, top + (1.2 + v * 0.8) / 2, p.z, 1.2 + v * 0.8, WHITE);
     else if (tile.terrain === 'tree') lay(prop!, near, p.x, top + (1.6 + v * 0.8) / 2, p.z, 1.6 + v * 0.8, tint); // twice the pine's height (#1557 art round 3)
     else if (tile.terrain === 'boulder') lay(prop!, near, p.x, top + 0.2, p.z, 0.8, tint);
-    else if (tile.terrain === 'wall') {
+    else {
       lay('wall', near, p.x, top + WALL / 2, p.z, WALL, WHITE);
       lay('cap', false, p.x, top + WALKWAY + CAP / 2, p.z, CAP, WHITE); // the sodium ring round the walkway, the merlons through it (#1557)
     }

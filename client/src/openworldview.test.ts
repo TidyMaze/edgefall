@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { AMBIENT } from './openworldparticles';
 import * as THREE from 'three/webgpu';
 import { axialTo3D, type Axial } from './board';
-import { BIOMES, type Biome, cellAtPoint, CHUNK, chunkOf, neighbours, OFF_WORLD, type Terrain, type Tile, TROOP, World } from './openworld';
+import { BIOMES, type Biome, cellAtPoint, CHUNK, chunkOf, neighbours, OFF_WORLD, TERRAINS, type Terrain, type Tile, TROOP, World } from './openworld';
 import { RECRUIT_MAX } from './openworldrecruit';
 import { FRAME_REACH, FRAME_SHARE } from './openworldcamera';
 import { FightState } from './openworldfight';
@@ -3144,6 +3144,22 @@ describe('the ground in view only, on a software renderer (#1483)', () => {
     const version = mesh(view, 'terrain-grass').instanceMatrix.version;
     view.follow(0.001, false);
     expect(mesh(view, 'terrain-grass').instanceMatrix.version).toBe(version);
+  });
+
+  it('asks for a prop only of the cells that carry one, so laying the chunks again on a walk skips the plain ground (#1756)', () => {
+    const treed = (cx: number, cy: number): Uint8Array => {
+      if (Math.abs(cx) > 3 || Math.abs(cy) > 3) return new Uint8Array();
+      const out = new Uint8Array(CHUNK * CHUNK * 3);
+      for (let i = 0; i < CHUNK * CHUNK; i++) out.set([1, i % 16 === 0 ? TERRAINS.indexOf('tree') : TERRAINS.indexOf('grass'), 0], i * 3); // a tree in every 16th cell
+      return out;
+    };
+    const view = new OpenWorldView(new World(treed));
+    view.resize(1600, 900);
+    view.cullGround(true);
+    const stand = vi.spyOn(view as unknown as { stand: () => void }, 'stand');
+    view.show([0, 0]);
+    expect(stand.mock.calls.length).toBeGreaterThan(0);
+    expect(stand.mock.calls.length).toBeLessThanOrEqual((CELLS / 16) * 2 + 4); // the count and the lay, a tree in 16 cells
   });
 
   it('lays the whole chunks again when it is switched off', () => {
