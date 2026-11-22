@@ -1964,12 +1964,23 @@ export class OpenWorldView {
   /** How many instances each managed mesh takes for the records of `square`, routed as the build routes them, so a mesh is grown to
    * hold them all before the build writes a single instance. */
   private need(square: readonly ChunkRecords[], hero: Axial, terrain: boolean): Map<THREE.InstancedMesh, number> {
-    const need = new Map<THREE.InstancedMesh, number>();
-    const add = (mesh: THREE.InstancedMesh) => need.set(mesh, (need.get(mesh) ?? 0) + 1);
+    const cursors = new Map<THREE.InstancedMesh, { n: number }>();
+    let last: THREE.InstancedMesh | undefined; // the meshes come in runs: one lookup per change of mesh, not one per instance (#1761)
+    let cursor = { n: 0 };
+    const add = (mesh: THREE.InstancedMesh) => {
+      if (mesh !== last) {
+        last = mesh;
+        cursor = cursors.get(mesh) ?? { n: 0 };
+        cursors.set(mesh, cursor);
+      }
+      cursor.n++;
+    };
     for (const chunk of square) {
       if (terrain) for (const g of chunk.ground!) add(g.flat ? this.flats[g.ground] : this.grounds[g.ground]);
       for (const p of chunk.props) add(this.route(p.prop, p.near && hexDistance([p.q, p.r], hero) <= HI_RADIUS));
     }
+    const need = new Map<THREE.InstancedMesh, number>();
+    for (const [mesh, c] of cursors) need.set(mesh, c.n);
     return need;
   }
 
@@ -2332,10 +2343,17 @@ export class OpenWorldView {
     const grounds = this.culling && terrain ? this.groundMeshes() : [];
     const room = grounds.reduce((sum, mesh) => sum + (need.get(mesh) ?? 0), 0);
     for (const mesh of this.laid(terrain)) this.fit(mesh, grounds.includes(mesh) ? room : need.get(mesh) ?? 0);
-    const counts = new Map<THREE.InstancedMesh, number>();
+    const counts = new Map<THREE.InstancedMesh, { n: number }>();
+    let lastMesh: THREE.InstancedMesh | undefined; // the meshes come in runs: one lookup per change of mesh, not one per instance (#1761)
+    let cursor = { n: 0 };
     // Writes the next instance of `mesh` (it holds them all: `fit`): a place, a height and a colour, nothing turned.
     const put = (mesh: THREE.InstancedMesh, x: number, y: number, z: number, scaleY: number, red: number, green: number, blue: number) => {
-      const n = counts.get(mesh) ?? 0;
+      if (mesh !== lastMesh) {
+        lastMesh = mesh;
+        cursor = counts.get(mesh) ?? { n: 0 };
+        counts.set(mesh, cursor);
+      }
+      const n = cursor.n++;
       const m = mesh.instanceMatrix.array as Float32Array;
       const o = n * 16;
       m.fill(0, o, o + 16);
@@ -2348,19 +2366,20 @@ export class OpenWorldView {
       c[n * 3] = red;
       c[n * 3 + 1] = green;
       c[n * 3 + 2] = blue;
-      counts.set(mesh, n + 1);
     };
     // The props are laid by their cell too, so a step can move one of them (`slots`, #1054).
     this.slots.clear();
     for (const mesh of this.propMeshes()) this.slots.set(mesh, { cells: [], at: new Map() });
+    let slotsOf: { cells: number[]; at: Map<number, number> } | undefined;
+    let slotsMesh: THREE.InstancedMesh | undefined;
     for (const chunk of square) {
       if (terrain) for (const g of chunk.ground!) put(g.flat ? this.flats[g.ground] : this.grounds[g.ground], g.x, g.y, g.z, g.scaleY, g.red, g.green, g.blue);
       for (const p of chunk.props) {
         const mesh = this.route(p.prop, p.near && hexDistance([p.q, p.r], hero) <= HI_RADIUS);
         put(mesh, p.x, p.y, p.z, p.scaleY, p.red, p.green, p.blue);
-        const slots = this.slots.get(mesh)!;
-        slots.at.set(p.cell, slots.cells.length);
-        slots.cells.push(p.cell);
+        if (mesh !== slotsMesh) [slotsMesh, slotsOf] = [mesh, this.slots.get(mesh)!];
+        slotsOf!.at.set(p.cell, slotsOf!.cells.length);
+        slotsOf!.cells.push(p.cell);
       }
     }
     if (terrain) this.updateEnemies();
@@ -2370,7 +2389,7 @@ export class OpenWorldView {
     if (terrain) this.placeCairns(cx, cy, reach);
     for (const mesh of this.laid(terrain)) {
       if (grounds.includes(mesh) && !counts.has(mesh)) put(mesh, 0, -100, 0, 1e-4, 0, 0, 0); // a ground out of view keeps one speck: a mesh drawn the first time is a shader to compile
-      mesh.count = counts.get(mesh) ?? 0;
+      mesh.count = counts.get(mesh)?.n ?? 0;
       mesh.instanceMatrix.needsUpdate = true;
       mesh.instanceColor!.needsUpdate = true;
     }

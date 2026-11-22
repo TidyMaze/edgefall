@@ -148,4 +148,16 @@ describe('a walk lays only the chunks that enter the area (#1756)', () => {
     expect(again()).toBe(first - 1);
     expect(trees()).toBe(before - 1);
   });
+  it('writes the instances with a Map lookup per mesh change, not one per instance (#1761)', () => {
+    const { view, inside, again } = open();
+    again(); // the records are kept: the next build only writes
+    const instances = (view.scene.children as THREE.InstancedMesh[]).reduce((sum, m) => sum + (m.isInstancedMesh ? m.count : 0), 0);
+    const get = vi.spyOn(Map.prototype, 'get');
+    inside.drawnChunks = '';
+    view.show([0, 0]);
+    const calls = get.mock.calls.length;
+    get.mockRestore();
+    expect(instances).toBeGreaterThan(1000);
+    expect(calls).toBeLessThan(instances / 4);
+  });
 });
