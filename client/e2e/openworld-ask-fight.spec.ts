@@ -128,3 +128,34 @@ for (const [width, height] of [[390, 844], [360, 640]] as const) {
     }
   });
 }
+
+// #1764: the biome banner (top middle, 3 s after a biome is entered) never sits over the dialog's text or buttons.
+for (const [width, height] of [[1280, 720], [1000, 700], [390, 844], [360, 640], [375, 812], [812, 375]] as const) {
+  test(`the biome banner does not cover the dialog at ${width}x${height} (#1764)`, async ({ world: page }) => {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(() => {
+      const banner = document.getElementById('openworld-biome')!;
+      banner.textContent = 'Meadow · towers 0/3 · logs 0/2';
+      banner.hidden = false;
+      banner.classList.remove('fade');
+    });
+    const beside = await opened(page);
+    await put(page, beside);
+    await expect(page.locator('#openworld-ask')).toBeVisible();
+    await shot(page, { path: `test-results/openworld-ask-banner-${width}x${height}.png` });
+    const covered = await page.evaluate(() => {
+      const hit = (id: string) => {
+        const r = document.getElementById(id)!.getBoundingClientRect();
+        const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return top !== null && document.getElementById(id)!.contains(top);
+      };
+      const b = document.getElementById('openworld-biome')!;
+      const br = b.getBoundingClientRect();
+      const ar = document.getElementById('openworld-ask')!.getBoundingClientRect();
+      const shown = getComputedStyle(b).display !== 'none' && br.width > 0;
+      const overlap = shown && br.x < ar.right && br.right > ar.x && br.y < ar.bottom && br.bottom > ar.y;
+      return { overlap, fight: hit('openworld-ask-fight'), back: hit('openworld-ask-back') };
+    });
+    expect(covered).toEqual({ overlap: false, fight: true, back: true });
+  });
+}

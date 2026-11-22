@@ -1748,6 +1748,8 @@ body:not(:has(#replay-bar:not([hidden]))) #dock:not(:has(> button:not([hidden]))
 #openworld-map-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; vertical-align: -1px; }
 /* The world's clock (#1743) shares the medals' row of the plate, so the plate keeps its height on a phone (#1730). */
 #openworld-clock:not(:empty)::before { content: ' · '; }
+/* The wild marble's dialog sits where the banner does: while it shows, the banner is not drawn (#1764). Its 3 s timer runs on. */
+body[data-openworld]:has(#openworld-ask:not([hidden])) #openworld-biome { display: none; }
 /* Screen transitions (#1099, docs/specs/motion.md story 9): entering or leaving the Open world cross-fades the canvas in on --motion-base. The
    rule that stops matching swaps the animation for the other keyframes (the same name would not restart), so each change replays the fade. Opacity only: nothing waits, the game takes input from the first frame.
    A game that is over (the loss dim, end-dim) keeps its own animation. Reduced motion: the tokens are 0ms, a hard cut. */
