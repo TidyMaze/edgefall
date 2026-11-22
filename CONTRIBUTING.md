@@ -427,7 +427,7 @@ for a push that only rebases on `main` without conflict (section 6.4). It runs t
 
 - `cargo fmt --all --check`
 - `cargo clippy --all-targets --locked -- -D warnings`
-- `cargo llvm-cov --workspace --locked --fail-under-lines 100 --fail-under-regions 100`
+- `cargo llvm-cov --workspace --locked --fail-under-lines 100 --fail-under-regions 100 -- --test-threads=1` (one test thread: under coverage the counters of the threads fight over cache lines, and the core tests run 8 times slower with 4)
 
 **What CI runs** (`.github/workflows/ci.yml`):
 

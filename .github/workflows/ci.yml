@@ -259,7 +259,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
-      - run: cargo llvm-cov --workspace --locked --fail-under-lines 100 --fail-under-regions 100 --show-missing-lines
+      - run: cargo llvm-cov --workspace --locked --fail-under-lines 100 --fail-under-regions 100 --show-missing-lines -- --test-threads=1
 
   # The e2e suite runs only on a dispatch (`gh workflow run ci.yml --ref main`), never on a PR or a push: e2e-hourly.yml
   # dispatches it every hour when main moved (#1433, which replaces the "full suite before every merge" of #445).

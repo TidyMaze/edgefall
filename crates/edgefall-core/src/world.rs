@@ -937,7 +937,11 @@ pub const RING_SIZE: usize = 3;
 /// move, the boss of `TOWER_ORDER[i]` stands on the `i`-th nearest to the spawn (hex distance, a tie goes to the lower lair). So lair
 /// `k` of the client is still the boss `k`: a save's beaten lairs and a medal keep their boss. From the seed alone.
 pub fn towers(seed: u64) -> Vec<(i32, i32)> {
-    let cells = lairs(seed, TOWER_ORDER.len());
+    towers_on(&lairs(seed, TOWER_ORDER.len()))
+}
+
+/// `towers` from the cells of the 15 lairs.
+fn towers_on(cells: &[(i32, i32)]) -> Vec<(i32, i32)> {
     let mut nearest: Vec<usize> = (0..cells.len()).collect();
     nearest.sort_by_key(|&i| (hex_distance((0, 0), cells[i]), i));
     let mut found = vec![(0, 0); cells.len()];
@@ -2378,10 +2382,14 @@ mod tests {
         (total, got)
     }
 
+    /// `f` of each seed, in the order of `seeds`. No threads: under coverage they run far slower than one.
+    fn each_seed<T>(seeds: Vec<u64>, f: fn(u64) -> T) -> Vec<(u64, T)> {
+        seeds.into_iter().map(|seed| (seed, f(seed))).collect()
+    }
+
     #[test]
     fn most_open_cells_around_the_spawn_are_reachable_on_foot() {
-        for seed in 1..=32 {
-            let (open, reached) = spawn_window_reach(seed);
+        for (seed, (open, reached)) in each_seed((1..=32).collect(), spawn_window_reach) {
             assert!(
                 reached * 100 >= open * 90,
                 "seed {seed}: {reached} of {open} open cells reached on foot"
@@ -2757,55 +2765,66 @@ mod tests {
         );
     }
 
-    /// Runs `search` for the seeds 1 to 2000 on 8 threads and hands each result to `check`, failing instead of hanging when a seed never
-    /// returns (a search with no end, `what` is the message): the threads left behind end with the test binary.
-    fn sweep<T: Send + 'static>(what: &str, search: fn(u64) -> T, mut check: impl FnMut(u64, T)) {
-        let (tx, rx) = std::sync::mpsc::channel();
-        for part in 0..8u64 {
-            let tx = tx.clone();
-            std::thread::spawn(move || {
-                for seed in (1 + part..=2000).step_by(8) {
-                    let _ = tx.send((seed, search(seed)));
+    /// What the 2000-seed sweeps share, computed once for the seeds 1 to 2000 (`SEEDS[seed - 1]`): the places in a quarter of their tries
+    /// (the same as `places(seed, &[])` whenever all ten are found, the tries before a fit being the same), the 15 lairs, the towers on
+    /// them and the pad of each tower. The lairs are the costly search, and the sweeps of the places, the lairs, the towers and the pads
+    /// used to redo it each.
+    struct Seed {
+        places: Vec<(PlaceKind, (i32, i32))>,
+        lairs: Vec<(i32, i32)>,
+        towers: Vec<(i32, i32)>,
+        pads: Vec<((i32, i32), (i32, i32))>,
+    }
+
+    /// One thread: under coverage the counters of the threads share cache lines, and 8 threads ran 40 times slower than one.
+    static SEEDS: std::sync::LazyLock<Vec<Seed>> = std::sync::LazyLock::new(|| {
+        (1..=2000)
+            .map(|seed| {
+                let lairs = lairs(seed, TOWER_ORDER.len());
+                let towers = towers_on(&lairs);
+                let pads = towers.iter().map(|&t| (t, tower_pad(seed, t))).collect();
+                let places = places_within(seed, &[], PLACE_TRIES / 4);
+                Seed {
+                    places,
+                    lairs,
+                    towers,
+                    pads,
                 }
-            });
-        }
-        drop(tx);
-        for _ in 0..2000 {
-            let (seed, found) = rx
-                .recv_timeout(std::time::Duration::from_secs(30))
-                .expect(what);
-            check(seed, found);
-        }
+            })
+            .collect()
+    });
+
+    /// The seeds 1 to 2000 with what they share.
+    fn seeds() -> impl Iterator<Item = (u64, &'static Seed)> {
+        (1..=2000).zip(SEEDS.iter())
     }
 
     #[test]
     fn every_seed_from_1_to_2000_places_its_five_towns_and_five_gates_and_the_search_ends() {
-        sweep(
-            "places never end",
-            |seed| places(seed, &[]),
-            |seed, found| {
-                assert_eq!(found.len(), TOWNS + DUNGEONS, "seed {seed}");
-                for (i, a) in found.iter().enumerate() {
-                    for b in &found[i + 1..] {
-                        assert!(hex_distance(a.1, b.1) > 3, "seed {seed}: {a:?} and {b:?}");
-                    }
-                    for (dq, dr) in TELEPORT_PAD {
-                        let c = cell(seed, a.1 .0 + dq, a.1 .1 + dr).expect("on the world");
-                        assert!(!c.terrain.blocked(), "seed {seed}: {a:?}");
-                    }
+        for (seed, shared) in seeds() {
+            let found = &shared.places;
+            assert_eq!(found.len(), TOWNS + DUNGEONS, "seed {seed}");
+            for (i, a) in found.iter().enumerate() {
+                for b in &found[i + 1..] {
+                    assert!(hex_distance(a.1, b.1) > 3, "seed {seed}: {a:?} and {b:?}");
                 }
-            },
-        );
+                for (dq, dr) in TELEPORT_PAD {
+                    let c = cell(seed, a.1 .0 + dq, a.1 .1 + dr).expect("on the world");
+                    assert!(!c.terrain.blocked(), "seed {seed}: {a:?}");
+                }
+            }
+        }
     }
 
     #[test]
-    fn every_seed_from_1_to_2000_finds_its_places_in_a_quarter_of_the_tries_a_place_has() {
-        // A quarter of the tries is enough for every seed, so `PLACE_TRIES` has four times the room.
-        sweep(
-            "places never end",
-            |seed| places_within(seed, &[], PLACE_TRIES / 4),
-            |seed, found| assert_eq!(found.len(), TOWNS + DUNGEONS, "seed {seed}"),
-        );
+    fn the_places_found_in_a_quarter_of_the_tries_are_those_of_all_the_tries() {
+        for seed in 1..=60 {
+            assert_eq!(
+                places_within(seed, &[], PLACE_TRIES / 4),
+                places(seed, &[]),
+                "seed {seed}"
+            );
+        }
     }
 
     #[test]
@@ -2836,21 +2855,18 @@ mod tests {
 
     #[test]
     fn every_seed_from_1_to_2000_places_its_fifteen_lairs_and_the_search_ends() {
-        sweep(
-            "lairs never end",
-            |seed| lairs(seed, 15),
-            |seed, found| {
-                assert_eq!(found.len(), 15, "seed {seed}");
-                for (k, &(q, r)) in found.iter().enumerate() {
-                    assert!(distance(q, r) >= LAIR_MIN, "seed {seed}: lair {k}");
-                    for (dq, dr) in TELEPORT_PAD {
-                        let c = cell(seed, q + dq, r + dr).expect("on the world");
-                        assert!(!c.terrain.blocked(), "seed {seed}: lair {k}");
-                        assert_eq!(c.biome, BIOMES[k % 6], "seed {seed}: lair {k}");
-                    }
+        for (seed, shared) in seeds() {
+            let found = &shared.lairs;
+            assert_eq!(found.len(), 15, "seed {seed}");
+            for (k, &(q, r)) in found.iter().enumerate() {
+                assert!(distance(q, r) >= LAIR_MIN, "seed {seed}: lair {k}");
+                for (dq, dr) in TELEPORT_PAD {
+                    let c = cell(seed, q + dq, r + dr).expect("on the world");
+                    assert!(!c.terrain.blocked(), "seed {seed}: lair {k}");
+                    assert_eq!(c.biome, BIOMES[k % 6], "seed {seed}: lair {k}");
                 }
-            },
-        );
+            }
+        }
     }
 
     /// The seeds of 1 to 22 000 and the random 32-bit ones found so far whose log `k` had no fit in its own ring and wedge before #1755 (#1595): the
@@ -3092,8 +3108,8 @@ mod tests {
             .collect()
     }
 
-    fn check_towers(seed: u64, found: &[(i32, i32)]) {
-        let mut cells = lairs(seed, TOWER_ORDER.len());
+    fn check_towers(seed: u64, found: &[(i32, i32)], lairs: &[(i32, i32)]) {
+        let mut cells = lairs.to_vec();
         let mut moved = found.to_vec();
         cells.sort();
         moved.sort();
@@ -3128,16 +3144,16 @@ mod tests {
 
     #[test]
     fn every_seed_from_1_to_2000_puts_the_easiest_tower_nearest_and_the_echo_first() {
-        sweep("towers never end", towers, |seed, found| {
-            assert_eq!(found.len(), 15, "seed {seed}");
-            check_towers(seed, &found);
-        });
+        for (seed, shared) in seeds() {
+            assert_eq!(shared.towers.len(), 15, "seed {seed}");
+            check_towers(seed, &shared.towers, &shared.lairs);
+        }
     }
 
     #[test]
     fn random_seeds_put_the_easiest_tower_nearest_and_the_echo_first() {
         for seed in random_seeds() {
-            check_towers(seed, &towers(seed));
+            check_towers(seed, &towers(seed), &lairs(seed, TOWER_ORDER.len()));
         }
     }
 
@@ -3197,7 +3213,8 @@ mod tests {
     #[test]
     fn every_seed_from_1_to_2000_gives_each_tower_a_pad_on_an_open_cell_next_to_it_and_the_search_ends(
     ) {
-        sweep("pads never end", pads, |seed, found| {
+        for (seed, shared) in seeds() {
+            let found = &shared.pads;
             assert_eq!(found.len(), 15, "seed {seed}");
             for (i, &(tower, pad)) in found.iter().enumerate() {
                 assert_eq!(hex_distance(tower, pad), 1, "seed {seed}: pad {i}");
@@ -3212,7 +3229,7 @@ mod tests {
                     assert_ne!(pad, other, "seed {seed}: two pads on {pad:?}");
                 }
             }
-        });
+        }
     }
 
     #[test]
@@ -3251,15 +3268,19 @@ mod tests {
 
     /// The cells the logs, then the places, keep off, as the bridge passes them (the 15 towers' lairs and the teleporters, then the logs).
     fn bridge_avoid(seed: u64) -> Vec<(i32, i32)> {
-        let lairs = lairs(seed, TOWER_ORDER.len());
+        bridge_avoid_on(seed, lairs(seed, TOWER_ORDER.len()))
+    }
+
+    /// `bridge_avoid` from the 15 lairs.
+    fn bridge_avoid_on(seed: u64, lairs: Vec<(i32, i32)>) -> Vec<(i32, i32)> {
         let mut avoid = teleporters(seed, &lairs);
         avoid.extend(lairs);
         avoid
     }
 
     /// The points of interest that are no boss (docs/specs/openworld.md section 16): the lore logs and the dungeon gates.
-    fn points_of_interest(seed: u64) -> Vec<(i32, i32)> {
-        let mut avoid = bridge_avoid(seed);
+    fn points_of_interest(seed: u64, lairs: Vec<(i32, i32)>) -> Vec<(i32, i32)> {
+        let mut avoid = bridge_avoid_on(seed, lairs);
         let found = logs(seed, &avoid);
         avoid.extend(found.iter().flatten());
         let gates = kind_cells(&places(seed, &avoid), PlaceKind::Dungeon);
@@ -3268,8 +3289,8 @@ mod tests {
 
     #[test]
     fn a_world_holds_twelve_logs_and_five_gates_two_or_three_points_of_interest_in_every_biome() {
-        for seed in 1..=300 {
-            let found = points_of_interest(seed);
+        for (seed, shared) in seeds().take(300) {
+            let found = points_of_interest(seed, shared.lairs.clone());
             assert_eq!(found.len(), LOGS + DUNGEONS, "seed {seed}");
             for (k, biome) in BIOMES.into_iter().enumerate() {
                 let here = found
@@ -3333,12 +3354,14 @@ mod tests {
 
     #[test]
     fn no_open_cell_lies_farther_than_landmark_reach_from_a_landmark() {
-        for seed in [7, 11, 23] {
+        let gaps = |seed| {
             let named = landmarks(seed);
             let before = landmark_gap(seed, &named);
             let mut all = named.clone();
             all.extend(cairns(seed, &named));
-            let after = landmark_gap(seed, &all);
+            (before, landmark_gap(seed, &all))
+        };
+        for (seed, (before, after)) in each_seed(vec![7, 11, 23], gaps) {
             println!("#1533 seed {seed}: largest landmark-free radius {before} cells before cairns, {after} with them");
             assert!(
                 before > LANDMARK_REACH,
