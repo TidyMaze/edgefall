@@ -362,23 +362,52 @@ describe('a wild marble in the way asks before it fights (#1662)', () => {
     expect(onWild).not.toHaveBeenCalled();
   });
 
-  it('3: while it asks, a roll, held keys, a stick, a press, the wander tick and Enter-less keys do nothing', () => {
+  it('3: while it asks, a roll, held keys, a stick, a press and the wander tick still work: the world is not paused (#1762)', () => {
     const { m, onWild, clock } = setup();
     m.fixture({ hero: next, troop: [] });
     expect(m.asking).toBe(true);
-    const at = m.hero!.at;
-    expect(roll(m, [at[0], at[1] + 1])).toBe(false);
-    expect(m.key('ArrowUp')).toBe(true);
-    m.hold(['ArrowUp']);
-    m.press(400, 300, 800, 600);
-    clock(away);
-    m.stepWander();
-    m.frame(vi.fn(), 1e9);
-    expect(m.hero!.at).toEqual(at);
-    expect(m.enemies()).toContainEqual(found.home); // the marbles stayed
-    expect(m.asking).toBe(true);
+    const out = neighbours(next).find((n) => dist(n, found.home) === 2)!;
+    expect(roll(m, out)).toBe(true);
+    expect(m.hero!.at).toEqual(out);
+    expect(m.asking).toBe(false); // out of contact: the dialog is gone
     expect(onWild).not.toHaveBeenCalled();
-    expect(m.key('r')).toBe(true); // other keys still work
+    m.fixture({ hero: next, troop: [] });
+    expect(m.asking).toBe(true);
+    m.key('ArrowUp');
+    expect((m as unknown as { held: Set<string> }).held.has('ArrowUp')).toBe(true); // the walk is not cleared by the contact
+    m.release();
+    m.hold(['ArrowUp']);
+    expect((m as unknown as { pad: string[] }).pad).toEqual(['ArrowUp']);
+    m.hold([]);
+    clock(away);
+    const ticked = (m as unknown as { ticked: number }).ticked;
+    m.stepWander();
+    expect((m as unknown as { ticked: number }).ticked).not.toBe(ticked); // the marbles keep going
+    expect(m.key('r')).toBe(true);
+  });
+
+  it('3a: a step within contact keeps the dialog and refreshes where Back away goes', () => {
+    const { m, onWild, onAsk } = setup();
+    const far = neighbours(next).find((n) => dist(n, found.home) === 2)!;
+    m.fixture({ hero: far, troop: [] });
+    roll(m, next);
+    expect(m.asking).toBe(true);
+    const side = neighbours(next).find((n) => dist(n, found.home) === 1)!;
+    roll(m, side); // still in contact
+    expect(m.asking).toBe(true);
+    (m as unknown as { wild(): boolean }).wild(); // a tick of the marbles in contact: the cell to go back to stays
+    expect(m.asking).toBe(true);
+    m.backAway(); // goes back to the cell it came from: next
+    expect(m.hero!.at).toEqual(next);
+    expect(onAsk).toHaveBeenLastCalledWith(false);
+    expect(onWild).not.toHaveBeenCalled();
+  });
+
+  it('3e: Enter fights while the dialog shows, whatever has the focus (the canvas too)', () => {
+    const { m, onWild } = setup();
+    m.fixture({ hero: next, troop: [] });
+    expect(m.key('Enter')).toBe(true);
+    expect(onWild).toHaveBeenCalledTimes(1);
   });
 
   /** A 2D context that draws nothing: the map opens in jsdom. */
@@ -388,24 +417,22 @@ describe('a wild marble in the way asks before it fights (#1662)', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
   };
 
-  it('3b: the prompt is modal: M, T, the Map and Teleport buttons open nothing and move nothing; Esc backs away', () => {
+  it('3b: M, T, the Map and Teleport buttons work while the dialog shows; Esc closes the map first, then backs away', () => {
     mapDraws();
     const { m } = setup();
     m.fixture({ hero: next, troop: [] });
     expect(m.asking).toBe(true);
-    const at = m.hero!.at;
-    (m as unknown as { onTeleporter(): boolean }).onTeleporter = () => true; // as if the hero stood on a teleporter
-    expect(m.key('m')).toBe(true);
-    expect(m.mapShown).toBe(false);
-    expect(m.key('t')).toBe(true);
-    expect(m.mapShown).toBe(false);
     m.toggleMap();
-    expect(m.mapShown).toBe(false);
-    m.teleport();
+    expect(m.mapShown).toBe(true);
+    expect(m.key('Escape')).toBe(true); // the map closes, the dialog stays
     expect(m.mapShown).toBe(false);
     expect(m.asking).toBe(true);
-    expect(m.hero!.at).toEqual(at);
-    expect(m.key('Escape')).toBe(true); // Esc backs away, it does not leave
+    (m as unknown as { onTeleporter(): boolean }).onTeleporter = () => true;
+    m.teleport();
+    expect(m.mapShown).toBe(true);
+    m.teleport();
+    expect(m.mapShown).toBe(false);
+    expect(m.key('Escape')).toBe(true);
     expect(m.asking).toBe(false);
   });
 

@@ -142,7 +142,13 @@ the hour, reached and left the way a boss lair is (section 7). No new rule.
   first), on each tick of the clock (a marble that walks up to the hero), when the calm ends, and when a test fixture puts the hero beside one.
   Of several, the one that started on the lowest `(r, q)` fights. A marble the troop shoved stands in `added` and fights nobody. The step that
   makes the contact **skips the troop's automatic push** (section 4): the marble has started a fight, the troop does not push it, nor any other
-  that step. The walk ends and the hero takes no more steps; the world is saved with the hero where it stands (the cell it landed on).
+  that step. The contact **asks, it does not fight at once** (#1662, #1762): the dialog "A wild marble is in your way." (`openworldask.ts`) shows
+  Fight and Back away, and the world is saved with the hero where it stands. The dialog **pauses nothing and takes no focus**: arrows, WASD, the
+  stick and a tap walk the hero on, a held key keeps walking, and the clock and the marbles go on. **Fight** (click, tap, Tab then Space, or
+  **Enter** whatever has the focus while the dialog shows) starts the fight; **Back away** (button, or **Esc**) steps the hero back to the cell it
+  came from (a standing hero: the free neighbour farthest from the marble) and sets the 5 s calm. Walking out of contact (no wild marble within
+  1 cell) hides the dialog and asks nothing until contact is made again; a step that stays in contact keeps it. A marble that walks into the hero
+  reopens it. With the map open, Esc closes the map first. The live line announces the marble.
 - **Calm.** A world that has just opened starts no wild fight for `FLEE_GRACE_MS` = **5 s**: that is how a marble that was fled from cannot fight
   for 5 s (Flee, a loss and a reload all open the world again), and a marble next to the hero on a reload or a Back does not catch it at once.
   After the calm, a marble still within one cell fights. A test fixture ends the calm.

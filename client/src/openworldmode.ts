@@ -130,7 +130,7 @@ export class OpenWorldMode {
   drawn = 0;
   /** Whether a wild fight has started: the hero takes no more steps while the page plays the transition. */
   private fighting = false;
-  /** The prompt shown when a wild marble touches the hero (#1662): the home of the group asked about, the world paused until Fight or Back away. */
+  /** The prompt shown when a wild marble touches the hero (#1662): the home of the group asked about, the world keeps going: Fight or Back away answers it, walking out of contact closes it (#1762). */
   private asked: { home: Axial; at: Axial; from: Axial | null } | null = null;
   /** The home of the group the hero backed away from (#1662): it asks nothing until the hero leaves contact. */
   private declined: Axial | null = null;
@@ -735,9 +735,9 @@ export class OpenWorldMode {
    * keys are not the mode's. Reports whether the key was the mode's. */
   key(key: string, repeat = false): boolean {
     if (this.fighting) return false; // the transition into a wild fight takes the keys (#1511)
-    if (this.asked && (key === 'Enter' || key === 'Escape')) return key === 'Enter' ? this.startFight() : this.backAway(), true; // the prompt's keys (#1662)
     if (this.mapShown && key === 'Enter' && this.worldMap!.choosing) return this.choose(this.worldMap!.chosen), true; // the ringed teleporter (#1412)
     if (this.mapShown) return (key === 'Escape' || MAP_KEYS.has(key) || TELEPORT_KEYS.has(key)) && (this.toggleMap(), true);
+    if (this.asked && (key === 'Enter' || key === 'Escape')) return key === 'Enter' ? this.startFight() : this.backAway(), true; // the dialog's keys, wherever the focus is (#1662, #1762)
     if (MAP_KEYS.has(key)) return this.toggleMap(), true;
     if (TELEPORT_KEYS.has(key)) return this.teleport(), true;
     if (HELP_KEYS.has(key)) return this.toggleControls(), true;
@@ -747,7 +747,7 @@ export class OpenWorldMode {
     const turn = TURNS.get(key);
     if (turn !== undefined) return this.turn(turn), true;
     if (!ARROWS.has(key)) return false;
-    if (!repeat && !this.asked) this.arrows(() => this.held.add(key)); // the world waits for the answer (#1662)
+    if (!repeat) this.arrows(() => this.held.add(key));
     return true;
   }
 
@@ -759,7 +759,7 @@ export class OpenWorldMode {
   /** The stick (#1025, #1026) holds the arrows of its drag, none when the thumb lets go: the hero steps by them on the cadence of the
    * held arrows, as by the keys (#1059). Nothing while the mode is off. */
   hold(keys: readonly string[]): void {
-    if (!this.active || this.asked) return;
+    if (!this.active) return;
     if (keys.length > 0) this.route = []; // the stick takes over from a walk to a far cell (#1137)
     this.arrows(() => (this.pad = [...keys]));
   }
@@ -804,7 +804,6 @@ export class OpenWorldMode {
   /** A press at `x`, `y` pixels of a `width` x `height` screen rolls the hero onto the cell under it when it is next to it; with
    * steering on, a far cell is walked to, round the obstacles (#1137). */
   press(x: number, y: number, width: number, height: number): void {
-    if (this.asked) return;
     const [nx, ny] = [(x / width) * 2 - 1, 1 - (y / height) * 2];
     const near = this.view!.pick(nx, ny);
     if (!this.steering() || !same(near, this.hero!.at)) return void this.roll(near);
@@ -847,7 +846,7 @@ export class OpenWorldMode {
   /** Opens the map of the cells discovered (#1411) over the world, on the hero, or closes it: the HUD's Map button, M, the pad's View.
    * The hero ends its walk and lets go of the arrows held: it stays while the map is open. Nothing outside a world. */
   toggleMap(): void {
-    if (!this.active || this.asked) return; // the prompt is modal (#1662)
+    if (!this.active) return;
     if (this.mapShown) return this.closeMap();
     this.openMap(false);
   }
@@ -869,7 +868,7 @@ export class OpenWorldMode {
   /** The Teleport action (#1412): the HUD's Teleport button, T and the pad's Y. On a teleporter it opens the map in the choice of a
    * teleporter, and closes it again; nothing off a teleporter or outside a world. */
   teleport(): void {
-    if (!this.active || this.asked) return; // the prompt is modal (#1662)
+    if (!this.active) return;
     if (this.mapShown) return this.closeMap();
     if (this.onTeleporter()) this.openMap(true);
   }
@@ -1085,7 +1084,7 @@ export class OpenWorldMode {
   /** The hero steps to `to`, at `at` (ms); `pace` is the pace of its glide: a `tap` (a press on the screen) eases out, the steps of
    * the held arrows keep one speed (#1065). */
   private roll(to: Axial, at = performance.now(), pace: Pace = 'tap'): boolean {
-    if (this.fighting || this.asked) return false;
+    if (this.fighting) return false;
     this.closeLog(); // the next move closes the panel of a log (#1589)
     const lair = this.lairs.findIndex((cell) => same(cell, to));
     const next = neighbours(this.hero!.at).some((n) => same(n, to));
@@ -1299,7 +1298,7 @@ export class OpenWorldMode {
   stepWander(now = performance.now(), snap = false): void {
     const tick = this.wander();
     if (snap) this.view?.snap();
-    if (tick === this.ticked || !this.view || this.view.animating || this.asked) return;
+    if (tick === this.ticked || !this.view || this.view.animating) return;
     this.ticked = tick;
     this.fight.setHeld(this.hero!.troop);
     this.fight.setClock(this.seed, tick);
@@ -1313,24 +1312,28 @@ export class OpenWorldMode {
    * saved with the hero where it stands and waits for Fight (`startFight`, #1511) or Back away (`backAway`). `from` is the cell the hero stepped
    * from, null when it stood still. A group the hero backed away from asks nothing until the hero has left contact. Reports whether it asked. */
   private wild(from: Axial | null = null): boolean {
-    if (this.fighting || this.asked || !this.view) return false;
+    if (this.fighting || !this.view) return false;
     const touching = this.fight.wildContact(this.world!, this.hero!.at);
-    if (!touching) return (this.declined = null), false;
+    if (!touching) return (this.declined = null), this.dismiss(), false; // out of contact: the dialog goes, nothing is asked until contact is remade (#1762)
+    if (this.asked) return (this.asked = { home: touching.home, at: touching.at, from: from ?? this.asked.from }), false; // the hero walked on in contact: Back away goes by the marble now beside it
     if (this.calmUntil > 0) return false;
     if (this.declined && same(this.declined, touching.home)) return false;
     this.declined = null;
     this.closeMap(); // a map open when the marble arrives: Esc and the keys answer the prompt, not the map
     this.asked = { home: touching.home, at: touching.at, from };
-    this.held.clear();
-    this.pad = [];
-    this.route = [];
-    this.nextStep = Infinity;
     this.persist();
     this.onAsk(true);
     return true;
   }
 
-  /** Whether a prompt waits for the answer: the world is paused (#1662). */
+  /** Closes the dialog without an answer (#1762): the hero walked out of contact. */
+  private dismiss(): void {
+    if (!this.asked) return;
+    this.asked = null;
+    this.onAsk(false);
+  }
+
+  /** Whether the dialog shows (#1662): the world is not paused (#1762). */
   get asking(): boolean {
     return this.asked !== null;
   }
