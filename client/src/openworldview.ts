@@ -707,6 +707,8 @@ interface ChunkRecords {
   /** The ground cells shown, for the footprint `view` (the cull's quad, null when the whole chunk is laid); null until asked. */
   ground: GroundRecord[] | null;
   view: object | null;
+  /** The matrices of the chunk's cairns, 16 numbers each, laid by `cairnRecords`; null until asked (#1767). */
+  cairns: Float32Array | null;
   kx: number;
   ky: number;
 }
@@ -1879,8 +1881,9 @@ export class OpenWorldView {
     if (!best) return;
     const [kx, ky] = best;
     const key = kx * 65536 + ky;
-    const chunk = this.laidChunks.get(key) ?? { props: this.propRecords(kx, ky), ground: null, view: null, kx, ky };
+    const chunk = this.laidChunks.get(key) ?? { props: this.propRecords(kx, ky), ground: null, view: null, cairns: null, kx, ky };
     [chunk.ground, chunk.view] = [this.groundRecords(kx, ky), null];
+    chunk.cairns ??= this.cairnRecords(kx, ky);
     this.laidChunks.set(key, chunk);
   }
 
@@ -1996,8 +1999,9 @@ export class OpenWorldView {
       for (let kx = cx - reach; kx <= cx + reach; kx++) {
         const key = kx * 65536 + ky;
         let chunk = this.laidChunks.get(key);
-        if (!chunk) this.laidChunks.set(key, (chunk = { props: this.propRecords(kx, ky), ground: null, view, kx, ky }));
+        if (!chunk) this.laidChunks.set(key, (chunk = { props: this.propRecords(kx, ky), ground: null, view, cairns: null, kx, ky }));
         if (terrain && (chunk.ground === null || chunk.view !== view)) [chunk.ground, chunk.view] = [this.groundRecords(kx, ky), view];
+        if (terrain) chunk.cairns ??= this.cairnRecords(kx, ky);
         square.push(chunk);
       }
     }
@@ -2255,14 +2259,12 @@ export class OpenWorldView {
     this.placeLogs();
   }
 
-  /** Lays the stones and the cap of each cairn of the loaded chunks (`World.cairns`, #1533) on the top of its cell, turned and sized from
-   * its cell, up to their room. */
-  private placeCairns(cx: number, cy: number, reach: number): void {
+  /** The matrices of the cairns of chunk `(kx, ky)` (`World.cairns`, #1533): each on the top of its cell, turned and sized from its cell (#1767). */
+  private cairnRecords(kx: number, ky: number): Float32Array {
     const { dummy } = this;
-    const cells: Axial[] = [];
-    for (let ky = cy - reach; ky <= cy + reach; ky++) for (let kx = cx - reach; kx <= cx + reach; kx++) cells.push(...this.world.cairns(kx, ky));
-    let n = 0;
-    for (const [q, r] of cells.slice(0, CAIRN_CAPACITY)) {
+    const cells = this.world.cairns(kx, ky);
+    const out = new Float32Array(cells.length * 16);
+    cells.forEach(([q, r], i) => {
       const tile = this.world.tile(q, r)!;
       const p = axialTo3D(q, r);
       const v = variety(q, r);
@@ -2270,9 +2272,22 @@ export class OpenWorldView {
       dummy.rotation.set(0, v * Math.PI * 2, 0);
       dummy.scale.set(1, 1 + CAIRN_LOOK.spread * (2 * v - 1), 1);
       dummy.updateMatrix();
-      this.cairnStones.setMatrixAt(n++, dummy.matrix);
-    }
+      out.set(dummy.matrix.elements, i * 16);
+    });
     dummy.rotation.set(0, 0, 0);
+    return out;
+  }
+
+  /** Copies the matrices of the cairns of the loaded chunks (kept in their records) into the stones, up to their room. */
+  private placeCairns(square: readonly ChunkRecords[]): void {
+    const room = this.cairnStones.instanceMatrix.array as Float32Array;
+    let n = 0;
+    for (const chunk of square) {
+      const m = chunk.cairns!;
+      const take = Math.min(m.length / 16, CAIRN_CAPACITY - n);
+      room.set(m.subarray(0, take * 16), n * 16);
+      n += take;
+    }
     this.cairnStones.count = n;
     this.cairnStones.instanceMatrix.needsUpdate = true;
   }
@@ -2388,7 +2403,7 @@ export class OpenWorldView {
     if (terrain) this.placeTeleporters();
     if (terrain) this.placePads();
     if (terrain) this.placeLogs();
-    if (terrain) this.placeCairns(cx, cy, reach);
+    if (terrain) this.placeCairns(square);
     for (const mesh of this.laid(terrain)) {
       if (grounds.includes(mesh) && !counts.has(mesh)) put(mesh, 0, -100, 0, 1e-4, 0, 0, 0); // a ground out of view keeps one speck: a mesh drawn the first time is a shader to compile
       mesh.count = counts.get(mesh)?.n ?? 0;

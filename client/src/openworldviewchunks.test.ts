@@ -172,4 +172,65 @@ describe('a walk lays only the chunks that enter the area (#1756)', () => {
     expect(instances).toBeGreaterThan(1000);
     expect(calls).toBeLessThan(instances / 4);
   });
+
+  // The cairns' matrices are kept per chunk beside the ground and prop records (#1767).
+  describe('keeps the matrices of the cairns per chunk (#1767)', () => {
+    type Cairns = { cairnRecords: (kx: number, ky: number) => Float32Array; laidChunks: Map<number, { cairns: Float32Array | null }>; drawnChunks: string; show: (at: Axial) => void };
+    const cairnsOf = (cx: number, cy: number): Int32Array => (Math.abs(cx) <= 30 && Math.abs(cy) <= 30 ? Int32Array.of(cx * CHUNK + 2, cy * CHUNK + 3) : new Int32Array());
+    const standing = () => {
+      const world = new World(treed, undefined, cairnsOf);
+      const view = new OpenWorldView(world);
+      view.resize(1600, 900);
+      view.show([0, 0]);
+      const inside = view as unknown as Cairns;
+      return { world, view, inside, made: vi.spyOn(inside, 'cairnRecords') };
+    };
+    const again = (inside: Cairns): void => {
+      inside.drawnChunks = '';
+      inside.show([0, 0]);
+    };
+    const stones = (view: OpenWorldView): string => {
+      const m = view.scene.getObjectByName('cairn') as THREE.InstancedMesh;
+      return `${m.count}:${[...m.instanceMatrix.array.slice(0, m.count * 16)].map((x) => x.toFixed(3)).join(',')}`;
+    };
+
+    it('makes them with the ground of each chunk, in the prefetch too, and writes them without asking again', () => {
+      const { view, inside, made } = standing();
+      expect([...inside.laidChunks.values()].every((c) => c.cairns !== null)).toBe(true);
+      expect((view.scene.getObjectByName('cairn') as THREE.InstancedMesh).count).toBe((2 * view.reach + 1) ** 2);
+      made.mockClear();
+      const picture = stones(view);
+      again(inside);
+      expect(made).not.toHaveBeenCalled();
+      expect(stones(view)).toBe(picture);
+    });
+
+    it('lays the same stones as a fresh view after a walk', () => {
+      const { view, inside } = standing();
+      const hero: Axial = [CHUNK * (view.reach + 2), 0];
+      inside.show(hero);
+      const other = new OpenWorldView(new World(treed, undefined, cairnsOf));
+      other.resize(1600, 900);
+      other.show(hero);
+      expect(stones(view)).toBe(stones(other));
+    });
+
+    it('makes them again when the landmarks change, the biome reader is set, a prop is broken, or the flat tops switch', () => {
+      const { world, view, inside, made } = standing();
+      for (const change of [
+        () => shapeWorld({ lairs: [[3, 3]], gates: [], lights: [] }),
+        () => void new OpenWorldView(new World(treed)),
+        () => world.smash(0, 0),
+        () => view.useFlatTops(true),
+      ]) {
+        again(inside); // the records are valid
+        made.mockClear();
+        change();
+        again(inside);
+        expect(made.mock.calls.length).toBeGreaterThanOrEqual((2 * view.reach + 1) ** 2);
+      }
+      shapeWorld({ lairs: [], gates: [], lights: [] });
+      view.useFlatTops(false);
+    });
+  });
 });
