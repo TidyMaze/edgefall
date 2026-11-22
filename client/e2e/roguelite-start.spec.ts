@@ -8,8 +8,6 @@ import { shot } from './shot';
 // control of More can be scrolled into the plate, on a desktop window and on a phone held upright.
 
 async function startScreen(page: Page): Promise<void> {
-  await page.goto('./?nodes=50&bot=off');
-  await page.locator('canvas').waitFor();
   await startMode(page, 'run');
   await expect(page.locator('#run-map')).toBeVisible();
 }
@@ -32,8 +30,17 @@ for (const [name, viewport, touch] of [
   test.describe(name, () => {
     test.use({ viewport, isMobile: touch, hasTouch: touch });
     const kind = touch ? 'phone' : 'desktop';
+    // One page for the two tests of this window: its boot (a second or two of shader compiling on software WebGL, 2.5 times that on the CI runner)
+    // is paid once, in the hook, not by each test (#1710). Each test starts the run again through the hook.
+    let page: Page;
+    test.beforeAll(async ({ browser, baseURL }) => {
+      page = await (await browser.newContext({ baseURL, viewport, isMobile: touch, hasTouch: touch })).newPage();
+      await page.goto('./?nodes=50&bot=off');
+      await page.locator('canvas').waitFor();
+    });
+    test.afterAll(() => page.context().close());
 
-    test('says what a run is, has Start and More in view, and keeps the choices behind More, none of it cut off', async ({ page }) => {
+    test('says what a run is, has Start and More in view, and keeps the choices behind More, none of it cut off', async () => {
       await startScreen(page);
       const map = page.locator('#run-map');
       await expect(map.locator('.run-intro')).toHaveText(/^A run is a climb through 3 acts.*Beat the act 3 boss to win; lose a fight, or fall below 4 marbles/);
@@ -60,7 +67,7 @@ for (const [name, viewport, touch] of [
       await expect(map.locator('button[data-commander]')).toHaveCount(0);
     });
 
-    test('Start takes the first fight with the Captain, the default commander', async ({ page }) => {
+    test('Start takes the first fight with the Captain, the default commander', async () => {
       await startScreen(page);
       await expect(page.locator('#run-map .run-picks')).toHaveText('Commander: The Captain');
       await page.locator('#run-start').click();

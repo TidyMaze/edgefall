@@ -34,9 +34,7 @@ test('the rogue-lite run: a score at the end, the daily run, the history and the
   await expect(map.locator('.run-line')).toHaveText(`Daily run ${day} · army 14 marbles · pick a fight`);
   await openMore(page); // a new run starts with More shut
   await expect(map.getByRole('button', { name: /^Daily run .* tried today/ })).toBeDisabled();
-  await page.reload();
-  await page.waitForFunction(() => typeof (window as any).__run === 'function');
-  await expect(map.locator('.run-line')).toHaveText(`Daily run ${day} · army 14 marbles · pick a fight`); // resumed
+  // The reload that resumes the daily run is checked by main.roguelite.test.ts ('the daily run plays the seed of the day, once: it is saved, resumed').
   await shot(page, { path: 'test-results/roguelite-score-daily.png' });
 });
 

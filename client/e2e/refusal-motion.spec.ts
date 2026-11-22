@@ -7,6 +7,10 @@ import { expect, test, type Page } from '@playwright/test';
 async function ready(page: Page, reduced = false): Promise<void> {
   if (reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('./?bot=off&net=hook');
+  await settled(page);
+}
+
+async function settled(page: Page): Promise<void> {
   await page.locator('canvas').waitFor();
   await expect(page.locator('#hud')).toContainText('to move');
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(null)))); // the camera is set after a frame
@@ -36,8 +40,18 @@ const watchTurn = (page: Page) =>
   });
 const turnAnimation = (page: Page) => page.evaluate(() => (window as any).__turnCue);
 
-test('a refused move shakes the turn line on the fast token and says so (#1097)', async ({ page }) => {
-  await ready(page);
+// The three tests with the normal motion share one page (the Reduced motion ones emulate the media before the load): its boot, a second or two of
+// shader compiling on software WebGL and 2.5 times that on the CI runner, is paid once in the hook, not by the test that runs first (#1710).
+let shared: Page;
+test.beforeAll(async ({ browser, baseURL }) => {
+  shared = await (await browser.newContext({ baseURL })).newPage();
+  await shared.goto('./?bot=off&net=hook');
+  await settled(shared);
+});
+test.afterAll(() => shared.context().close());
+
+test('a refused move shakes the turn line on the fast token and says so (#1097)', async () => {
+  const page = shared;
   await watchTurn(page);
   await refuse(page);
   await expect(page.locator('#hud')).toContainText('not a legal move');
@@ -52,8 +66,8 @@ test('Reduced motion keeps the refusal text and cuts the shake (#1097)', async (
   expect((await turnAnimation(page)).duration).toBe('0s');
 });
 
-test('a shown Hint draws its button in on the base token (#1097)', async ({ page }) => {
-  await ready(page);
+test('a shown Hint draws its button in on the base token (#1097)', async () => {
+  const page = shared;
   await page.locator('#hint').click();
   await expect(page.locator('body')).toHaveAttribute('data-hint', 'shown');
   const s = await page.locator('#hint').evaluate((b) => ({ name: getComputedStyle(b).animationName, duration: getComputedStyle(b).animationDuration }));
@@ -68,9 +82,8 @@ const copyCheck = (page: Page) =>
     return { content: s.content, name: s.animationName, duration: s.animationDuration };
   });
 
-test('a copied result draws a check mark on the fast token (#1098)', async ({ page }) => {
-  await ready(page);
-  expect(await copyCheck(page)).toEqual({ content: '"✓"', name: 'check-in', duration: '0.12s' });
+test('a copied result draws a check mark on the fast token (#1098)', async () => {
+  expect(await copyCheck(shared)).toEqual({ content: '"✓"', name: 'check-in', duration: '0.12s' });
 });
 
 test('Reduced motion shows the check mark whole (#1098)', async ({ page }) => {
