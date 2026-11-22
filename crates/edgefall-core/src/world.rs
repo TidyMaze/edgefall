@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 /// The version of the generated world, saved with each Open world save (#968): bump it with every change of the generator, the
 /// same moment the pinned digest of the tests changes (the line of `the_generated_world_is_pinned_by_a_digest`).
-pub const WORLD_VERSION: u32 = 6;
+pub const WORLD_VERSION: u32 = 7;
 /// A chunk is `CHUNK` x `CHUNK` cells of the axial grid.
 pub const CHUNK: i32 = 16;
 /// The world is a hexagon of cells round the spawn `(0, 0)`: the cells within `WORLD_RADIUS` of it (#1440).
@@ -41,7 +41,7 @@ const MOISTURE_SALT: u64 = 33;
 /// The climate (#1755): three fields over the whole map, the same everywhere, value noise at `CLIMATE_SCALES` (a few hundred cells)
 /// summed with `CLIMATE_WEIGHTS`: the temperature (salts `TEMP_SALT` to `+ 2`), the wetness (`WET_SALT`) and the archipelago's sea
 /// (`SEA_SALT`). The biome is read from them by `Climate::biome`.
-const CLIMATE_SCALES: [i32; 3] = [384, 144, 48];
+const CLIMATE_SCALES: [i32; 3] = [192, 144, 48];
 const CLIMATE_WEIGHTS: [f64; 3] = [0.55, 0.30, 0.15];
 const TEMP_SALT: u64 = 52;
 const WET_SALT: u64 = 55;
@@ -1992,7 +1992,7 @@ mod tests {
     #[test]
     fn enemies_live_on_the_land_of_every_biome() {
         let mut groups = HashMap::new();
-        for seed in 1..=4 {
+        for seed in 1..=8 {
             for cx in -8..8 {
                 for cy in -8..8 {
                     for group in enemy_groups(seed, cx, cy) {
@@ -2322,7 +2322,7 @@ mod tests {
     fn the_generated_world_is_pinned_by_a_digest() {
         assert_eq!(
             (WORLD_VERSION, world_digest()),
-            (6, 2_184_942_252_771_043_681),
+            (7, 16_774_783_086_938_065_062),
             "WORLD_VERSION and digest of the reference world"
         );
     }
@@ -2458,7 +2458,7 @@ mod tests {
 
     #[test]
     fn the_lairs_of_seed_7_are_pinned() {
-        assert_eq!(lairs(7, 3), vec![(249, -76), (313, -31), (369, -348)]);
+        assert_eq!(lairs(7, 3), vec![(249, -76), (209, -374), (130, -329)]);
     }
 
     #[test]
@@ -2537,9 +2537,9 @@ mod tests {
     #[test]
     fn the_teleporters_of_seed_7_are_pinned() {
         let found = teleporters(7, &[]);
-        // A quarter as many as one a square of 4 x 4 chunks, which gave 137 (#1444); 34 before the climate map (#1755).
-        assert_eq!(found.len(), 36);
-        assert_eq!(found[..3], [(2, -1), (29, -382), (153, -364)]);
+        // A quarter as many as one a square of 4 x 4 chunks, which gave 137 (#1444); 34 before the climate map (#1755), 36 at 384 cells (#1755).
+        assert_eq!(found.len(), 35);
+        assert_eq!(found[..3], [(2, -1), (29, -382), (130, -355)]);
     }
 
     /// The cells the lore logs of a seed keep off: the lairs and the teleporters, as the bridge passes them.
@@ -2633,7 +2633,7 @@ mod tests {
     fn the_logs_of_seed_7_are_pinned() {
         assert_eq!(
             log_cells(7, &log_avoid(7))[..3],
-            [(-13, -35), (53, 23), (342, -437)]
+            [(-13, -35), (53, 23), (-22, -57)]
         );
     }
 
@@ -2752,15 +2752,15 @@ mod tests {
             found,
             vec![
                 town(0, 0),
-                town(13, 40),
-                town(315, -346),
-                town(-333, 122),
-                town(-77, 98),
-                gate(-190, -108),
-                gate(173, -343),
-                gate(-435, 343),
-                gate(197, 82),
-                gate(146, -172),
+                town(28, 88),
+                town(205, -300),
+                town(-75, 21),
+                town(-90, 44),
+                gate(200, -358),
+                gate(196, -300),
+                gate(-22, 374),
+                gate(-299, 424),
+                gate(-168, -73),
             ]
         );
     }
@@ -3076,24 +3076,24 @@ mod tests {
 
     #[test]
     fn the_dungeon_walk_gives_none_without_a_tower_a_way_or_the_time() {
-        assert!(dungeon_walk(9, (0, 0), &[], &[], &[], &[]).is_none());
-        let lairs = lairs(9, 15);
+        assert!(dungeon_walk(10, (0, 0), &[], &[], &[], &[]).is_none());
+        let lairs = lairs(10, 15);
         let walled: Vec<(i32, i32)> = lairs
             .iter()
             .flat_map(|&l| STEPS.map(|(a, b)| (l.0 + a, l.1 + b)))
             .collect();
-        assert!(dungeon_walk(9, (0, 0), &lairs, &[], &[], &walled).is_none());
+        assert!(dungeon_walk(10, (0, 0), &lairs, &[], &[], &walled).is_none());
         // Every tower walled in but the farthest: the searches of the near ones pass the budget before it is tried.
         let farthest = (0..15)
             .max_by_key(|&k| hex_distance((0, 0), lairs[k]))
             .unwrap();
         let open = &lairs[farthest..=farthest];
-        assert!(dungeon_walk(9, (0, 0), open, &[], &[], open).is_some());
+        assert!(dungeon_walk(10, (0, 0), open, &[], &[], open).is_some());
         let others: Vec<(i32, i32)> = (0..15)
             .filter(|&k| k != farthest)
             .flat_map(|k| STEPS.map(|(a, b)| (lairs[k].0 + a, lairs[k].1 + b)))
             .collect();
-        assert!(dungeon_walk(9, (0, 0), &lairs, &[], &[], &others).is_none());
+        assert!(dungeon_walk(10, (0, 0), &lairs, &[], &[], &others).is_none());
     }
     /// 24 random 32-bit seeds, fixed so a failure repeats.
     fn random_seeds() -> Vec<u64> {
@@ -3263,7 +3263,7 @@ mod tests {
     #[test]
     fn the_pads_of_seed_7_are_pinned() {
         let found: Vec<(i32, i32)> = pads(7).into_iter().map(|p| p.1).collect();
-        assert_eq!(found[..3], [(-190, -5), (301, -435), (-334, -102)]);
+        assert_eq!(found[..3], [(219, -202), (11, -406), (433, -155)]);
     }
 
     /// The cells the logs, then the places, keep off, as the bridge passes them (the 15 towers' lairs and the teleporters, then the logs).

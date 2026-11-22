@@ -80,8 +80,8 @@ Smallest task, first in the order. Only constants of `cell`:
 A biome is a region with its own ground, trees and boulders. Since #1755 (owner, 2026-11-17: "no central point on the map, an even,
 organic spread over the whole map") the biome of a cell comes from a **climate** read from three fields over the whole map, the same
 everywhere: no angle, no distance, no reference to the spawn. (Before, #1442 made it the sextant of the hexagon seen from the spawn;
-before that, #984 mixed a temperature and a moisture field.) Each field is value noise at the scales 384, 144 and 48 cells
-(`CLIMATE_SCALES`, weights 0.55, 0.30, 0.15, section 2's `Field`): the **temperature** (salts 52 to 54), the **wetness** (55 to 57) and
+before that, #984 mixed a temperature and a moisture field.) Each field is value noise at the scales 192, 144 and 48 cells (384, 144 and 48 until #1763, which halved the largest so that
+each biome shows in several regions of the 896-cell world) (`CLIMATE_SCALES`, weights 0.55, 0.30, 0.15, section 2's `Field`): the **temperature** (salts 52 to 54), the **wetness** (55 to 57) and
 the **sea** field (62 to 64).
 
 | Climate | Biome | Ground tint | Tree | Boulder (per mille) |
@@ -130,7 +130,7 @@ between the tundra and the desert, and they never touch (a test walks the map of
   the low ground (trees within a fifth, boulders within a third); enemies, two lairs and a teleporter in every biome; the spawn
   clearing is Meadow and open; the order of visit does not matter. The eight-height shares and the far view's sea and range are
   measured out of the archipelago, whose sea is meant; the blocked share and the 32-seed flood fill of #987 still hold.
-  `WORLD_VERSION` is 6 since #1755 (5 for #1752, 4 for #1442, 3 for the hexagon of #1440).
+  `WORLD_VERSION` is 7 since #1763 (6 for #1755, 5 for #1752, 4 for #1442, 3 for the hexagon of #1440).
 
 **Measured (#1442)**, the 16 x 16 chunks around the spawn, seeds 1 to 4. Share of the window per biome: meadow 15.3 %, forest
 11.8 %, tundra 16.6 %, desert 21.3 %, badlands 12.7 %, archipelago 22.2 %. Low ground obstacles: meadow trees 2.0 % and 16.4
@@ -138,7 +138,11 @@ boulders per mille, forest 25.1 % and 10.6, tundra 4.1 % and 26.4, desert 0 % an
 4.8 % and 8.6. Blocked share 36.3 % (bound 26 to 37), water 26.5 %. The middle of the archipelago is 64.9, 76.3, 88.0 and 66.5 %
 water on seeds 1 to 4.
 
-**Digest**: the world digest moves to 2184942252771043681 (`WORLD_VERSION` 6).
+**Digest**: the world digest moves to 16774783086938065062 (`WORLD_VERSION` 7; 2184942252771043681 at 6).
+
+**Measured (#1763)**, whole world, seed 7, share of the land: meadow 16.6 %, forest 27.8 %, tundra 16.0 %, desert 12.1 %, badlands 20.8 %,
+archipelago 6.7 % (at 384: 27.6, 13.4, 7.8, 17.1, 27.3, 6.9). Seeds 0 to 30 all start in meadow; the worst nearest cell of a biome from the spawn
+is 202 (forest), 197 (tundra), 175 (desert), 202 (badlands), 215 (archipelago).
 
 **Cost** (`world_timing`, the minimum of three runs on a shared machine): the 2465 chunks of the hexagon 30.1 ms before and
 39.8 ms after (budget 117 ms): two angles and two draws more per cell.
@@ -162,7 +166,7 @@ water on seeds 1 to 4.
 - **Marked borders (#1752, #1755)**: the border between each pair of biomes is drawn from the seed as a river, a ridge or plain, a third
   each (`border_feature`, the same either way round). Past 40 cells from the spawn, a cell next to a cell of another biome (the climate, not
   dithered) is water on a river, sailed across, or a peak at height 7 on a ridge, with a pass 3 cells wide every 16 cells of distance from
-  the spawn (`feature_at`). `WORLD_VERSION` 6: older saves start fresh.
+  the spawn (`feature_at`). `WORLD_VERSION` 7: older saves start fresh.
 
 ## 5. Relief (#988)
 

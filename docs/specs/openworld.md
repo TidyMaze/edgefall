@@ -54,7 +54,7 @@ A-light Explore (#720 to #725), which it does not touch.
   heights 0 and 1), sand (the shore, height 2), grass, rock, **mountains** (peaks, height 7). Forests
   (**trees**) and ruined **walls** (segments of 3 to 6 cells along one of
   three axes, one per 24-cell square at most, laid on land) come on top.
-- **Biomes** (#984, #1442, #1755): six, from a climate map over the whole world (temperature, wetness and sea fields of 384 cells and
+- **Biomes** (#984, #1442, #1755): six, from a climate map over the whole world (temperature, wetness and sea fields of 192 cells and
   less, no centre: patches of thousands of cells all over the map), with organic borders that blend over a few cells: meadow
   (the start sits in one), forest (temperate and wet), tundra (cold, snow), desert (hot and dry), badlands (hot) and the archipelago
   (where the sea field is high; a temperate band always lies between the tundra and the desert), mostly water with islands of sand and grass, crossed by boat. Each sets the
