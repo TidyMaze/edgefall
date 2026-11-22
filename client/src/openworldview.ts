@@ -700,15 +700,18 @@ const WHITE = 0xffffff;
  * chunks and the blend's halo would pass the world's cache and evict the ones round the hero. */
 const AHEAD = 2;
 /** What a chunk lays (#1756): a ground column or flat top, and a prop of a cell, with the colour as the instance holds it. */
-interface GroundRecord { ground: Ground; flat: boolean; x: number; y: number; z: number; scaleY: number; red: number; green: number; blue: number }
+/** The cells of one ground mesh in a chunk, as ready matrices (16 numbers each) and colours (3 each): a build copies them whole (#1767). */
+interface GroundRun { ground: Ground; flat: boolean; n: number; matrices: Float32Array; colours: Float32Array }
 interface PropRecord { prop: Prop; near: boolean; q: number; r: number; cell: number; x: number; y: number; z: number; scaleY: number; red: number; green: number; blue: number }
 interface ChunkRecords {
   props: PropRecord[];
   /** The ground cells shown, for the footprint `view` (the cull's quad, null when the whole chunk is laid); null until asked. */
-  ground: GroundRecord[] | null;
+  ground: GroundRun[] | null;
   view: object | null;
   /** The matrices of the chunk's cairns, 16 numbers each, laid by `cairnRecords`; null until asked (#1767). */
   cairns: Float32Array | null;
+  /** How many props of each kind the chunk holds, counted the first time a build needs them (#1767). */
+  tally: Map<Prop, number> | null;
   kx: number;
   ky: number;
 }
@@ -717,11 +720,33 @@ const PROP_OF: Partial<Record<Terrain, Prop>> = { peak: 'mountain', tree: 'tree'
 /** A cell as one number, the key of its instance in a props mesh. The offset keeps the axial coordinates of any world positive. */
 const KEY_SPAN = 2 ** 22;
 const cellKey = (q: number, r: number): number => (q + KEY_SPAN / 2) * KEY_SPAN + (r + KEY_SPAN / 2);
-/** The instances of a props mesh by cell (#1054): `cells[i]` is the cell of instance `i`, `at` the instance of each cell. */
+/** The instances of a props mesh by cell (#1054): `cells[i]` is the cell of instance `i`, `at` the instance of each cell, made from
+ * `cells` the first time a step asks (a build does not pay a map insert per prop, #1767). */
 interface Slots {
   cells: number[];
-  at: Map<number, number>;
+  at: Map<number, number> | null;
 }
+const slotAt = (slots: Slots): Map<number, number> => (slots.at ??= new Map(slots.cells.map((cell, i) => [cell, i])));
+/** The smallest absolute value in `[lo, hi]`. */
+const nearest = (lo: number, hi: number): number => (lo > 0 ? lo : hi < 0 ? -hi : 0);
+/** Whether every cell of chunk `(kx, ky)` lies beyond `HI_RADIUS` of `hero`: none of its props is a detailed one (#1767). */
+const beyondHi = (kx: number, ky: number, [hq, hr]: Axial): boolean => {
+  const a = kx * CHUNK - hq;
+  const c = ky * CHUNK - hr;
+  return Math.max(nearest(a, a + CHUNK - 1), nearest(c, c + CHUNK - 1), nearest(a + c, a + c + 2 * CHUNK - 2)) > HI_RADIUS;
+};
+/** The props of a chunk's records by kind. */
+const tallyOf = (props: readonly PropRecord[]): Map<Prop, number> => {
+  const tally = new Map<Prop, number>();
+  for (const p of props) tally.set(p.prop, (tally.get(p.prop) ?? 0) + 1);
+  return tally;
+};
+/** Whether a cell lies within `HI_RADIUS` of `hero`, without an array per call (a build asks it of every prop, #1767). */
+const nearHero = ([hq, hr]: Axial) => (q: number, r: number): boolean => {
+  const dq = q - hq;
+  const dr = r - hr;
+  return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr)) <= HI_RADIUS;
+};
 /** The cells within `HI_RADIUS` of `centre` (the hex ball), each visited once. */
 const eachNear = (centre: Axial, visit: (cell: Axial) => void): void => {
   for (let dq = -HI_RADIUS; dq <= HI_RADIUS; dq++) {
@@ -1229,7 +1254,7 @@ export class OpenWorldView {
     const tile = this.world.tile(q, r);
     const prop = tile && this.propOf({ ...tile, terrain }, q, r);
     if (!prop || !this.laidHero) return false;
-    return this.slots.get(this.route(prop, hexDistance([q, r], this.laidHero) <= HI_RADIUS))!.at.has(cellKey(q, r));
+    return slotAt(this.slots.get(this.route(prop, hexDistance([q, r], this.laidHero) <= HI_RADIUS))!).has(cellKey(q, r));
   }
 
   /** The hero broke the `terrain` obstacle on `cell` at `now` (ms) (#1147): the world has the cell open already. Its prop leaves its mesh,
@@ -1881,7 +1906,7 @@ export class OpenWorldView {
     if (!best) return;
     const [kx, ky] = best;
     const key = kx * 65536 + ky;
-    const chunk = this.laidChunks.get(key) ?? { props: this.propRecords(kx, ky), ground: null, view: null, cairns: null, kx, ky };
+    const chunk = this.laidChunks.get(key) ?? { props: this.propRecords(kx, ky), ground: null, view: null, cairns: null, tally: null, kx, ky };
     [chunk.ground, chunk.view] = [this.groundRecords(kx, ky), null];
     chunk.cairns ??= this.cairnRecords(kx, ky);
     this.laidChunks.set(key, chunk);
@@ -1969,6 +1994,7 @@ export class OpenWorldView {
   /** How many instances each managed mesh takes for the records of `square`, routed as the build routes them, so a mesh is grown to
    * hold them all before the build writes a single instance. */
   private need(square: readonly ChunkRecords[], hero: Axial, terrain: boolean): Map<THREE.InstancedMesh, number> {
+    const near = nearHero(hero);
     const cursors = new Map<THREE.InstancedMesh, { n: number }>();
     let last: THREE.InstancedMesh | undefined; // the meshes come in runs: one lookup per change of mesh, not one per instance (#1761)
     let cursor = { n: 0 };
@@ -1980,9 +2006,16 @@ export class OpenWorldView {
       }
       cursor.n++;
     };
+    const addMany = (mesh: THREE.InstancedMesh, n: number) => {
+      add(mesh);
+      cursor.n += n - 1;
+    };
     for (const chunk of square) {
-      if (terrain) for (const g of chunk.ground!) add(g.flat ? this.flats[g.ground] : this.grounds[g.ground]);
-      for (const p of chunk.props) add(this.route(p.prop, p.near && hexDistance([p.q, p.r], hero) <= HI_RADIUS));
+      if (terrain) for (const g of chunk.ground!) addMany(g.flat ? this.flats[g.ground] : this.grounds[g.ground], g.n);
+      if (beyondHi(chunk.kx, chunk.ky, hero)) {
+        chunk.tally ??= tallyOf(chunk.props);
+        for (const [prop, n] of chunk.tally) addMany(this.props[prop], n);
+      } else for (const p of chunk.props) add(this.route(p.prop, p.near && near(p.q, p.r)));
     }
     const need = new Map<THREE.InstancedMesh, number>();
     for (const [mesh, c] of cursors) need.set(mesh, c.n);
@@ -1999,7 +2032,7 @@ export class OpenWorldView {
       for (let kx = cx - reach; kx <= cx + reach; kx++) {
         const key = kx * 65536 + ky;
         let chunk = this.laidChunks.get(key);
-        if (!chunk) this.laidChunks.set(key, (chunk = { props: this.propRecords(kx, ky), ground: null, view, cairns: null, kx, ky }));
+        if (!chunk) this.laidChunks.set(key, (chunk = { props: this.propRecords(kx, ky), ground: null, view, cairns: null, tally: null, kx, ky }));
         if (terrain && (chunk.ground === null || chunk.view !== view)) [chunk.ground, chunk.view] = [this.groundRecords(kx, ky), view];
         if (terrain) chunk.cairns ??= this.cairnRecords(kx, ky);
         square.push(chunk);
@@ -2030,8 +2063,8 @@ export class OpenWorldView {
   }
 
   /** The ground of chunk `(kx, ky)` that shows: every cell, or with `cullGround` the cells inside the laid footprint. */
-  private groundRecords(kx: number, ky: number): GroundRecord[] {
-    const out: GroundRecord[] = [];
+  private groundRecords(kx: number, ky: number): GroundRun[] {
+    const out: { ground: Ground; flat: boolean; x: number; y: number; z: number; scaleY: number; red: number; green: number; blue: number }[] = [];
     const { colour } = this;
     this.world.chunk(kx, ky).forEach((tile, i) => {
       const q = kx * CHUNK + (i % CHUNK);
@@ -2043,7 +2076,22 @@ export class OpenWorldView {
       colour.set(ground === 'water' ? waterColor(this.world, q, r) : shadedGround(tile, ground, q, r));
       out.push({ ground, flat: this.groundMesh(tile, q, r) === this.flats[ground], x: p.x, y: top / 2, z: p.z, scaleY: top, red: colour.r, green: colour.g, blue: colour.b });
     });
-    return out;
+    const runs = new Map<string, GroundRun>();
+    for (const g of out) {
+      const key = `${g.ground}${g.flat}`;
+      let run = runs.get(key);
+      if (!run) runs.set(key, (run = { ground: g.ground, flat: g.flat, n: 0, matrices: new Float32Array(out.length * 16), colours: new Float32Array(out.length * 3) }));
+      const m = run.matrices;
+      const o = run.n * 16;
+      m[o] = m[o + 10] = m[o + 15] = 1;
+      m[o + 5] = g.scaleY;
+      m[o + 12] = g.x;
+      m[o + 13] = g.y;
+      m[o + 14] = g.z;
+      run.colours.set([g.red, g.green, g.blue], run.n * 3);
+      run.n++;
+    }
+    return [...runs.values()].map((run) => ({ ...run, matrices: run.matrices.slice(0, run.n * 16), colours: run.colours.slice(0, run.n * 3) }));
   }
 
   /** The cell under a point of the screen, `x` and `y` from -1 to 1. The ray is cast against the top of each of the hero's cell and
@@ -2360,25 +2408,33 @@ export class OpenWorldView {
     const grounds = this.culling && terrain ? this.groundMeshes() : [];
     const room = grounds.reduce((sum, mesh) => sum + (need.get(mesh) ?? 0), 0);
     for (const mesh of this.laid(terrain)) this.fit(mesh, grounds.includes(mesh) ? room : need.get(mesh) ?? 0);
+    const near = nearHero(hero);
     const counts = new Map<THREE.InstancedMesh, { n: number }>();
     let lastMesh: THREE.InstancedMesh | undefined; // the meshes come in runs: one lookup per change of mesh, not one per instance (#1761)
     let cursor = { n: 0 };
     // Writes the next instance of `mesh` (it holds them all: `fit`): a place, a height and a colour, nothing turned.
-    const put = (mesh: THREE.InstancedMesh, x: number, y: number, z: number, scaleY: number, red: number, green: number, blue: number) => {
+    const into = (mesh: THREE.InstancedMesh) => {
       if (mesh !== lastMesh) {
         lastMesh = mesh;
         cursor = counts.get(mesh) ?? { n: 0 };
         counts.set(mesh, cursor);
       }
+    };
+    const put = (mesh: THREE.InstancedMesh, x: number, y: number, z: number, scaleY: number, red: number, green: number, blue: number) => {
+      into(mesh);
       const n = cursor.n++;
       const m = mesh.instanceMatrix.array as Float32Array;
       const o = n * 16;
-      m.fill(0, o, o + 16);
-      m[o] = m[o + 10] = m[o + 15] = 1;
+      m[o] = 1;
+      m[o + 1] = m[o + 2] = m[o + 3] = m[o + 4] = 0;
       m[o + 5] = scaleY;
+      m[o + 6] = m[o + 7] = m[o + 8] = m[o + 9] = 0;
+      m[o + 10] = 1;
+      m[o + 11] = 0;
       m[o + 12] = x;
       m[o + 13] = y;
       m[o + 14] = z;
+      m[o + 15] = 1;
       const c = mesh.instanceColor!.array as Float32Array;
       c[n * 3] = red;
       c[n * 3 + 1] = green;
@@ -2386,16 +2442,24 @@ export class OpenWorldView {
     };
     // The props are laid by their cell too, so a step can move one of them (`slots`, #1054).
     this.slots.clear();
-    for (const mesh of this.propMeshes()) this.slots.set(mesh, { cells: [], at: new Map() });
-    let slotsOf: { cells: number[]; at: Map<number, number> } | undefined;
+    for (const mesh of this.propMeshes()) this.slots.set(mesh, { cells: [], at: null });
+    let slotsOf: Slots | undefined;
     let slotsMesh: THREE.InstancedMesh | undefined;
     for (const chunk of square) {
-      if (terrain) for (const g of chunk.ground!) put(g.flat ? this.flats[g.ground] : this.grounds[g.ground], g.x, g.y, g.z, g.scaleY, g.red, g.green, g.blue);
+      if (terrain) {
+        for (const g of chunk.ground!) {
+          const mesh = g.flat ? this.flats[g.ground] : this.grounds[g.ground];
+          into(mesh);
+          (mesh.instanceMatrix.array as Float32Array).set(g.matrices, cursor.n * 16);
+          (mesh.instanceColor!.array as Float32Array).set(g.colours, cursor.n * 3);
+          cursor.n += g.n;
+        }
+      }
+      const far = beyondHi(chunk.kx, chunk.ky, hero);
       for (const p of chunk.props) {
-        const mesh = this.route(p.prop, p.near && hexDistance([p.q, p.r], hero) <= HI_RADIUS);
+        const mesh = far ? this.props[p.prop] : this.route(p.prop, p.near && near(p.q, p.r));
         put(mesh, p.x, p.y, p.z, p.scaleY, p.red, p.green, p.blue);
         if (mesh !== slotsMesh) [slotsMesh, slotsOf] = [mesh, this.slots.get(mesh)!];
-        slotsOf!.at.set(p.cell, slotsOf!.cells.length);
         slotsOf!.cells.push(p.cell);
       }
     }
@@ -2513,16 +2577,17 @@ export class OpenWorldView {
   /** Takes the instance of the cell `key` out of a props mesh: its last instance takes its place, the count drops by one (#1054). */
   private removeProp(mesh: THREE.InstancedMesh, key: number): void {
     const slots = this.slots.get(mesh)!;
-    const at = slots.at.get(key)!;
+    const index = slotAt(slots);
+    const at = index.get(key)!;
     const last = slots.cells.length - 1;
     const moved = slots.cells.pop()!;
     if (at !== last) {
       mesh.instanceMatrix.array.copyWithin(at * 16, last * 16, last * 16 + 16);
       mesh.instanceColor!.array.copyWithin(at * 3, last * 3, last * 3 + 3);
       slots.cells[at] = moved;
-      slots.at.set(moved, at);
+      index.set(moved, at);
     }
-    slots.at.delete(key);
+    index.delete(key);
     this.written(mesh, last);
   }
 
@@ -2538,7 +2603,7 @@ export class OpenWorldView {
     dummy.updateMatrix();
     target.setMatrixAt(n, dummy.matrix);
     target.setColorAt(n, this.colour.set(spot.colour));
-    slots.at.set(key, n);
+    slotAt(slots).set(key, n);
     slots.cells.push(key);
     this.written(target, n + 1);
   }
