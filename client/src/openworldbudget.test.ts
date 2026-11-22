@@ -94,10 +94,12 @@ const FRAME_PASSES = 11;
 const frameCalls = ({ calls, casters }: { calls: number; casters: number }): number => calls + casters + FRAME_PASSES;
 
 describe('the Open world scene geometry regression caps (docs/specs/openworld.md section 17)', () => {
-  it('keeps the scene of the budget view and of the widest zoom under its regression caps on triangles and draw calls, with the real chunks and models', async () => {
+  // Seed 7 is the budget view; seed 1 has a dungeon gate in its widest view, which draws as one call (#1760: 47 frame calls when the gate
+  // took three, 44 without it, 45 now); seed 9's widest view has one too (45 before, 42 without the gate, 43 now).
+  it.each([7, 1, 9])('keeps the scene of the budget view and of the widest zoom of seed %i under its regression caps on triangles and draw calls, with the real chunks and models', async (seed) => {
     document.body.dataset.tier = 'high';
     const m = mode();
-    m.enter(7, 1280, 720);
+    m.enter(seed, 1280, 720);
     await m.props; // the props' models are in: the detailed set near the hero, the low-poly one further out
     let camera: THREE.Camera | null = null;
     const t0 = performance.now();

@@ -505,7 +505,7 @@ function landmarkGeometry(parts: readonly LandmarkPart[]): THREE.BufferGeometry 
         colour.toArray(rgb, i * 3);
         if (glows) colour.toArray(glow, i * 3);
       }
-      part.setAttribute('color', new THREE.BufferAttribute(rgb, 3));
+      if (!part.attributes.color) part.setAttribute('color', new THREE.BufferAttribute(rgb, 3)); // a part with colours of its own (the gate's mouth) keeps them
       part.setAttribute('glow', new THREE.BufferAttribute(glow, 3));
       part.setAttribute('roughness', new THREE.BufferAttribute(new Float32Array(n).fill(roughness), 1));
       return [name, part] as const;
@@ -882,9 +882,8 @@ export class OpenWorldView {
   private placeList: readonly { kind: 'town' | 'dungeon'; cell: Axial }[] = [];
   private readonly townPads: THREE.InstancedMesh;
   private readonly gatePads: THREE.InstancedMesh;
-  /** The town view and the gate's stair down (#1518): six huts and their windows round each town, a mouth under each gate's arch. */
+  /** The town view and the gate's stair down (#1518): six huts and their windows round each town. */
   private readonly townHuts: THREE.InstancedMesh;
-  private readonly gateMouths: THREE.InstancedMesh;
   /** The lore logs of the world (#1589), the numbers of the ones found, and their stakes, laid for the ones in the loaded chunks. */
   private logCells: readonly Axial[] = [];
   private logsFound: readonly number[] = [];
@@ -1026,9 +1025,13 @@ export class OpenWorldView {
     const spire = new THREE.ConeGeometry(PLACE_LOOK.spire.radius, PLACE_LOOK.spire.height, 6).translate(0, PLACE_LOOK.spire.height / 2 + 0.08, 0);
     this.townPads = this.instances('town-pad', PLACE_CAPACITY, mergedParts([['pad', pad], ['spire', spire]]), glow(new THREE.Color(PLACE_LOOK.spire.colour).getHex()));
     const arch = new THREE.TorusGeometry(PLACE_LOOK.arch.radius, PLACE_LOOK.arch.tube, 6, 16, Math.PI).translate(0, PLACE_LOOK.arch.tube + 0.08, 0);
-    this.gatePads = this.instances('gate-pad', PLACE_CAPACITY, mergedParts([['pad', pad], ['arch', arch]]), glow(new THREE.Color(PLACE_LOOK.arch.colour).getHex()));
-    this.gateMouths = this.instances('gate-mouth', PLACE_CAPACITY, mouthGeometry(), softLook() ? softSolid() : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }));
-    this.gateMouths.castShadow = false; // flat on the pad
+    // A gate is one geometry, drawn in one call (#1760): its glowing pad and arch and its mouth (colours of its own, no glow), and no shadow call
+    this.gatePads = this.instances('gate-pad', PLACE_CAPACITY, landmarkGeometry([
+      { name: 'pad', geometry: pad, colour: PLACE_LOOK.arch.colour, roughness: 0.4, glows: true },
+      { name: 'arch', geometry: arch, colour: PLACE_LOOK.arch.colour, roughness: 0.4, glows: true },
+      { name: 'mouth', geometry: mouthGeometry(), colour: PLACE_LOOK.mouth.floor, roughness: 1, glows: false },
+    ]), landmarkMaterial(TELEPORTER_LOOK.emissive));
+    this.gatePads.castShadow = false;
     // A hut and its lit windows, a cairn's stones and its glowing cap: one geometry each, the colours on the vertices (#1647)
     const hut = landmarkGeometry([
       { name: 'hut', geometry: hutGeometry(), colour: PLACE_LOOK.hut.colour, roughness: 0.8, glows: false },
@@ -2203,13 +2206,12 @@ export class OpenWorldView {
       const pad = kind === 'town' ? this.townPads : this.gatePads;
       const n = counts[kind]++;
       pad.setMatrixAt(n, dummy.matrix);
-      if (kind === 'dungeon') this.gateMouths.setMatrixAt(n, dummy.matrix);
-      else this.placeHuts(n, [q, r], p);
+      if (kind === 'town') this.placeHuts(n, [q, r], p);
     }
-    for (const mesh of [this.townPads, this.gatePads, this.gateMouths, this.townHuts]) mesh.instanceMatrix.needsUpdate = true;
+    for (const mesh of [this.townPads, this.gatePads, this.townHuts]) mesh.instanceMatrix.needsUpdate = true;
     this.townPads.count = counts.town;
     this.townHuts.count = counts.town * 6;
-    this.gatePads.count = this.gateMouths.count = counts.dungeon;
+    this.gatePads.count = counts.dungeon;
   }
 
   /** Stands the six huts of the `n`-th town, at `cell` (centre `p`), on the corners round its pad, each on the highest of the three cells

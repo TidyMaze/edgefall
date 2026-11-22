@@ -59,7 +59,7 @@ describe('the marker of a town and a dungeon gate (#1593)', () => {
     expect([towns[0]!.x, towns[0]!.y, towns[0]!.z]).toEqual([expect.closeTo(p.x), expect.closeTo(topOf(GROUND.grass, 5, 3, 0)), expect.closeTo(p.z)]);
     expect(placed(view, 'gate-pad')).toHaveLength(1);
     expect((mesh(view, 'town-pad').material as THREE.MeshStandardMaterial).emissive.getStyle()).toBe(new THREE.Color(ICON.town).getStyle());
-    expect((mesh(view, 'gate-pad').material as THREE.MeshStandardMaterial).emissive.getStyle()).toBe(new THREE.Color(ICON.dungeon).getStyle());
+    expect(landmarkPart(mesh(view, 'gate-pad').geometry, 'arch').glow.getStyle()).toBe(new THREE.Color(ICON.dungeon).getStyle()); // the glow is on the vertices (#1760)
     expect(mesh(view, 'town-pad').castShadow).toBe(true);
   });
 
@@ -105,7 +105,7 @@ describe('the silhouette of a town and a gate from far away (#1518)', () => {
     expect(spire.y).toBeGreaterThan(spire.x * 3);
     expect(arch.x).toBeGreaterThan(arch.y * 1.5);
     expect((mesh(view, 'town-pad').material as THREE.MeshStandardMaterial).emissive.getStyle()).toBe(new THREE.Color(PLACE_LOOK.spire.colour).getStyle());
-    expect((mesh(view, 'gate-pad').material as THREE.MeshStandardMaterial).emissive.getStyle()).toBe(new THREE.Color(PLACE_LOOK.arch.colour).getStyle());
+    expect(landmarkPart(mesh(view, 'gate-pad').geometry, 'arch').glow.getStyle()).toBe(new THREE.Color(PLACE_LOOK.arch.colour).getStyle());
     expect([PLACE_LOOK.spire.colour, PLACE_LOOK.arch.colour]).toEqual([ICON.town, ICON.dungeon]); // the colours of their pads: one material each
     expect(PLACE_LOOK.spire.colour).toBe('#19e6ff'); // the art spec's neon cyan (docs/specs/art.md section 1)
     expect(PLACE_LOOK.arch.colour).toBe('#d9822b'); // the art spec's sodium hazard (docs/specs/art.md section 1)
@@ -124,35 +124,41 @@ describe('the mouth of a dungeon gate (#1518)', () => {
       { kind: 'town', cell: [3, 0] },
       { kind: 'dungeon', cell: [-2, 1] },
     ]);
-    const mouth = mesh(view, 'gate-mouth');
-    expect(mouth.count).toBe(1);
-    const pad = new THREE.Matrix4();
-    const at = new THREE.Matrix4();
-    mesh(view, 'gate-pad').getMatrixAt(0, pad);
-    mouth.getMatrixAt(0, at);
-    expect(at.elements).toEqual(pad.elements);
-    const geometry = mouth.geometry;
+    // one gate = one draw call (#1760): the mouth is a part of the gate's mesh, with the pad and the arch
+    expect(view.scene.getObjectByName('gate-mouth')).toBeUndefined();
+    const gate = mesh(view, 'gate-pad');
+    expect(gate.count).toBe(1);
+    const placedGates: THREE.Mesh[] = [];
+    view.scene.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.name.startsWith('gate')) placedGates.push(o as THREE.Mesh); });
+    expect(placedGates).toEqual([gate]);
+    expect(gate.castShadow).toBe(false); // the frame draws it once, not twice
+    const [start, n] = (gate.geometry.userData.parts as Record<string, [number, number]>).mouth!;
+    const all = gate.geometry.attributes as { position: THREE.BufferAttribute; color: THREE.BufferAttribute; glow: THREE.BufferAttribute };
+    const geometry = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute((all.position.array as Float32Array).slice(start * 3, (start + n) * 3), 3));
     geometry.computeBoundingBox();
     const box = geometry.boundingBox!;
     expect(box.min.y).toBeGreaterThan(0.08); // over the pad's top
     expect(box.max.y).toBeLessThan(0.1); // flat
     for (const x of [box.min.x, box.max.x]) for (const z of [box.min.z, box.max.z]) expect(Math.hypot(x, z)).toBeLessThanOrEqual(0.5); // inside the pad
     expect(box.max.x - box.min.x).toBeLessThan(PLACE_LOOK.arch.radius * 2); // between the arch's legs
-    expect(geometry.attributes.position!.count / 3).toBeLessThanOrEqual(24);
+    expect(n / 3).toBeLessThanOrEqual(24);
     // the tone by depth: the front tread is the lightest, the last one at the back the gap floor
-    const { position, color } = geometry.attributes as { position: THREE.BufferAttribute; color: THREE.BufferAttribute };
     const byZ = new Map<number, number>();
-    for (let i = 0; i < position.count; i++) {
-      const z = Math.round(position.getZ(i) * 100);
-      byZ.set(z, Math.min(byZ.get(z) ?? 9, luma(color.getX(i), color.getY(i), color.getZ(i))));
+    for (let i = start; i < start + n; i++) {
+      const z = Math.round(all.position.getZ(i) * 100);
+      byZ.set(z, Math.min(byZ.get(z) ?? 9, luma(all.color.getX(i), all.color.getY(i), all.color.getZ(i))));
+      expect([all.glow.getX(i), all.glow.getY(i), all.glow.getZ(i)]).toEqual([0, 0, 0]); // the mouth does not glow
     }
     const tones = [...byZ.entries()].sort(([a], [b]) => b - a).map(([, l]) => l);
     expect(tones[0]).toBeGreaterThan(tones[tones.length - 1]! * 4);
     const floor = new THREE.Color(PLACE_LOOK.mouth.floor);
     expect(tones[tones.length - 1]).toBeCloseTo(luma(floor.r, floor.g, floor.b), 5);
     expect(PLACE_LOOK.mouth.floor).toBe('#020307'); // the art spec's gap floor
-    expect((mouth.material as THREE.MeshStandardMaterial).vertexColors).toBe(true);
-    expect(mouth.castShadow).toBe(false);
+    expect((gate.material as THREE.MeshStandardMaterial).vertexColors).toBe(true);
+    // the pad and the arch keep the arch's colour, glowing
+    const arch = new THREE.Color(PLACE_LOOK.arch.colour);
+    const [pStart] = (gate.geometry.userData.parts as Record<string, [number, number]>).pad!;
+    expect(new THREE.Color().fromBufferAttribute(all.glow, pStart).getHex()).toBe(arch.getHex());
   });
 });
 
