@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { boot } from './test/harness';
 
 // The palette setting (#381): its button steps through the five palettes in order and back to Default, each named on the button, stored and
-// worn by the page. The cycle's logic, fast here; the e2e palette.spec keeps one click and the reload in a real browser (#1710).
+// worn by the page. The cycle's logic, fast here; the e2e palette.spec keeps one click in a real browser, the stored palette at boot is the last test here (#1710).
 const byId = (id: string) => document.getElementById(id)!;
 
 describe('the palette setting (#381)', () => {
@@ -19,5 +19,13 @@ describe('the palette setting (#381)', () => {
       expect(document.documentElement.dataset.palette ?? 'default').toBe(id);
       expect(game.hook('__palette')).toBe(id);
     }
+  });
+
+  it('wears a stored palette at boot and names it on the button: the reload leg of the e2e, dropped from it (#1710)', async () => {
+    const game = await boot('?bot=off', { storage: { 'ab-alone.palette': 'protan' } });
+    game.openSettings();
+    expect(byId('setting-palette').textContent).toContain('Palette: Protan');
+    expect(document.documentElement.dataset.palette).toBe('protan');
+    expect(game.hook('__palette')).toBe('protan');
   });
 });
