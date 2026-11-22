@@ -375,6 +375,9 @@ const VARIANTS = Object.values(BIOME_PROPS).flatMap((p) => [p.tree, p.boulder].f
 /** The props that have a model in Blender: the low-poly one in `client/models/openworld.glb` (`ow_<prop>`) and the detailed one
  * in `openworld-hi.glb` (`ow_<prop>_hi`), drawn near the hero (#989). */
 const MODELLED = ['mountain', 'tree', 'boulder', 'wall'] as const;
+/** The props with a detailed mesh near the hero: not the wall, whose detailed model is the low-poly one (same 84 vertices in both files), so it
+ * stays on its one mesh and its call (#1765: a wall near the spawn of seeds 2 and 4 made a 46th frame call). */
+const DETAILED = MODELLED.filter((prop) => prop !== 'wall');
 /** The props read from the files: the boulder stays the 20-triangle shell sphere of `PROPS` (#1315), whatever the files hold. */
 const FROM_FILES = MODELLED.filter((prop) => prop !== 'boulder');
 /** The landmark of a boss lair (#1171), in `openworld-lair.glb`: the open one and the beaten one, painted by vertex colours. */
@@ -999,7 +1002,7 @@ export class OpenWorldView {
       this.props[prop] = this.instances(`prop-${prop}`, CAPACITY[prop], PROPS[prop].geometry, propMaterial(prop, this.sway));
       this.managed.push(this.props[prop]);
     }
-    for (const prop of MODELLED) {
+    for (const prop of DETAILED) {
       this.detailed[prop] = this.instances(`prop-${prop}-hi`, HI_CAPACITY, PROPS[prop].geometry, propMaterial(prop, this.sway));
       this.managed.push(this.detailed[prop]!);
     }
@@ -1081,7 +1084,7 @@ export class OpenWorldView {
       this.paint(this.props[prop], this.neon ? neonProp(prop, geometry) : geometry);
       if (VARIANTS.includes(prop)) (this.variantReady.add(prop), groundEpoch++); // a biome's own prop, laid from now on (#1733)
     }
-    for (const prop of MODELLED) {
+    for (const prop of DETAILED) {
       const geometry = high[prop];
       if (!geometry) continue;
       this.paint(this.detailed[prop]!, this.neon ? neonProp(prop, geometry) : geometry);
@@ -1951,7 +1954,7 @@ export class OpenWorldView {
     for (const prop of PROP_NAMES) if (this.props[prop] === old) this.props[prop] = grown;
     if (this.troop === old) this.troop = grown;
     if (this.foes === old) this.foes = grown;
-    for (const prop of MODELLED) if (this.detailed[prop] === old) this.detailed[prop] = grown;
+    for (const prop of DETAILED) if (this.detailed[prop] === old) this.detailed[prop] = grown;
     const at = this.managed.indexOf(old);
     if (at >= 0) this.managed[at] = grown;
   }
@@ -2457,7 +2460,7 @@ export class OpenWorldView {
 
   /** The props' meshes: the low-poly mesh of each prop, and the detailed mesh of each modelled prop. */
   private propMeshes(): THREE.InstancedMesh[] {
-    return [...PROP_NAMES.map((prop) => this.props[prop]), ...MODELLED.map((prop) => this.detailed[prop]!)];
+    return [...PROP_NAMES.map((prop) => this.props[prop]), ...DETAILED.map((prop) => this.detailed[prop]!)];
   }
 
   /** A step from the cell `from` to `to` moves only the props whose detail changes: the cells within `HI_RADIUS` of exactly one of
@@ -2486,8 +2489,8 @@ export class OpenWorldView {
     const key = cellKey(q, r);
     this.removeProp(from, key);
     const spot = { x: 0, y: 0, z: 0, scaleY: 0, colour: WHITE };
-    this.stand(tile, q, r, axialTo3D(q, r), topOf(GROUND[tile.terrain], tile.height, q, r), (name, _near, x, y, z, scaleY, colour) => {
-      if (name !== prop) return; // a wall's cap stays where it is
+    this.stand(tile, q, r, axialTo3D(q, r), topOf(GROUND[tile.terrain], tile.height, q, r), (_name, _near, x, y, z, scaleY, colour) => {
+      // only a wall also stands a cap, and a wall never changes mesh (#1765): every call here is the moving prop's
       Object.assign(spot, { x, y, z, scaleY, colour });
     }, near);
     this.addProp(to, key, spot);

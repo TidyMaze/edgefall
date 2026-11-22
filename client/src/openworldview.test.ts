@@ -544,9 +544,10 @@ describe('the detailed props near the hero (#989)', () => {
     expect(HI_RADIUS).toBe(8);
     expect(HI_CAPACITY).toBe(3 * HI_RADIUS * (HI_RADIUS + 1) + 1);
     const view = new OpenWorldView(new World(bytes));
-    for (const prop of ['mountain', 'tree', 'boulder', 'wall']) {
+    for (const prop of ['mountain', 'tree', 'boulder']) {
       expect(mesh(view, `prop-${prop}-hi`).instanceMatrix.count).toBe(HI_CAPACITY);
     }
+    expect(view.scene.getObjectByName('prop-wall-hi')).toBeUndefined(); // the wall's detailed model is its low-poly one: one mesh, one call (#1765)
   });
 
   it('draws the cells within HI_RADIUS of the hero with the detailed mesh, the others with the low-poly one, each in exactly one', () => {
@@ -750,7 +751,7 @@ describe('a step moves only the props near the hero (#1054)', () => {
     view.show([59, 0]);
     const expected = around([58, 0]).filter((cell) => {
       const tile = world.tile(cell[0], cell[1]);
-      return tile !== undefined && ['peak', 'tree', 'boulder', 'wall'].includes(tile.terrain) && ballOf([58, 0], cell) !== ballOf([59, 0], cell);
+      return tile !== undefined && ['peak', 'tree', 'boulder'].includes(tile.terrain) && ballOf([58, 0], cell) !== ballOf([59, 0], cell);
     }).length;
     expect(write).toHaveBeenCalledTimes(expected);
     expect(expected).toBeGreaterThan(0);

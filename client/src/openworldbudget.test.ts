@@ -96,6 +96,32 @@ const frameCalls = ({ calls, casters }: { calls: number; casters: number }): num
 describe('the Open world scene geometry regression caps (docs/specs/openworld.md section 17)', () => {
   // Seed 7 is the budget view; seed 1 has a dungeon gate in its widest view, which draws as one call (#1760: 47 frame calls when the gate
   // took three, 44 without it, 45 now); seed 9's widest view has one too (45 before, 42 without the gate, 43 now).
+  /** The scene of the budget view of `seed` and of its widest zoom, on the high tier. */
+  const views = async (seed: number) => {
+    document.body.dataset.tier = 'high';
+    const m = mode();
+    m.enter(seed, 1280, 720);
+    await m.props; // the props' models are in: the detailed set near the hero, the low-poly one further out
+    let camera: THREE.Camera | null = null;
+    const t0 = performance.now();
+    m.frame((_scene, c) => void (camera = c), t0);
+    const spawn = sceneCost(m.scene!, camera!);
+    m.zoom(Number.MAX_VALUE); // held at the widest zoom of the window
+    for (let t = 1; t <= 60; t++) m.frame(() => {}, t0 + t * 100); // the drawn zoom follows the zoom asked for
+    const widest = sceneCost(m.scene!, camera!);
+    m.leave();
+    delete document.body.dataset.tier;
+    return { spawn, widest };
+  };
+
+  // Seeds 2 and 4 drew 46 frame calls at the budget view (#1765): a wall near the hero took its own detailed mesh, a call and a shadow
+  // call, though its detailed model is the low-poly one. Their triangles pass the caps of seed 7 only for seed 2, so only the calls are held here.
+  it.each([2, 4])('keeps the budget view and the widest zoom of seed %i within the frame calls', async (seed) => {
+    const { spawn, widest } = await views(seed);
+    expect(frameCalls(spawn)).toBeLessThanOrEqual(FRAME_CALLS);
+    expect(frameCalls(widest)).toBeLessThanOrEqual(FRAME_CALLS);
+  });
+
   it.each([7, 1, 9])('keeps the scene of the budget view and of the widest zoom of seed %i under its regression caps on triangles and draw calls, with the real chunks and models', async (seed) => {
     document.body.dataset.tier = 'high';
     const m = mode();
