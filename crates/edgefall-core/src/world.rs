@@ -6,7 +6,7 @@
 use crate::encounter::hull::mix;
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 /// The version of the generated world, saved with each Open world save (#968): bump it with every change of the generator, the
 /// same moment the pinned digest of the tests changes (the line of `the_generated_world_is_pinned_by_a_digest`).
@@ -274,8 +274,10 @@ fn noise_at(at: impl Fn(i32, i32) -> f64, q: i32, r: i32, scale: i32) -> f64 {
     let smooth = |t: f64| t * t * (3.0 - 2.0 * t);
     let tx = smooth(f64::from(q.rem_euclid(scale)) / f64::from(scale));
     let ty = smooth(f64::from(r.rem_euclid(scale)) / f64::from(scale));
-    let top = at(x, y) + (at(x + 1, y) - at(x, y)) * tx;
-    let bottom = at(x, y + 1) + (at(x + 1, y + 1) - at(x, y + 1)) * tx;
+    // Each corner is hashed once (the same values as hashing it for every use).
+    let (a, b, c, d) = (at(x, y), at(x + 1, y), at(x, y + 1), at(x + 1, y + 1));
+    let top = a + (b - a) * tx;
+    let bottom = c + (d - c) * tx;
     top + (bottom - top) * ty
 }
 
@@ -454,28 +456,43 @@ fn climate_at(seed: u64, q: i32, r: i32, shift: (i32, i32)) -> Climate {
     }
 }
 
-/// The climate shifts searched so far, by seed (a pure memo, `CLIMATE_KEPT` of them: the chunks of one world search once, and a
-/// few worlds at a time, as the tests' threads do, do not search again). A lock keeps a racing thread from reading another seed's shift.
-static CLIMATE_SHIFTS: Mutex<Vec<(u64, (i32, i32))>> = Mutex::new(Vec::new());
-const CLIMATE_KEPT: usize = 64;
+/// The climate shifts searched so far, by seed (a pure memo of up to `CLIMATE_KEPT`, enough for the sweeps of 2000 seeds the tests
+/// run: the chunks of one world search once, and so does every test that reads the same seed). A lock keeps a racing thread from
+/// reading another seed's shift.
+static CLIMATE_SHIFTS: Mutex<Option<HashMap<u64, (i32, i32)>>> = Mutex::new(None);
+const CLIMATE_KEPT: usize = 4096;
+
+/// Remembers `shift` for `seed`, the memo emptied first when it already holds `kept` seeds.
+fn remember_shift(
+    shifts: &mut HashMap<u64, (i32, i32)>,
+    kept: usize,
+    seed: u64,
+    shift: (i32, i32),
+) {
+    if shifts.len() >= kept {
+        shifts.clear();
+    }
+    shifts.insert(seed, shift);
+}
 
 /// The climate shift of `seed`, from `CLIMATE_SHIFTS` when it is known.
 fn climate_shift(seed: u64) -> (i32, i32) {
     let known = CLIMATE_SHIFTS
         .lock()
         .unwrap_or_else(PoisonError::into_inner)
-        .iter()
-        .find(|&&(known, _)| known == seed)
-        .map(|&(_, shift)| shift);
+        .as_ref()
+        .and_then(|shifts| shifts.get(&seed).copied());
     known.unwrap_or_else(|| {
         let shift = search_climate(seed);
         let mut shifts = CLIMATE_SHIFTS
             .lock()
             .unwrap_or_else(PoisonError::into_inner);
-        if shifts.len() >= CLIMATE_KEPT {
-            shifts.remove(0);
-        }
-        shifts.push((seed, shift));
+        remember_shift(
+            shifts.get_or_insert_with(HashMap::new),
+            CLIMATE_KEPT,
+            seed,
+            shift,
+        );
         shift
     })
 }
@@ -800,8 +817,29 @@ pub fn cell(seed: u64, q: i32, r: i32) -> Option<Cell> {
     if !in_world(q, r) {
         return None;
     }
-    Some(Window::new(seed, q.div_euclid(CHUNK), r.div_euclid(CHUNK)).cell(q, r))
+    let (cx, cy) = (q.div_euclid(CHUNK), r.div_euclid(CHUNK));
+    // The cells asked one after the other (the neighbours of a place, a flood fill, a walk) lie in a few chunks: their windows are kept.
+    let window = {
+        let mut windows = WINDOWS.lock().unwrap_or_else(PoisonError::into_inner);
+        let windows = windows.get_or_insert_with(HashMap::new);
+        if windows.len() >= WINDOWS_KEPT {
+            windows.clear();
+        }
+        Arc::clone(
+            windows
+                .entry((seed, cx, cy))
+                .or_insert_with(|| Arc::new(Window::new(seed, cx, cy))),
+        )
+    };
+    Some(window.cell(q, r))
 }
+
+/// The most windows `cell` keeps.
+const WINDOWS_KEPT: usize = 256;
+
+/// The windows of the chunks `cell` read lately.
+static WINDOWS: Mutex<Option<WindowMemo>> = Mutex::new(None);
+type WindowMemo = HashMap<(u64, i32, i32), Arc<Window>>;
 
 /// Whether a marble may not stand on a cell of chunk `(cx, cy)` of the world `seed`: it is off the world, or its terrain is blocked
 /// (`Terrain::blocked`). One window is built for the chunk, so many cells cost one generation (the wandering marbles, #1511).
@@ -1813,6 +1851,16 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn the_shift_memo_empties_when_it_is_full() {
+        let mut shifts = HashMap::new();
+        remember_shift(&mut shifts, 2, 1, (1, 1));
+        remember_shift(&mut shifts, 2, 2, (2, 2));
+        remember_shift(&mut shifts, 2, 3, (3, 3));
+        assert_eq!(shifts.len(), 1);
+        assert_eq!(shifts.get(&3), Some(&(3, 3)));
     }
 
     #[test]
