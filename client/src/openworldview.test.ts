@@ -2423,7 +2423,8 @@ describe('the loaded chunks keep their centre while the hero paces along a chunk
     view.resize(1600, 900);
     view.show([0, 0]);
     zoomed(view, 1e9);
-    for (let i = 0; i < (2 * MAX_REACH + 5) ** 2; i++) view.show([0, 0]); // the frames read the ring ahead, a chunk each (#1756)
+    for (const at of [[0, 0], [-1, 0], [0, -1]] as const) for (let i = 0; i < (2 * MAX_REACH + 5) ** 2; i++) view.show([...at]); // the frames read the ring ahead round the hero's chunk, a chunk each (#1756, #1766)
+    view.show([0, 0]);
     const loaded = load.mock.calls.length;
     const version = mesh(view, 'terrain-grass').instanceMatrix.version;
     for (let i = 0; i < 10; i++) {

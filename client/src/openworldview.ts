@@ -1864,13 +1864,12 @@ export class OpenWorldView {
    * that moves the square finds its entering chunks ready and its build writes instead of computing (#1756). One a frame: it never stalls one. */
   private prefetch(reach: number, hero: Axial): void {
     this.validRecords();
-    const [cx, cy] = this.centre;
-    const [hx, hy] = chunkOf(hero);
+    const [hx, hy] = chunkOf(hero); // the ring follows the hero's chunk, where the square moves to when it lags (#1766)
     let best: [number, number] | undefined;
     let nearest = Infinity;
     const far = reach + this.ahead(reach);
-    for (let ky = cy - far; ky <= cy + far; ky++) {
-      for (let kx = cx - far; kx <= cx + far; kx++) {
+    for (let ky = hy - far; ky <= hy + far; ky++) {
+      for (let kx = hx - far; kx <= hx + far; kx++) {
         const known = this.laidChunks.get(kx * 65536 + ky);
         const d = (kx - hx) ** 2 + (ky - hy) ** 2;
         if ((known?.ground && known.view === null) || d >= nearest) continue;

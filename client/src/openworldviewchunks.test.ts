@@ -88,6 +88,18 @@ describe('a walk lays only the chunks that enter the area (#1756)', () => {
     expect(first).toBeGreaterThan(0);
   });
 
+  it('keeps the ring ahead round the hero\'s chunk while the square lags behind it, so a jump of the square finds its chunks (#1766)', () => {
+    const { view, inside } = open();
+    const reach = view.reach;
+    for (let i = 0; i < (2 * reach + 5) ** 2; i++) view.show([0, 0]);
+    const centre = inside.centre;
+    view.show([CHUNK, 0]); // one chunk on: the square still covers the ball and keeps its centre
+    expect(inside.centre).toBe(centre);
+    for (let i = 0; i < 4; i++) view.show([CHUNK, 0]);
+    // the chunk two rings past the hero's square edge, which the lagging square's own ring does not reach
+    expect(inside.laidChunks.has((centre[0] + reach + 3) * 65536 + centre[1])).toBe(true);
+  });
+
   it('keeps fewer rings ahead when the world cache could not hold the chunks ahead and their halo', () => {
     const probe = open();
     const reach = probe.view.reach;
