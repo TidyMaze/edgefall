@@ -112,14 +112,23 @@ export class World {
     this.restore([[q, r]]);
   }
 
+  /** The cells broken, in the order they were: a view reads what is new since the last it saw (#1770). */
+  private readonly breakLog: Axial[] = [];
+
   /** How many cells have been broken: a view keeps what it laid until this changes (#1756). */
   get breaks(): number {
-    return this.broken.length;
+    return this.breakLog.length;
+  }
+
+  /** The cells broken after the first `count`, oldest first (#1770). */
+  brokenSince(count: number): Axial[] {
+    return this.breakLog.slice(count);
   }
 
   /** Breaks the cells given, as a saved world kept them. Call it before the cells are read; a chunk already read is changed too. */
   restore(cells: readonly Axial[]): void {
     for (const [q, r] of cells) {
+      this.breakLog.push([q, r]);
       const key = keyOf(...chunkOf([q, r]));
       this.smashed.set(key, [...(this.smashed.get(key) ?? []), [q, r]]);
       const tiles = this.chunks.get(key);

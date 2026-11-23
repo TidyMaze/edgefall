@@ -1917,11 +1917,17 @@ export class OpenWorldView {
     return Math.max(0, Math.min(AHEAD, Math.floor((Math.sqrt(this.world.limit) - 3) / 2) - reach));
   }
 
-  /** Drops every record when what they read has changed: the landmarks, the biome reader, the lifting flag, the models, or a broken prop. */
+  /** Drops every record when what they read has changed: the landmarks, the biome reader, the lifting flag or the models. A broken
+   * cell drops only the records of its chunk and the eight round it, which read its height and its prop: the rest of the ring stays (#1770). */
   private validRecords(): void {
     const breaks = this.world.breaks;
     if (this.recordsFor.epoch === groundEpoch && this.recordsFor.breaks === breaks) return;
-    this.laidChunks.clear();
+    if (this.recordsFor.epoch === groundEpoch && this.recordsFor.breaks >= 0) {
+      for (const cell of this.world.brokenSince(this.recordsFor.breaks)) {
+        const [cx, cy] = chunkOf(cell);
+        for (let ky = cy - 1; ky <= cy + 1; ky++) for (let kx = cx - 1; kx <= cx + 1; kx++) this.laidChunks.delete(kx * 65536 + ky);
+      }
+    } else this.laidChunks.clear();
     this.recordsFor = { epoch: groundEpoch, breaks };
   }
 

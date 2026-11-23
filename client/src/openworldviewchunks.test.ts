@@ -100,6 +100,26 @@ describe('a walk lays only the chunks that enter the area (#1756)', () => {
     expect(inside.laidChunks.has((centre[0] + reach + 3) * 65536 + centre[1])).toBe(true);
   });
 
+  it('a broken cell drops the records of its chunk and the eight round it, not the whole ring (#1770)', () => {
+    const world = new World(treed);
+    const { view, inside } = open(world);
+    const reach = view.reach;
+    for (let i = 0; i < (2 * reach + 5) ** 2; i++) view.show([0, 0]);
+    const size = inside.laidChunks.size;
+    world.smash(32, 5); // a tree of the chunk (2, 0)
+    view.show([0, 0]); // the frame drops the nine and makes one of them again
+    expect(inside.laidChunks.size).toBe(size - 9 + 1);
+    expect(inside.laidChunks.has(-3 * 65536)).toBe(true); // a chunk far from the broken one stays
+    inside.drawnChunks = ''; // the build lays the square again from what is kept and what it makes
+    view.show([0, 0]);
+    const other = new World(treed);
+    other.smash(32, 5);
+    const fresh = new OpenWorldView(other);
+    fresh.resize(1600, 900);
+    fresh.show([0, 0]);
+    expect(picture(view)).toEqual(picture(fresh));
+  });
+
   it('keeps fewer rings ahead when the world cache could not hold the chunks ahead and their halo', () => {
     const probe = open();
     const reach = probe.view.reach;
@@ -157,7 +177,9 @@ describe('a walk lays only the chunks that enter the area (#1756)', () => {
     const trees = (): number => (view.scene.getObjectByName('prop-tree') as THREE.InstancedMesh).count + (view.scene.getObjectByName('prop-tree-hi') as THREE.InstancedMesh).count;
     const before = trees();
     world.smash(0, 0); // the tree of cell 0 of chunk (0, 0)
-    expect(again()).toBe(first - 1);
+    const made = again(); // only the broken cell's chunk and the eight round it are made again (#1770)
+    expect(made).toBeGreaterThan(0);
+    expect(made).toBeLessThan(first / 5);
     expect(trees()).toBe(before - 1);
   });
   it('writes the instances with a Map lookup per mesh change, not one per instance (#1761)', () => {
@@ -215,12 +237,11 @@ describe('a walk lays only the chunks that enter the area (#1756)', () => {
       expect(stones(view)).toBe(stones(other));
     });
 
-    it('makes them again when the landmarks change, the biome reader is set, a prop is broken, or the flat tops switch', () => {
+    it('makes them again when the landmarks change, the biome reader is set, or the flat tops switch', () => {
       const { world, view, inside, made } = standing();
       for (const change of [
         () => shapeWorld({ lairs: [[3, 3]], gates: [], lights: [] }),
         () => void new OpenWorldView(new World(treed)),
-        () => world.smash(0, 0),
         () => view.useFlatTops(true),
       ]) {
         again(inside); // the records are valid
